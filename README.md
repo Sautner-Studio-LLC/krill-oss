@@ -1,4 +1,4 @@
-Hi there! The krill platform has been in development in a private repo since 2024 and we're creating this repo to migrate parts of the code base to open source libraries, add our OSS projects and provide a place for the comminity to contribute Krill projects, lambdas and integtrations. This will also be the primary repositirory for tracking issues and feature requests. 
+Hi there! The krill platform has been in development in a private repo since 2024 and we're creating this repo to migrate parts of the code base to open source libraries, as well as our OSS projects and provide a place for the comminity to contribute Krill projects, lambdas and integtrations. This will also be the primary repositirory for tracking issues and feature requests. 
 
 # Krill
 
