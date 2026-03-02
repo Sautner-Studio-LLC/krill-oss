@@ -37,7 +37,7 @@ Krill Server runs on Debian-based Linux distributions including Ubuntu and Raspb
 
 Have questions, need help, or want to report a bug?
 
-→ [Open an issue on GitHub](https://github.com/krill-zone/krill/issues)
+→ [Open an issue on GitHub](https://github.com/krill-oss/issues)
 
 ## Learn More
 
