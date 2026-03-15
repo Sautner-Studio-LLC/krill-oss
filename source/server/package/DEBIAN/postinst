@@ -1,0 +1,278 @@
+#!/bin/sh
+
+set -e
+
+export DEBIAN_FRONTEND=noninteractive
+
+if ! getent group krill >/dev/null; then
+    addgroup --system krill
+fi
+
+if ! id -u krill >/dev/null 2>&1; then
+    adduser --system --ingroup krill --no-create-home --disabled-login krill
+fi
+
+# Add krill to hardware control groups
+for group in gpio i2c spi dialout video plugdev tty; do
+    if getent group "$group" >/dev/null; then
+        adduser krill "$group"
+    fi
+done
+
+# Create necessary directories with appropriate permissions
+install -d -o krill -g krill -m 0750 /var/log/krill
+install -d -o krill -g krill -m 0750 /var/lib/krill/db
+install -d -o krill -g krill -m 0750 /var/lib/krill/obj
+install -d -o krill -g krill -m 0750 /var/lib/krill/trusted
+install -d -o krill -g krill -m 0750 /etc/krill
+install -d -o krill -g krill -m 0750 /usr/share/krill
+install -d -o krill -g krill -m 0750 /srv/krill
+install -d -o krill -g krill -m 0750 /srv/krill/data
+install -d -o krill -g krill -m 0750 /srv/krill/data/nodes
+install -d -o krill -g krill -m 0750 /srv/krill/data/records
+install -d -o krill -g krill -m 0750 /opt/krill/lambdas
+install -d -o krill -g krill -m 0750 /srv/krill/project
+install -d -o krill -g krill -m 0750 /etc/krill/credentials
+
+
+# Set permissions for example lambda scripts
+# These are example scripts that users can reference but should not modify directly
+# Users should place their own scripts in /opt/krill/lambdas with execute permissions
+# TODO: Consider adding a script validation tool to check for common security issues
+# TODO: Add documentation about safe lambda script practices in /opt/krill/lambdas/README.md
+if [ -d /opt/krill/lambdas ]; then
+    chown -R krill:krill /opt/krill/lambdas
+    find /opt/krill/lambdas -type f -name "*.py" -exec chmod 755 {} \;
+    find /opt/krill/lambdas -type f -name "*.md" -exec chmod 644 {} \;
+fi
+
+# Ensure runtime dirs are writable by service user
+for path in /var/lib/krill /var/lib/krill/db /var/lib/krill/obj /var/lib/krill/trusted; do
+    [ -d "$path" ] || install -d -o krill -g krill -m 0750 "$path"
+    chown -R krill:krill "$path"
+    chmod -R u+rwX,g+rwX "$path"
+done
+
+# Ensure DB files (and journal/WAL) are writable
+for f in /var/lib/krill/*.db* /var/lib/krill/db/*.db*; do
+    [ -e "$f" ] || continue
+    chown krill:krill "$f"
+    chmod 660 "$f"
+done
+
+# --- TLS Cert Generation ---
+
+CERT_DIR="/etc/krill/certs"
+KEY_FILE="$CERT_DIR/krill.key"
+CERT_FILE="$CERT_DIR/krill.crt"
+PFX_FILE="$CERT_DIR/krill.pfx"
+PFX_PASSWORD_FILE="$CERT_DIR/.pfx_password"
+ALIAS="krill"
+
+# Make sure cert directory exists and has proper permissions
+install -d -o krill -g krill -m 0750 "$CERT_DIR"
+
+if [ ! -f "$KEY_FILE" ] || [ ! -f "$CERT_FILE" ] || [ ! -f "$PFX_FILE" ]; then
+    echo "🦐 Generating new self-signed TLS certificate..."
+
+    # Generate a strong random password for the PFX file
+    PFX_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
+    
+    # Validate password was generated successfully
+    if [ -z "$PFX_PASSWORD" ] || [ ${#PFX_PASSWORD} -lt 16 ]; then
+        echo "🦐 ❌ Error: Failed to generate secure password. Please ensure openssl is installed."
+        exit 1
+    fi
+    
+    # Store password securely for the server to read
+    echo "$PFX_PASSWORD" > "$PFX_PASSWORD_FILE"
+    chmod 600 "$PFX_PASSWORD_FILE"
+    chown krill:krill "$PFX_PASSWORD_FILE"
+
+    # Get hostname and IP
+    HOST_IP=$(hostname -I | awk '{print $1}')
+    HOSTNAME=$(hostname)
+
+    # Create temporary openssl config with SAN
+    SAN_CONFIG=$(mktemp)
+    cat /etc/ssl/openssl.cnf > "$SAN_CONFIG"
+    echo "[SAN]" >> "$SAN_CONFIG"
+    echo "subjectAltName=DNS:localhost,DNS:$HOSTNAME,DNS:$HOSTNAME.local,IP:$HOST_IP" >> "$SAN_CONFIG"
+
+    # Generate private key and self-signed cert with 2048-bit RSA + SHA-256
+    openssl req -x509 -nodes -days 3650 \
+      -newkey rsa:2048 \
+      -sha256 \
+      -keyout "$KEY_FILE" \
+      -out "$CERT_FILE" \
+      -subj "/C=US/ST=Local/L=Local/O=$HOSTNAME/CN=$HOSTNAME.local" \
+      -extensions SAN -config "$SAN_CONFIG"
+
+    # Generate .pfx file for JVM
+    openssl pkcs12 -export \
+      -in "$CERT_FILE" \
+      -inkey "$KEY_FILE" \
+      -out "$PFX_FILE" \
+      -name "$ALIAS" \
+      -passout pass:"$PFX_PASSWORD"
+
+    # Set secure permissions
+    chmod 600 "$KEY_FILE"
+    chmod 644 "$CERT_FILE" "$PFX_FILE"
+
+    # Output summary
+    echo ""
+    echo "✅ TLS certificate and PKCS12 keystore created:"
+    echo "   - Cert:  $CERT_FILE"
+    echo "   - Key:   $KEY_FILE"
+    echo "   - PFX:   $PFX_FILE"
+    echo "   - Password file: $PFX_PASSWORD_FILE (restricted access)"
+
+    # Optional: Show SHA-256 fingerprint
+    printf "🦐 🔍 SHA-256 Fingerprint: "
+    openssl x509 -noout -fingerprint -sha256 -in "$CERT_FILE" | sed 's/SHA256 Fingerprint=//'
+
+    rm -f "$SAN_CONFIG"
+else
+    echo "🦐 ✔ TLS certificate already exists. Skipping generation."
+fi
+
+# --- Version tracking ---
+PKG_VERSION=$(dpkg-query -W -f='${Version}' krill)
+
+rm -f /etc/krill/version
+echo "$PKG_VERSION" >> /etc/krill/version
+chown -R krill:krill /etc/krill
+chmod 0640 /etc/krill/version
+
+# --- API Key Generation ---
+API_KEY_FILE="/etc/krill/credentials/api_key"
+PEER_API_KEY_FILE="/etc/krill/credentials/peer_api_key"
+
+if [ ! -f "$API_KEY_FILE" ]; then
+   echo "🦐 Generating new API key..."
+
+  # Generate a GUID using /proc/sys/kernel/random/uuid (preferred on Linux)
+  if [ -f /proc/sys/kernel/random/uuid ]; then
+      API_KEY=$(cat /proc/sys/kernel/random/uuid)
+  else
+      # Fallback to uuidgen if available
+      if command -v uuidgen >/dev/null 2>&1; then
+          API_KEY=$(uuidgen)
+      else
+          # Final fallback: generate a pseudo-UUID using openssl
+          API_KEY=$(openssl rand -hex 16 | sed 's/\(........\)\(....\)\(....\)\(....\)\(............\)/\1-\2-\3-\4-\5/')
+      fi
+  fi
+
+  # Validate API key was generated
+  if [ -z "$API_KEY" ]; then
+      echo "🦐 ❌ Error: Failed to generate API key."
+      exit 1
+  fi
+
+  # Write API key with secure permissions (owner read, group read for kiosk)
+  rm -f "$API_KEY_FILE"
+  echo "$API_KEY" > "$API_KEY_FILE"
+  chmod 0440 "$API_KEY_FILE"
+  chown krill:krill "$API_KEY_FILE"
+
+  echo "🦐 ✅ API key generated and stored in $API_KEY_FILE"
+fi
+
+if [ ! -f "$PEER_API_KEY_FILE" ]; then
+   echo "🦐 Generating new API key..."
+
+  # Generate a GUID using /proc/sys/kernel/random/uuid (preferred on Linux)
+  if [ -f /proc/sys/kernel/random/uuid ]; then
+      PEER_API_KEY=$(cat /proc/sys/kernel/random/uuid)
+  else
+      # Fallback to uuidgen if available
+      if command -v uuidgen >/dev/null 2>&1; then
+          PEER_API_KEY=$(uuidgen)
+      else
+          # Final fallback: generate a pseudo-UUID using openssl
+          PEER_API_KEY=$(openssl rand -hex 16 | sed 's/\(........\)\(....\)\(....\)\(....\)\(............\)/\1-\2-\3-\4-\5/')
+      fi
+  fi
+
+  # Validate API key was generated
+  if [ -z "$PEER_API_KEY" ]; then
+      echo "🦐 ❌ Error: Failed to generate API key."
+      exit 1
+  fi
+
+  # Write API key with secure permissions (owner read, group read for kiosk)
+  rm -f "$PEER_API_KEY_FILE"
+  echo "$PEER_API_KEY" > "$PEER_API_KEY_FILE"
+  chmod 0440 "$PEER_API_KEY_FILE"
+  chown krill:krill "$PEER_API_KEY_FILE"
+
+  echo "🦐 ✅ API low priveleged peer to peer api key generated and stored in $PEER_API_KEY_FILE"
+fi
+
+# --- systemd service ---
+# Build SupplementaryGroups dynamically based on what exists on the system
+SUPPLEMENTARY_GROUPS=""
+for group in gpio i2c spi dialout video; do
+    if getent group "$group" >/dev/null; then
+        if [ -z "$SUPPLEMENTARY_GROUPS" ]; then
+            SUPPLEMENTARY_GROUPS="$group"
+        else
+            SUPPLEMENTARY_GROUPS="$SUPPLEMENTARY_GROUPS $group"
+        fi
+    fi
+done
+
+# Only add SupplementaryGroups line if we have any groups
+if [ -n "$SUPPLEMENTARY_GROUPS" ]; then
+    SUPPLEMENTARY_GROUPS_LINE="SupplementaryGroups=$SUPPLEMENTARY_GROUPS"
+else
+    SUPPLEMENTARY_GROUPS_LINE=""
+fi
+
+cat > /etc/systemd/system/krill.service << EOF
+[Unit]
+Description=krill
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/java -jar /usr/local/bin/krill.jar
+User=krill
+Group=krill
+${SUPPLEMENTARY_GROUPS_LINE}
+Restart=on-failure
+Environment=JAVA_OPTS=
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+
+systemctl daemon-reload
+systemctl enable krill.service
+systemctl restart krill.service
+
+# Make kiosk installer executable
+if [ -f /usr/local/bin/krill_kiosk_install.sh ]; then
+    chmod +x /usr/local/bin/krill_kiosk_install.sh
+fi
+
+echo ""
+echo "🦐 Krill installation steps completed."
+echo ""
+echo "=============================================="
+echo "🦐 Krill Server is now running!"
+echo "=============================================="
+echo ""
+echo "Access the web interface at:"
+echo "  https://$(hostname -I | awk '{print $1}'):8442"
+echo "  https://$(hostname).local:8442"
+echo ""
+echo "If this is a Raspberry Pi with no desktop environment (e.g Raspbery Pi OS Lite) you can convert it to a Kiosk with this command:"
+echo "  sudo krill_kiosk_install.sh"
+echo ""
+
+

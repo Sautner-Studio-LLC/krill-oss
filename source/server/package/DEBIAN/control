@@ -1,0 +1,13 @@
+Package: krill
+Version: 1.0.756
+Section: utils
+Priority: optional
+Architecture: all
+Depends: i2c-tools
+Recommends: vim, git
+Maintainer: Benjamin Sautner <ben@krill.zone>
+Description: Krill Server for Raspberry Pi
+ Krill Platform consists of a server and client applications for process
+ control and automation on your network.
+ .
+ Requires Java 21 or later to be installed separately.

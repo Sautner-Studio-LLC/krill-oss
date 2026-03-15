@@ -1,0 +1,27 @@
+package krill.zone.app
+
+import androidx.compose.ui.unit.*
+
+object NodeViewConstants {
+
+
+    val NODE_SIZE_DP = CommonLayout.NODE_SIZE
+    val NODE_IMAGE_SIZE_DP = CommonLayout.NODE_IMAGE_SIZE
+    const val NODE_LABEL_MAX_LENGTH = 12
+    val NODE_LABEL_Y_OFFSET = CommonLayout.NODE_LABEL_Y_OFFSET
+    const val NODE_LABEL_BACKGROUND_ALPHA = 0.7f
+    val NODE_LABEL_CORNER_SHAPE = CommonLayout.CORNER_RADIUS_MEDIUM
+    val NODE_LABEL_HORIZONTAL_PADDING = CommonLayout.PADDING_SMALL
+    val NODE_LABEL_VERTICAL_PADDING = CommonLayout.CHIP_VERTICAL_PADDING
+    val NODE_LABEL_FONT_SIZE = 12.sp
+    const val NODE_LABEL_TEXT_ALPHA = 0.8f
+    const val NODE_IMAGE_SELECTED_Z_INDEX = 1f
+    const val NODE_IMAGE_UNSELECTED_Z_INDEX = 0f
+
+    val NODE_MENU_ITEM_SPACING = CommonLayout.SPACING_SMALL
+    val NODE_MENU_FIRST_ITEM_SPACER = CommonLayout.NODE_MENU_FIRST_ITEM_SPACER
+    const val NODE_MENU_ANIMATION_DURATION_MS = 300
+    val NODE_MENU_RING_RADIUS = CommonLayout.NODE_MENU_RING_RADIUS
+
+
+}

@@ -1,0 +1,58 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    remove)
+        # No action needed on remove
+        ;;
+    purge)
+        # Remove systemd service file
+        if [ -f "/etc/systemd/system/krill.service" ]; then
+            rm -f /etc/systemd/system/krill.service
+            systemctl daemon-reload || true
+        fi
+
+        # Remove API key (securely overwrite before deletion)
+        API_KEY_FILE="/etc/krill/credentials/api_key"
+        if [ -f "$API_KEY_FILE" ]; then
+            # Overwrite with random data before deletion for security
+            dd if=/dev/urandom of="$API_KEY_FILE" bs=64 count=1 2>/dev/null || true
+            rm -f "$API_KEY_FILE"
+        fi
+
+        # Remove credentials directory
+        if [ -d "/etc/krill/credentials" ]; then
+            rm -rf /etc/krill/credentials
+        fi
+
+        # Remove configuration files
+        if [ -d "/etc/krill" ]; then
+            rm -rf /etc/krill
+        fi
+
+        # Remove log files
+        if [ -d "/var/log/krill" ]; then
+            rm -rf /var/log/krill
+        fi
+
+        # Optionally remove the krill user and group
+        # Remove user only if it was created by this package and not in use
+        if getent passwd krill >/dev/null 2>&1; then
+            if [ -z "$(egrep -v 'krill' /etc/passwd)" ]; then
+                deluser --system --quiet krill || true
+            fi
+        fi
+
+        if getent group krill >/dev/null 2>&1; then
+            delgroup --system --quiet krill || true
+        fi
+        ;;
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        # No action needed on these
+        ;;
+    *)
+        ;;
+esac
+
+exit 0

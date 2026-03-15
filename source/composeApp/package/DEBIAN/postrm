@@ -1,0 +1,35 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    remove)
+        # Remove desktop entry
+        rm -f /usr/share/applications/krill-desktop.desktop
+
+        # Update desktop database if available
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database /usr/share/applications || true
+        fi
+        ;;
+    purge)
+        # Remove desktop entry
+        rm -f /usr/share/applications/krill-desktop.desktop
+
+        # Update desktop database if available
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database /usr/share/applications || true
+        fi
+
+        # Note: We intentionally do NOT remove ~/.krill directory on purge
+        # as it may contain user data that should be preserved.
+        # Users can manually remove it with: rm -rf ~/.krill
+        echo "🖥️ Krill Desktop removed."
+        echo "   Note: User data in ~/.krill was preserved."
+        echo "   To remove it, run: rm -rf ~/.krill"
+        ;;
+    *)
+        ;;
+esac
+
+exit 0

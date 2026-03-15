@@ -1,0 +1,69 @@
+/*!
+ * Font Awesome Pro 6.7.2 by @fontawesome - https://fontawesome.com
+ * License - https://fontawesome.com/license (Commercial License)
+ * Copyright 2024 Fonticons, Inc.
+ */
+@import 'functions';
+@import 'variables';
+
+:root, :host {
+  --#{$fa-css-prefix}-style-family-duotone: 'Font Awesome 6 Duotone';
+  --#{$fa-css-prefix}-font-duotone-regular: normal 400 1em/1 'Font Awesome 6 Duotone';
+}
+
+@font-face {
+  font-family: 'Font Awesome 6 Duotone';
+  font-style: normal;
+  font-weight: 400;
+  font-display: $fa-font-display;
+  src: url('#{$fa-font-path}/fa-duotone-regular-400.woff2') format('woff2'),
+    url('#{$fa-font-path}/fa-duotone-regular-400.ttf') format('truetype');
+}
+
+.fadr,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular {
+  position: relative;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.fadr::before,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular::before {
+  position: absolute;
+  color: var(--#{$fa-css-prefix}-primary-color, inherit);
+  opacity: var(--#{$fa-css-prefix}-primary-opacity, #{$fa-primary-opacity});
+}
+
+.fadr::after,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular::after {
+  color: var(--#{$fa-css-prefix}-secondary-color, inherit);
+  opacity: var(--#{$fa-css-prefix}-secondary-opacity, #{$fa-secondary-opacity});
+}
+
+.#{$fa-css-prefix}-swap-opacity .fadr::before,
+.#{$fa-css-prefix}-swap-opacity .#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular::before,
+.fadr.#{$fa-css-prefix}-swap-opacity::before,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-swap-opacity::before,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular.#{$fa-css-prefix}-swap-opacity::before {
+  opacity: var(--#{$fa-css-prefix}-secondary-opacity, #{$fa-secondary-opacity});
+}
+
+.#{$fa-css-prefix}-swap-opacity .fadr::after,
+.#{$fa-css-prefix}-swap-opacity .#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular::after,
+.fadr.#{$fa-css-prefix}-swap-opacity::after,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-swap-opacity::after,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular.#{$fa-css-prefix}-swap-opacity::after {
+  opacity: var(--#{$fa-css-prefix}-primary-opacity, #{$fa-primary-opacity});
+}
+
+.fadr.#{$fa-css-prefix}-inverse,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular.#{$fa-css-prefix}-inverse {
+  color: var(--#{$fa-css-prefix}-inverse, $fa-inverse);
+}
+
+.fadr.#{$fa-css-prefix}-stack-1x,
+.fadr.#{$fa-css-prefix}-stack-2x,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular.#{$fa-css-prefix}-stack-1x,
+.#{$fa-css-prefix}-duotone.#{$fa-css-prefix}-regular.#{$fa-css-prefix}-stack-2x {
+  position: absolute;
+}

@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="640dp"
+    android:height="640dp"
+    android:viewportWidth="640"
+    android:viewportHeight="640">
+  <!-- Buffer gate triangle fill (secondary) -->
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M112,160L112,480L432,320L112,160z"
+      android:strokeAlpha="0.4"
+      android:fillAlpha="0.4"/>
+  <!-- Buffer gate outline with lines (primary) -->
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M88,112C101.3,112 112,122.7 112,136L112,160L432,320L112,480L112,504C112,517.3 101.3,528 88,528C74.7,528 64,517.3 64,504L64,136C64,122.7 74.7,112 88,112zM160,200L160,440L368,320L160,200zM480,320C480,306.7 490.7,296 504,296L616,296C629.3,296 640,306.7 640,320C640,333.3 629.3,344 616,344L504,344C490.7,344 480,333.3 480,320zM0,320C0,306.7 10.7,296 24,296L64,296C77.3,296 88,306.7 88,320C88,333.3 77.3,344 64,344L24,344C10.7,344 0,333.3 0,320z"/>
+</vector>
+

@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="640dp"
+    android:height="640dp"
+    android:viewportWidth="640"
+    android:viewportHeight="640">
+  <!-- OR gate body fill (secondary) -->
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M96,160Q176,320 96,480L240,480Q400,480 480,320Q400,160 240,160L96,160z"
+      android:strokeAlpha="0.4"
+      android:fillAlpha="0.4"/>
+  <!-- OR gate outline with input/output lines (primary) -->
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M64,112Q160,320 64,528L240,528Q424,528 528,320Q424,112 240,112L64,112zM96,160L240,160Q400,160 480,320Q400,480 240,480L96,480Q176,320 96,160zM576,320C576,306.7 586.7,296 600,296L616,296C629.3,296 640,306.7 640,320C640,333.3 629.3,344 616,344L600,344C586.7,344 576,333.3 576,320zM0,224C0,210.7 10.7,200 24,200L104,200C117.3,200 128,210.7 128,224C128,237.3 117.3,248 104,248L24,248C10.7,248 0,237.3 0,224zM0,416C0,402.7 10.7,392 24,392L104,392C117.3,392 128,402.7 128,416C128,429.3 117.3,440 104,440L24,440C10.7,440 0,429.3 0,416z"/>
+</vector>
+

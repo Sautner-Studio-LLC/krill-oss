@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>This app needs camera access to take photos for your journal entries.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app needs photo library access to add photos to your journal entries.</string>
+
+    <!-- Local Network Access (required for iOS 14+ to connect to Krill servers on LAN) -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Krill needs local network access to discover and connect to Krill servers on your network.</string>
+
+    <!-- Bonjour service types for mDNS discovery (prepared for Phase 2) -->
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_krill._tcp</string>
+    </array>
+
+    <!-- App Transport Security: allow local network connections with self-signed certs -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <!-- Allow connections to local network servers with self-signed certificates -->
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

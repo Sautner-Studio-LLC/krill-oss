@@ -1,0 +1,201 @@
+<resources>
+
+    <string name="welcome_ftue_title">Welcome To Krill!</string>
+    <string name="node_comfirm_delete_title">Confirm Deleting this %1$s!?</string>
+
+    <string name="node_comfirm_delete_message">Deletions will cascade to delete all children and stored data. Physical devices will be removed from the swarm but can be restored in server settings.</string>
+
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+
+    <string name="target_prompt">Select a target numeric data point to save results to:</string>
+    <string name="source_prompt">Select a source data point to use:</string>
+    <string name="source">Source</string>
+    <string name="target">Target</string>
+
+    <string name="ERROR_00000">Unknown Error - please report this to ben@krill.zone</string>
+
+    <!-- Common UI strings -->
+    <string name="loading">Loading…</string>
+    <string name="loading_node">Loading Node…</string>
+    <string name="back">Back</string>
+    <string name="no_data_available">No data available</string>
+    <string name="value">Value</string>
+    <string name="time">Time</string>
+    <string name="value_label">Value: %1$s</string>
+    <string name="name">Name</string>
+    <string name="edit_name">Edit Name</string>
+    <string name="description">Description</string>
+    <string name="description_placeholder">Enter a description</string>
+    <string name="edit">Edit</string>
+    <string name="add">Add</string>
+    <string name="remove">Remove</string>
+    <string name="change">Change</string>
+    <string name="retry">Retry</string>
+    <string name="continue_button">Continue</string>
+    <string name="key">Key</string>
+    <string name="clear">Clear</string>
+
+    <!-- Node list strings -->
+    <string name="new_node_label">New %1$s</string>
+    <string name="create_new_node">Create New %1$s</string>
+    <string name="create_node_content_description">Create %1$s</string>
+    <string name="node_id_label">ID: %1$s</string>
+
+    <!-- Configure node dialog -->
+    <string name="dialog_not_found_error">This is a bug! No dialog found for node type %1$s please report to developers.</string>
+
+    <!-- Welcome dialog -->
+    <string name="welcome_image_content_description">Welcome image</string>
+    <string name="terms_agreement_prefix">I've read and agree with the </string>
+    <string name="terms_of_service">terms of service</string>
+    <string name="terms_agreement_and"> and </string>
+    <string name="privacy_statement">privacy statement</string>
+    <string name="terms_agreement_suffix">.</string>
+
+    <!-- About screen -->
+    <string name="about_capabilities_title">Krill Capabilities and Features:</string>
+
+    <!-- Data point configuration -->
+    <string name="precision">Precision</string>
+    <string name="precision_placeholder">Number of relevant decimal places</string>
+    <string name="unit">Unit</string>
+    <string name="unit_placeholder">Unit of measurement</string>
+    <string name="numeric_data_series">Numeric Data Series:</string>
+    <string name="snapshot">Snapshot</string>
+
+    <!-- Manual entry -->
+    <string name="save_content_description">Save</string>
+
+    <!-- Filter/Trigger dialog -->
+    <string name="enter_value">Enter value</string>
+
+    <!-- Pin configuration -->
+    <string name="parent_node_read_error">Something went wrong and the parent node couldn\'t be read.</string>
+    <string name="initial_state">Initial state</string>
+    <string name="shutdown_state">Shutdown State</string>
+    <string name="action">Action</string>
+    <string name="host_info_load_error">Something went wrong and the host info couldn\'t be loaded.</string>
+    <string name="select_gpio_pin">Select a GPIO pin to configure</string>
+    <string name="pin_mode">Mode</string>
+
+    <!-- Serial device configuration -->
+    <string name="device_name">Device Name</string>
+    <string name="enter_device_name">Enter device name</string>
+    <string name="operation">Operation</string>
+    <string name="device_type">Device Type</string>
+    <string name="read_interval_ms">Read Interval (ms)</string>
+    <string name="read_interval_supporting_text">Interval in milliseconds (0 = manual read)</string>
+    <string name="baud_rate">Baud Rate</string>
+    <string name="serial_device">Serial Device</string>
+    <string name="power_level">Power Level</string>
+    <string name="power_level_supporting_text">Transmit power level (0-255)</string>
+    <string name="select_datapoint_read_from">Select a Data Point to read from:</string>
+    <string name="select_datapoint_record_to">Select a Data Point to record to:</string>
+    <string name="data_target">Data Target:</string>
+    <string name="data_source">Data Source:</string>
+    <string name="edit_content_description">edit</string>
+    <string name="select_target_datapoint">Select Target Data Point</string>
+
+    <!-- Zigbee target configuration -->
+    <string name="select_device_write_data">Select a device to write data to when this event is triggered.</string>
+    <string name="data_to_post">Data To Post</string>
+
+    <!-- Project screen -->
+    <string name="project">project</string>
+
+    <!-- Lambda configuration -->
+    <string name="file_name">File Name</string>
+    <string name="file_name_placeholder">my-lambda.py</string>
+    <string name="lambda_location_hint">Put your python lambdas in /opt/krill/lambdas for this server.</string>
+    <string name="select_source_datapoint">Select Source Data Point:</string>
+    <string name="input_source">Input Source:</string>
+    <string name="select_datapoint">Select Data Point</string>
+    <string name="error_loading_source">Error loading source</string>
+    <string name="select_target_data_source">Select Target Data Source:</string>
+    <string name="output_target">Output Target:</string>
+    <string name="error_loading_target">Error loading target</string>
+    <string name="datapoint_tags">Data Point Tags:</string>
+    <string name="datapoint_tags_description">Tags allow you to pass additional data points to your Python lambda by name.</string>
+    <string name="error_loading_datapoint">Error loading data point</string>
+    <string name="select_datapoint_for_tag">Select Data Point for tag: %1$s</string>
+    <string name="tag_name">Tag Name</string>
+    <string name="tag_name_placeholder">e.g., temperature, humidity</string>
+    <string name="add_tag">Add Tag</string>
+
+    <!-- Webhook out dialog -->
+    <string name="select_datasource_response_body">Select a Data Source to Store the response body</string>
+    <string name="error_loading_target_datapoint">Error loading target data point</string>
+    <string name="response_body_target">Response Body Target:</string>
+    <string name="url">URL</string>
+    <string name="url_placeholder">https://example.com/api/endpoint</string>
+    <string name="url_copied_to_clipboard">URL copied to clipboard</string>
+    <string name="krill_server_source">Trust self signed ssl certs</string>
+    <string name="method">Method</string>
+    <string name="select_datapoint_request_body">Select a Data Point as Request Body Source:</string>
+    <string name="request_body_source">Request Body Source:</string>
+    <string name="query_parameters">Query Parameters:</string>
+    <string name="headers">Headers:</string>
+    <string name="error_loading_source_short">Error loading source</string>
+
+    <!-- Calculation dialog -->
+    <string name="formula">Formula</string>
+
+    <!-- Compute dialog -->
+    <string name="target_datapoint">Target Data Point</string>
+
+    <!-- Cron dialog -->
+    <string name="schedule">Schedule</string>
+    <string name="every_n_minutes">Every N minutes</string>
+    <string name="minutes">Minutes</string>
+    <string name="every_n_hours">Every N hours</string>
+    <string name="hours">Hours</string>
+    <string name="minute">Minute</string>
+    <string name="daily_at_time">Daily at time</string>
+    <string name="hour_0_23">Hour (0-23)</string>
+    <string name="minute_0_59">Minute (0-59)</string>
+    <string name="weekly_on_days">Weekly on days</string>
+    <string name="hour">Hour</string>
+    <string name="monthly_on_day">Monthly on day</string>
+    <string name="day_1_31">Day (1-31)</string>
+    <string name="custom_cron_expression">Custom cron expression</string>
+    <string name="cron">Cron</string>
+    <string name="cron_placeholder">e.g. 0 0 * * *</string>
+    <string name="generated_cron">Generated cron: %1$s</string>
+
+    <!-- Webhook in dialog -->
+    <string name="error_loading_host_node">Error loading host node: %1$s</string>
+    <string name="webhook_url">Webhook URL:</string>
+    <string name="path">Path</string>
+    <string name="path_placeholder">my-webhook</string>
+    <string name="path_supporting_text">The path after /incoming/ that will trigger this webhook</string>
+    <string name="select_datapoint_receive_body">Select a Data Point to receive the request body:</string>
+    <string name="request_body_target">Request Body Target:</string>
+    <string name="webhook_listen_info">This webhook will listen for %1$s requests at the URL above.</string>
+
+    <!-- MQTT dialog -->
+    <string name="broker_address">Broker Address</string>
+    <string name="mqtt_broker_hint">MQTT broker address (e.g., tcp://broker.example.com:1883)</string>
+    <string name="topic">Topic</string>
+    <string name="mqtt_topic_hint">MQTT topic to publish or subscribe to</string>
+    <string name="action_type">Action Type</string>
+    <string name="publish">Publish</string>
+    <string name="subscribe">Subscribe</string>
+    <string name="mqtt_pub_info">Publish mode: The source data point value will be published to the MQTT topic when executed.</string>
+    <string name="mqtt_sub_info">Subscribe mode: Messages received on the MQTT topic will be stored in the target data point.</string>
+    <string name="serial_write_info">Write mode: The source data point value will be written to the serial device when executed.</string>
+    <string name="serial_read_info">Read mode: Data read from the serial device will be stored in the target data point.</string>
+    <string name="interval_ms">Interval (ms)</string>
+    <string name="interval_hint">Polling interval in milliseconds (default: 5000ms)</string>
+    <string name="send_command">Send Command</string>
+    <string name="send_command_hint">Command to send before reading (e.g., R for Atlas Scientific sensors)</string>
+    <string name="serial_port_settings">Serial Port Settings</string>
+    <string name="data_bits">Data Bits</string>
+    <string name="parity">Parity</string>
+    <string name="stop_bits">Stop Bits</string>
+    <string name="flow_control">Flow Control</string>
+    <string name="encoding">Encoding</string>
+    <string name="terminator">Terminator</string>
+
+</resources>

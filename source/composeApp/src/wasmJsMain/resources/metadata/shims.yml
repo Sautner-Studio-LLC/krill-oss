@@ -1,0 +1,503 @@
+---
+mail-forward:
+  name: share
+photo:
+  name: image
+  prefix: far
+bank:
+  name: building-columns
+picture-o:
+  name: image
+  prefix: far
+sort-alpha-desc:
+  name: arrow-down-z-a
+file-archive-o:
+  name: file-zipper
+  prefix: far
+arrow-circle-o-left:
+  name: circle-left
+  prefix: far
+hourglass-2:
+  name: hourglass-half
+chain:
+  name: link
+bar-chart:
+  name: chart-column
+rupee:
+  name: indian-rupee-sign
+feed:
+  name: rss
+hotel:
+  name: bed
+hourglass-1:
+  name: hourglass-start
+eur:
+  name: euro-sign
+mobile-phone:
+  name: mobile-screen-button
+level-up:
+  name: turn-up
+yen:
+  name: yen-sign
+sort-amount-asc:
+  name: arrow-down-short-wide
+jpy:
+  name: yen-sign
+bar-chart-o:
+  name: chart-column
+times-rectangle-o:
+  name: rectangle-xmark
+  prefix: far
+pencil-square:
+  name: square-pen
+euro:
+  name: euro-sign
+arrow-circle-o-up:
+  name: circle-up
+  prefix: far
+shekel:
+  name: shekel-sign
+mail-reply-all:
+  name: reply-all
+long-arrow-left:
+  name: left-long
+calendar:
+  name: calendar-days
+signing:
+  name: hands
+television:
+  name: tv
+soccer-ball-o:
+  name: futbol
+  prefix: far
+credit-card-alt:
+  name: credit-card
+gbp:
+  name: sterling-sign
+transgender:
+  name: mars-and-venus
+gears:
+  name: gears
+thermometer:
+  name: temperature-full
+institution:
+  name: building-columns
+intersex:
+  name: mars-and-venus
+thumbs-o-down:
+  name: thumbs-down
+  prefix: far
+tablet:
+  name: tablet-screen-button
+arrows:
+  name: up-down-left-right
+asl-interpreting:
+  name: hands-asl-interpreting
+expand:
+  name: up-right-and-down-left-from-center
+thumbs-o-up:
+  name: thumbs-up
+  prefix: far
+long-arrow-up:
+  name: up-long
+pie-chart:
+  name: chart-pie
+files-o:
+  name: copy
+  prefix: far
+drivers-license:
+  name: id-card
+mail-reply:
+  name: reply
+minus-square-o:
+  name: square-minus
+  prefix: far
+hourglass-o:
+  name: hourglass
+toggle-down:
+  name: square-caret-down
+  prefix: far
+life-saver:
+  name: life-ring
+thermometer-3:
+  name: temperature-three-quarters
+smile-o:
+  name: face-smile
+  prefix: far
+money:
+  name: money-bill-1
+life-buoy:
+  name: life-ring
+drivers-license-o:
+  name: id-card
+  prefix: far
+header:
+  name: heading
+pencil-square-o:
+  name: pen-to-square
+  prefix: far
+star-half-full:
+  name: star-half-stroke
+  prefix: far
+battery-2:
+  name: battery-half
+reorder:
+  name: bars
+caret-square-o-up:
+  name: square-caret-up
+  prefix: far
+plus-square-o:
+  name: square-plus
+  prefix: far
+hard-of-hearing:
+  name: ear-deaf
+times-rectangle:
+  name: rectangle-xmark
+rotate-right:
+  name: arrow-rotate-right
+mobile:
+  name: mobile-screen-button
+glass:
+  name: martini-glass-empty
+sort-asc:
+  name: sort-up
+arrows-alt:
+  name: maximize
+tachometer:
+  name: gauge-high
+arrow-circle-o-right:
+  name: circle-right
+  prefix: far
+edit:
+  name: pen-to-square
+  prefix: far
+file-text:
+  name: file-lines
+home:
+  name: house
+transgender-alt:
+  name: transgender
+support:
+  name: life-ring
+cny:
+  name: yen-sign
+dot-circle-o:
+  name: circle-dot
+  prefix: far
+hand-stop-o:
+  name: hand
+  prefix: far
+close:
+  name: xmark
+gear:
+  name: gear
+map-marker:
+  name: location-dot
+inr:
+  name: indian-rupee-sign
+hand-o-left:
+  name: hand-point-left
+  prefix: far
+trash-o:
+  name: trash-can
+  prefix: far
+thermometer-2:
+  name: temperature-half
+cloud-upload:
+  name: cloud-arrow-up
+file-picture-o:
+  name: file-image
+  prefix: far
+arrow-circle-o-down:
+  name: circle-down
+  prefix: far
+pause-circle-o:
+  name: circle-pause
+  prefix: far
+circle-o-notch:
+  name: circle-notch
+commenting-o:
+  name: comment-dots
+  prefix: far
+star-half-empty:
+  name: star-half-stroke
+  prefix: far
+hdd-o:
+  name: hard-drive
+  prefix: far
+dashboard:
+  name: gauge-high
+trash:
+  name: trash-can
+s15:
+  name: bath
+sign-out:
+  name: right-from-bracket
+check-square-o:
+  name: square-check
+  prefix: far
+cab:
+  name: taxi
+caret-square-o-left:
+  name: square-caret-left
+  prefix: far
+sort-amount-desc:
+  name: arrow-down-wide-short
+battery-1:
+  name: battery-quarter
+video-camera:
+  name: video
+diamond:
+  name: gem
+  prefix: far
+krw:
+  name: won-sign
+try:
+  name: turkish-lira-sign
+caret-square-o-down:
+  name: square-caret-down
+  prefix: far
+tasks:
+  name: bars-progress
+line-chart:
+  name: chart-line
+question-circle-o:
+  name: circle-question
+  prefix: far
+battery-0:
+  name: battery-empty
+file-text-o:
+  name: file-lines
+  prefix: far
+toggle-left:
+  name: square-caret-left
+  prefix: far
+calendar-times-o:
+  name: calendar-xmark
+  prefix: far
+vcard-o:
+  name: address-card
+  prefix: far
+hand-paper-o:
+  name: hand
+  prefix: far
+send:
+  name: paper-plane
+share-square-o:
+  name: share-from-square
+caret-square-o-right:
+  name: square-caret-right
+  prefix: far
+dollar:
+  name: dollar-sign
+file-zip-o:
+  name: file-zipper
+  prefix: far
+file-sound-o:
+  name: file-audio
+  prefix: far
+bathtub:
+  name: bath
+list-alt:
+  name: rectangle-list
+  prefix: far
+frown-o:
+  name: face-frown
+  prefix: far
+save:
+  name: floppy-disk
+  prefix: far
+sort-numeric-asc:
+  name: arrow-down-1-9
+life-bouy:
+  name: life-ring
+window-close-o:
+  name: rectangle-xmark
+  prefix: far
+won:
+  name: won-sign
+hand-rock-o:
+  name: hand-back-fist
+  prefix: far
+rub:
+  name: ruble-sign
+mortar-board:
+  name: graduation-cap
+sort-desc:
+  name: sort-down
+long-arrow-right:
+  name: right-long
+play-circle-o:
+  name: circle-play
+  prefix: far
+thermometer-4:
+  name: temperature-full
+deafness:
+  name: ear-deaf
+battery-3:
+  name: battery-three-quarters
+rotate-left:
+  name: arrow-rotate-left
+sheqel:
+  name: shekel-sign
+image:
+  name: image
+  prefix: far
+unlink:
+  name: link-slash
+thermometer-0:
+  name: temperature-empty
+warning:
+  name: triangle-exclamation
+hand-o-right:
+  name: hand-point-right
+  prefix: far
+cut:
+  name: scissors
+hand-o-up:
+  name: hand-point-up
+  prefix: far
+arrows-v:
+  name: up-down
+clipboard:
+  name: paste
+battery-4:
+  name: battery-full
+thermometer-1:
+  name: temperature-quarter
+code-fork:
+  name: code-branch
+legal:
+  name: gavel
+rouble:
+  name: ruble-sign
+cloud-download:
+  name: cloud-arrow-down
+hourglass-3:
+  name: hourglass-end
+times-circle-o:
+  name: circle-xmark
+  prefix: far
+hand-o-down:
+  name: hand-point-down
+  prefix: far
+star-half-o:
+  name: star-half-stroke
+  prefix: far
+level-down:
+  name: turn-down
+external-link:
+  name: up-right-from-square
+toggle-up:
+  name: square-caret-up
+  prefix: far
+unlock-alt:
+  name: unlock
+repeat:
+  name: arrow-rotate-right
+toggle-right:
+  name: square-caret-right
+  prefix: far
+thumb-tack:
+  name: thumbtack
+globe:
+  name: earth-americas
+dedent:
+  name: outdent
+group:
+  name: users
+ruble:
+  name: ruble-sign
+unsorted:
+  name: sort
+magic:
+  name: wand-magic-sparkles
+sort-alpha-asc:
+  name: arrow-down-a-z
+file-photo-o:
+  name: file-image
+  prefix: far
+battery:
+  name: battery-full
+flash:
+  name: bolt
+circle-thin:
+  name: circle
+  prefix: far
+fa:
+  name: font-awesome
+  prefix: fab
+commenting:
+  name: comment-dots
+eyedropper:
+  name: eye-dropper
+automobile:
+  name: car
+refresh:
+  name: arrows-rotate
+volume-control-phone:
+  name: phone-volume
+exchange:
+  name: right-left
+meh-o:
+  name: face-meh
+  prefix: far
+user-circle-o:
+  name: circle-user
+  prefix: far
+stop-circle-o:
+  name: circle-stop
+  prefix: far
+send-o:
+  name: paper-plane
+  prefix: far
+hand-grab-o:
+  name: hand-back-fist
+  prefix: far
+vcard:
+  name: address-card
+check-circle-o:
+  name: circle-check
+  prefix: far
+compress:
+  name: down-left-and-up-right-to-center
+sign-in:
+  name: right-to-bracket
+remove:
+  name: xmark
+usd:
+  name: dollar-sign
+arrows-h:
+  name: left-right
+ils:
+  name: shekel-sign
+long-arrow-down:
+  name: down-long
+rmb:
+  name: yen-sign
+cutlery:
+  name: utensils
+cc:
+  name: closed-captioning
+  prefix: far
+sticky-note-o:
+  name: note-sticky
+  prefix: far
+navicon:
+  name: bars
+external-link-square:
+  name: square-up-right
+floppy-o:
+  name: floppy-disk
+  prefix: far
+file-movie-o:
+  name: file-video
+  prefix: far
+sort-numeric-desc:
+  name: arrow-down-9-1
+area-chart:
+  name: chart-area
+chain-broken:
+  name: link-slash
+turkish-lira:
+  name: turkish-lira-sign

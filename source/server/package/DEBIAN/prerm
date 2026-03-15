@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    remove|upgrade)
+        # Stop the krill service
+        if [ -x "/bin/systemctl" ]; then
+            systemctl stop krill.service || true
+            systemctl disable krill.service || true
+            systemctl daemon-reload || true
+        fi
+        ;;
+    failed-upgrade)
+        # Handle failed upgrade if necessary
+        ;;
+    *)
+        ;;
+esac
+
+exit 0
