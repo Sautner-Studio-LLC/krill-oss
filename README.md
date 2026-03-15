@@ -8,9 +8,6 @@
  
 # Krill
  
-
-Hi there! The krill platform has been in development in a private repo since 2024 and we're creating this repo to migrate parts of the code base to open source libraries, as well as our OSS projects and provide a place for the comminity to contribute Krill projects, lambdas and integtrations. This will also be the primary repositirory for tracking issues and feature requests. 
-
 Krill is a flexible, privacy-first automation system designed for home automation, IoT projects, and process control. It runs on Linux devices—including Raspberry Pi—and connects them into a secure, peer-to-peer mesh network without requiring cloud services or an internet connection.
 
 ## What Krill Can Do
