@@ -19,6 +19,7 @@ import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.krillapp.spacer.*
@@ -57,12 +58,14 @@ val platformSerializerModule = SerializersModule {
         subclass(DiagramMetaData::class)
         subclass(TaskListMetaData::class)
         subclass(JournalMetaData::class)
+        subclass(LLMMetaData::class)
 
     }
     polymorphic(baseClass = KrillApp::class) {
         subclass(KrillApp.Server::class)
         subclass(KrillApp.Server.Peer::class)
         subclass(KrillApp.Client::class)
+        subclass(KrillApp.Client.About::class)
         subclass(KrillApp.DataPoint::class)
         subclass(KrillApp.Trigger.CronTimer::class)
         subclass(KrillApp.Executor::class)
@@ -80,13 +83,19 @@ val platformSerializerModule = SerializersModule {
         subclass(KrillApp.Project.Diagram::class)
         subclass(KrillApp.Project.TaskList::class)
         subclass(KrillApp.Project.Journal::class)
-
+        subclass(KrillApp.Server.LLM::class)
+        subclass(MenuCommand.Update::class)
+        subclass(MenuCommand.Delete::class)
+        subclass(MenuCommand.Expand::class)
+        subclass(MenuCommand.Focus::class)
     }
     polymorphic(baseClass = EventPayload::class) {
         subclass(PinEventPayload::class)
         subclass(StateChangeEventPayload::class)
         subclass(EmptyPayload::class)
         subclass(SnapshotUpdatedEventPayload::class)
+        subclass(LLMEventPayload::class)
+        subclass(NodeCreatedPayload::class)
     }
 }
 

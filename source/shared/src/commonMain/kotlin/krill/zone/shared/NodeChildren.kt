@@ -27,6 +27,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
             listOf(
                 MenuCommand.Update,
                 KrillApp.Server.Peer,
+                KrillApp.Server.LLM,
                 KrillApp.Project,
                 KrillApp.DataPoint,
                 KrillApp.Server.SerialDevice,
@@ -86,7 +87,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                 if (meta.ftue) {
                     distinct.clear()
                 } else {
-                    distinct.add(MenuCommand.About)
+                    distinct.add(KrillApp.Client.About)
                     distinct.add(KrillApp.Server)
                     distinct.add(KrillApp.Server.Peer)
 
@@ -151,6 +152,8 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
 
 
             }
+
+
 
             KrillApp.Trigger.IncomingWebHook -> {
                 val meta = state.meta as IncomingWebHookMetaData

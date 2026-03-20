@@ -14,19 +14,10 @@ expect val platformModule: Module
 
 
 val appModule = module {
-    single<ClientNodeManager> { ClientNodeManager(get(), get(), get(), get()) }
     single<ServerBoss> { ServerBoss(get()) }
-
-
     single<NodeObserver> { DefaultNodeObserver(get()) }
-
-
-    single<SSEBoss> { SSEBoss(get(), get(named(IO_SCOPE))) }
     single<EventClient> { EventClient(get(), get(named(IO_SCOPE))) }
-
-
     factory<ComputeLogic> { DefaultComputeLogic() }
-
     factory<NodeChildren> { NodeChildren(get()) }
 }
 

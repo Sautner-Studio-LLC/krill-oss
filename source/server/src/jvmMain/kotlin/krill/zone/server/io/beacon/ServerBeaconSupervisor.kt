@@ -62,7 +62,7 @@ class ServerBeaconSupervisor(
     private suspend fun beaconRepeater() {
         logger.i { "Starting beacon repeater" }
         while (currentCoroutineContext().isActive) {
-            logger.i { "sending repeater beacon" }
+            logger.d { "sending repeater beacon" }
             beaconSender.sendSignal()
             delay(10000)
         }

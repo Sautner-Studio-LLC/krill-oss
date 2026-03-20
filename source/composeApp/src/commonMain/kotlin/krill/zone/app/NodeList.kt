@@ -6,7 +6,6 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import krill.zone.*
 import krill.zone.app.krillapp.datapoint.*
 import krill.zone.app.krillapp.datapoint.graph.*
 import krill.zone.app.krillapp.executor.calculation.*
@@ -21,6 +20,7 @@ import krill.zone.app.krillapp.project.diagram.*
 import krill.zone.app.krillapp.project.journal.*
 import krill.zone.app.krillapp.project.tasklist.*
 import krill.zone.app.krillapp.server.*
+import krill.zone.app.krillapp.server.llm.*
 import krill.zone.app.krillapp.server.pin.*
 import krill.zone.shared.*
 import krill.zone.shared.krillapp.datapoint.*
@@ -63,7 +63,7 @@ fun NodeList(type: KrillApp, digitalOnly: Boolean = false, showTrash: Boolean = 
         verticalArrangement = Arrangement.spacedBy(CommonLayout.SPACING_SMALL)
     ) {
         Text(
-            text = type.content().title,
+            text = type.title(),
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -114,7 +114,7 @@ fun SourceList(callback: (String) -> Unit) {
                 Tab(
                     selected = selectedTabIndex == index,
                     onClick = { selectedTabIndex = index },
-                    text = { Text(tab.content().title) }
+                    text = { Text(tab.title()) }
                 )
             }
         }
@@ -201,6 +201,9 @@ fun NodeRow(node: Node, callback: (String) -> Unit) {
 
             KrillApp.MQTT -> {
                 MqttRow(node.id)
+            }
+            KrillApp.Server.LLM -> {
+                LlmRow(node.id)
             }
             KrillApp.DataPoint.Graph -> {
                 GraphRow(node.id)

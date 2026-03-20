@@ -9,7 +9,7 @@ import kotlin.uuid.*
 interface EventPayload
 
 enum class EventType {
-    STATE_CHANGE, SNAPSHOT_UPDATE, PIN_CHANGED, DELETED, ACK
+    STATE_CHANGE, SNAPSHOT_UPDATE, PIN_CHANGED, LLM, DELETED, CREATED, ACK
 }
 
 @Serializable
@@ -31,3 +31,6 @@ data class SnapshotUpdatedEventPayload(val snapshot: Snapshot) : EventPayload
 
 @Serializable
 data class EmptyPayload(val noop : String = "") : EventPayload
+
+@Serializable
+data class NodeCreatedPayload(val node: Node) : EventPayload

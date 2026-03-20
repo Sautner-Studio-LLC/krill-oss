@@ -16,12 +16,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         firebaseAnalytics = Firebase.analytics
         setContent {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-
+                    .safeDrawingPadding()
             ) {
                 App()
             }

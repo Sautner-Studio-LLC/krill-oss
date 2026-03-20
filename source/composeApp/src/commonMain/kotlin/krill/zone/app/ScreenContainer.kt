@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import krill.zone.*
 import krill.zone.app.IconManager.iconLargeImageModifier
 import krill.zone.shared.*
+import krill.zone.shared.node.*
 import org.koin.compose.*
 
 @Composable
@@ -38,7 +38,7 @@ fun ScreenContainer(type: KrillApp, content: @Composable () -> Unit) {
                 }
                 Spacer(modifier = Modifier.width(CommonLayout.SPACING_SMALL))
                 Text(
-                    text = type.content().title,
+                    text = type.title(),
                     style = MaterialTheme.typography.headlineMedium,
                 )
                 Spacer(modifier = Modifier.fillMaxWidth(1.0f))

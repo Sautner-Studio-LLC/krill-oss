@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import krill.zone.*
 import krill.zone.shared.*
 import krill.zone.shared.node.manager.*
 import org.koin.compose.*
@@ -22,7 +21,7 @@ fun NodeListScreen(type: KrillApp) {
             verticalArrangement = Arrangement.spacedBy(CommonLayout.SPACING_SMALL)
         ) {
             Text(
-                text = type.content().shortDescription,
+                text = type.title(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = CommonLayout.PADDING_SMALL)

@@ -17,6 +17,7 @@ import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
@@ -33,147 +34,41 @@ val clientProcessModule = module {
     factory<CronLogic> { cronLogic }
 
     single<ClientProcessor> {
-
         ClientClientProcessor(get(), get(), get(), get(), get(named(IO_SCOPE)))
-
     }
 
     single<ServerProcessor> {
-
-        ClientServerProcessor(get(), get(), get(),get())
-
-    }
-
-    single<PeerProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<ProjectProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<MqttProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<LogicGateProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<CronProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<ButtonProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
+        ClientServerProcessor(get(), get(), get(), get())
     }
 
     single<SpacerProcessor> {
         NoopSpacerProcessor()
     }
 
-    single<DataPointProcessorInterface> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<CalculationProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<ComputeProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<LambdaProcessorInterface> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<PinProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<TriggerProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<ExecutorProcessorInterface> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-
-    single<WebHookInboundProcessorInterface> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<WebHookOutboundProcessorInterface> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<SerialDeviceProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<FilterProcessorInterface> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<GraphProcessorInterface> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<DiagramProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<TaskListProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
-
-    single<JournalProcessor> {
-
-        UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE)))
-
-    }
+    // One shared instance handles all remaining processor interfaces
+    single { UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE))) } binds arrayOf(
+        PeerProcessor::class,
+        ProjectProcessor::class,
+        MqttProcessor::class,
+        LogicGateProcessor::class,
+        CronProcessor::class,
+        ButtonProcessor::class,
+        DataPointProcessorInterface::class,
+        CalculationProcessor::class,
+        ComputeProcessor::class,
+        LambdaProcessorInterface::class,
+        PinProcessor::class,
+        TriggerProcessor::class,
+        ExecutorProcessorInterface::class,
+        WebHookInboundProcessorInterface::class,
+        WebHookOutboundProcessorInterface::class,
+        SerialDeviceProcessor::class,
+        FilterProcessorInterface::class,
+        GraphProcessorInterface::class,
+        DiagramProcessor::class,
+        TaskListProcessor::class,
+        JournalProcessor::class,
+        LLMProcessor::class,
+    )
 
 }
-

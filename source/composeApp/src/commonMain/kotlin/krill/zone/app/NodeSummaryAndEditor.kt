@@ -1,3 +1,4 @@
+
 package krill.zone.app
 
 
@@ -21,6 +22,7 @@ import krill.zone.app.krillapp.project.diagram.*
 import krill.zone.app.krillapp.project.journal.*
 import krill.zone.app.krillapp.project.tasklist.*
 import krill.zone.app.krillapp.server.*
+import krill.zone.app.krillapp.server.llm.*
 import krill.zone.app.krillapp.server.peer.*
 import krill.zone.app.krillapp.server.pin.*
 import krill.zone.app.krillapp.server.serialdevice.*
@@ -164,6 +166,14 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
                         }
                     }
 
+                    KrillApp.Server.LLM -> {
+                        if (viewMode == ViewMode.ROW) {
+                            LlmRow(n.id)
+                        } else {
+                            EditLLM(n)
+                        }
+                    }
+
 
                     KrillApp.DataPoint.Filter.Deadband, KrillApp.DataPoint.Filter.Debounce, KrillApp.DataPoint.Filter.DiscardAbove, KrillApp.DataPoint.Filter.DiscardBelow -> {
                         EditFilter(n)
@@ -239,7 +249,7 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
 
                     }
 
-                    MenuCommand.About -> {
+                    KrillApp.Client.About -> {
                         AboutScreen()
                     }
 

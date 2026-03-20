@@ -17,6 +17,7 @@ import krill.zone.app.ui.*
 import krill.zone.shared.*
 import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.node.*
 import krill.zone.shared.node.Node
@@ -59,6 +60,10 @@ fun BoxScope.NodeItem(
         logger.i("${node.details()}: clicked menu options: ${children.size} ")
         when {
 
+            node.type is KrillApp.Server.LLM -> {
+                // LLM nodes show chat in the avatar speech bubble — no command needed
+            }
+
             node.type is KrillApp.DataPoint.Graph || node.type is KrillApp.Project.Diagram -> {
                 screenCore.executeCommand(MenuCommand.Expand)
             }
@@ -97,6 +102,9 @@ fun BoxScope.NodeItem(
                                     logger.i("Node Right Clicked ${node.details()}")
 
                                     screenCore.selectNode(node.id, alt = true)
+                                    if (node.type is KrillApp.Server.LLM) {
+                                        screenCore.executeCommand(MenuCommand.Update)
+                                    }
 
                                     event.changes.forEach { it.consume() }
                                 }
@@ -112,6 +120,21 @@ fun BoxScope.NodeItem(
                     detectTapGestures(
                         onTap = {
                             scope.launch {
+                                // If an LLM chat session is active, intercept taps to build selectedNodes
+                                val llmNodeId = nodeManager.selectedNodeId.value
+                                val llmNode = nodeManager.readNodeStateOrNull(llmNodeId).value
+                                if (llmNode?.type is KrillApp.Server.LLM && node.id != llmNodeId) {
+                                    val llmMeta = llmNode.meta as? LLMMetaData ?: return@launch
+                                    val identity = NodeIdentity(nodeId = node.id, hostId = node.host)
+                                    val updatedNodes = if (llmMeta.selectedNodes.contains(identity)) {
+                                        llmMeta.selectedNodes - identity
+                                    } else {
+                                        llmMeta.selectedNodes + identity
+                                    }
+                                    nodeManager.submit(llmNode.copy(meta = llmMeta.copy(selectedNodes = updatedNodes)))
+                                    return@launch
+                                }
+
                                 // Use selectNodeById to always get current state, avoiding stale closure issues
                                 when (node.type) {
                                     KrillApp.Trigger.Button -> {
@@ -171,6 +194,9 @@ fun BoxScope.NodeItem(
                             logger.i("Node Long Pressed ${node.type}")
                             // Use selectNodeById to always get current state
                             screenCore.selectNode(node.id, alt = true)
+                            if (node.type is KrillApp.Server.LLM) {
+                                screenCore.executeCommand(MenuCommand.Update)
+                            }
                         }
                     )
                 }

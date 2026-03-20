@@ -49,7 +49,7 @@ class ServerBeaconSender(private val nodeManager: ServerNodeManager, private val
 
             if (timeSinceLastBeacon > PeerConstants.BEACON_MIN_INTERVAL_MS) {
                 multicast.sendBeacon(wire)
-                logger.i("Sent beacon: $wire")
+                logger.d("Sent beacon: $wire")
                 lastSentTimestamp.update { Clock.System.now().toEpochMilliseconds() }
             }
         }

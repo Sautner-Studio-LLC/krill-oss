@@ -11,6 +11,7 @@ import krill.zone.server.krillapp.executor.logicgate.*
 import krill.zone.server.krillapp.executor.mqtt.*
 import krill.zone.server.krillapp.executor.webhook.*
 import krill.zone.server.krillapp.project.*
+import krill.zone.server.krillapp.server.llm.*
 import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
 import krill.zone.server.krillapp.trigger.*
@@ -34,6 +35,7 @@ import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
+import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
@@ -58,6 +60,12 @@ val serverProcessModule = module {
     single<ServerProcessor> {
 
         ServerServerProcessor(get(), get(), get(named(IO_SCOPE)))
+
+    }
+
+    single<LLMProcessor> {
+
+        ServerLLMProcessor(get(),get(),get(named(IO_SCOPE)))
 
     }
 

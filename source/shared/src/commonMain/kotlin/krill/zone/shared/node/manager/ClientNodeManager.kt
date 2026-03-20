@@ -335,13 +335,10 @@ class ClientNodeManager(
 
 
     fun updateMetaData(node: Node, meta: NodeMetaData) {
-        readNodeStateOrNull(node.host).value?.let { host->
+        readNodeStateOrNull(node.host).value?.let {
             val update = node.copy(meta = meta, timestamp = Clock.System.now().toEpochMilliseconds())
             update(update)
 
-            scope.launch {
-                nodeHttp.postNode(host, update)
-            }
             if (node.type is KrillApp.Server || node.type is KrillApp.Client) {
                 fileOperations.update(update)
             }

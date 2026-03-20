@@ -17,6 +17,7 @@ import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
@@ -58,7 +59,8 @@ UniversalAppNodeProcessor(
     GraphProcessorInterface,
     DiagramProcessor,
     TaskListProcessor,
-    JournalProcessor {
+    JournalProcessor,
+    LLMProcessor {
     private val logger = Logger.withTag(this::class.getFullName())
 
     @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)

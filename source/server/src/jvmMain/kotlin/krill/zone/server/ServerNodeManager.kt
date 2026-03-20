@@ -62,7 +62,7 @@ class ServerNodeManager(
                 // Wait for server node to be available
                 var attempts = 0
                 while (nodePersistence.read(installId()) == null && attempts < 50) {
-                    logger.w("Waiting for install id node")
+                    logger.d("Waiting for install id node")
                     delay(100)
                     attempts++
                 }
@@ -115,7 +115,7 @@ class ServerNodeManager(
             }
 
 
-            if (node.state != NodeState.NONE && origin.state != node.state || node.timestamp - origin.timestamp > 1000) {
+            if (node.state != NodeState.NONE && origin.state != node.state && node.timestamp - origin.timestamp > 1000) {
                 logger.w("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")
                 scope.launch {
                     EventFlowContainer.postEvent(
@@ -221,6 +221,15 @@ class ServerNodeManager(
         }
         return null
 
+    }
+
+    /**
+     * Read a node directly from persistence without overlaying live hardware state.
+     * Used by logic gates to read the persisted pin state (set by EventMonitor from
+     * hardware events) rather than the live hardware which may have bounced.
+     */
+    fun readPersistedNode(id: String): Node? {
+        return nodePersistence.read(id)
     }
 
     fun readNodeStateOrNull(id: String?): StateFlow<Node?> {
@@ -332,11 +341,6 @@ class ServerNodeManager(
     fun alarm(node: Node) {
         update(node.copy(state = NodeState.WARN))
     }
-
-    fun run(node: Node) {
-        update(node.copy(state = NodeState.INFO))
-    }
-
 
     fun unauthorized(node: Node) {
         update(

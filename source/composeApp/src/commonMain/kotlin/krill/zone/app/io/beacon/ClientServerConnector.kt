@@ -1,6 +1,5 @@
 package krill.zone.app.io.beacon
 
-import androidx.compose.runtime.*
 import co.touchlab.kermit.*
 import io.ktor.http.*
 import io.ktor.utils.io.CancellationException
@@ -24,7 +23,7 @@ import kotlin.uuid.*
  * * App / Server Startup with stored server nodes
  */
 class ClientServerConnector(
-    private val sseBoss: SSEBoss,
+
     private val eventClient: EventClient,
     private val fileOperations: FileOperations,
     private val nodeManager: ClientNodeManager,
@@ -54,7 +53,7 @@ class ClientServerConnector(
      * Entry point for connecting
      */
     override suspend fun connectNode(node: Node) {
-        logger.i("${node.details()}: connectNode")
+        logger.d("${node.details()}: connectNode")
         if (!performConnectionSanityCheck(node)) {
             return
         }
@@ -79,39 +78,39 @@ class ClientServerConnector(
         }
         val job = scope.launch(handler) {
             try {
-                val n = mutableStateOf(node)
-                logger.i { "${n.value.details()}: starting connection" }
-                if (n.value.id != TEMP_ID_FOR_CONNECTING) {
-                    createNodeRecordIfMissing(n.value)
-                    updateApiKeysIfNewer(n.value)
+                var n = node
+                logger.i { "${n.details()}: starting connection" }
+                if (n.id != TEMP_ID_FOR_CONNECTING) {
+                    createNodeRecordIfMissing(n)
+                    updateApiKeysIfNewer(n)
                 }
 
-                val certReachable = downloadServerCert(n.value)
+                val certReachable = downloadServerCert(n)
                 if (!certReachable) {
-                    logger.w { "${n.value.details()}: server unreachable, skipping connection" }
-                    nodeManager.alarm(n.value)
+                    logger.w { "${n.details()}: server unreachable, skipping connection" }
+                    nodeManager.alarm(n)
                     return@launch
                 }
 
-                if (n.value.id == TEMP_ID_FOR_CONNECTING) {
+                if (n.id == TEMP_ID_FOR_CONNECTING) {
                     //download the server info and replace
 
-                    downloadServer(n.value)?.let { server ->
-                        n.value = server
+                    downloadServer(n)?.let { server ->
+                        n = server
                         createNodeRecordIfMissing(server)
                         updateApiKeysIfNewer(server)
                     }
 
                 } else {
-                    downloadServerWithTrust(n.value)
+                    downloadServerWithTrust(n)
 
 
                 }
 
-                downloadServerNodes(n.value)
-                sseBoss.connect(n.value)
-                eventClient.connect(n.value)
-                nodeManager.reset(n.value)
+                downloadServerNodes(n)
+
+                eventClient.connect(n)
+                nodeManager.reset(n)
 
             } catch (e: Exception) {
 
@@ -255,7 +254,7 @@ class ClientServerConnector(
             return false
         } //bounce self
 
-        if (sseBoss.isConnected(node.id)) {
+        if (eventClient.isConnected(node.id)) {
             logger.d { "${node.details()} already connected" }
             return false
         } //already connected

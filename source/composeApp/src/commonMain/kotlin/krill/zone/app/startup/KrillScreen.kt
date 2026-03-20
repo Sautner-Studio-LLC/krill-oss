@@ -52,7 +52,7 @@ fun KrillScreen() {
         when (nodeType) {
             KrillApp.Client -> {
                 when (command.value) {
-                    MenuCommand.About -> {
+                    KrillApp.Client.About -> {
                         command.value?.let { c ->
                             ScreenContainer(c) {
                                 AboutScreen()

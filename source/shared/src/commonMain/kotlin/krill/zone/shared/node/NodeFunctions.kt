@@ -108,3 +108,17 @@ fun Node.details(): String {
 fun StateFlow<Node>.details(): String {
     return "${this.value.timestamp} ${this.value.type} ${this.value.name()} ${this.value.state} "
 }
+
+
+fun KrillApp.isMenuOption(): Boolean {
+
+    return (this is MenuCommand)
+}
+
+
+@OptIn(ExperimentalUuidApi::class)
+fun KrillApp.node(): Node {
+
+    return NodeBuilder().type(this).parent(installId()).id(Uuid.random().toString()).host(installId()).meta(this.meta()).create()
+
+}

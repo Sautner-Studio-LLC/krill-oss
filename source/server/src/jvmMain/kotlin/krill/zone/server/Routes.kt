@@ -281,6 +281,7 @@ private fun Routing.configureNodeRoutes(
 
                 val node = call.receive<Node>()
                 scope.launch {
+                    logger.i("${node.details()}: $node")
                     nodeManager.update(node)
                 }
 
@@ -785,11 +786,22 @@ private fun Routing.configureStaticContent() {
                     "otf" -> ContentType("font", "otf")
                     "woff" -> ContentType("font", "woff")
                     "woff2" -> ContentType("font", "woff2")
+                    "json" -> ContentType("application", "json")
                     else -> null // Use default content type resolution
                 }
             }
-            modify { _, call ->
-                call.response.headers.append(HttpHeaders.CacheControl, "no-store")
+            modify { url, call ->
+                // Entry point files must not be served stale — validate with server on each load.
+                // Resource files (SVG icons, fonts, images) are safe to cache: they only change
+                // when the app is redeployed, at which point new entry files trigger a fresh load.
+                // Previously "no-store" was applied to everything, forcing the browser to re-fetch
+                // every icon on every render, causing request pile-up and 10-60s TTFB on the Pi.
+                val extension = url.toString().substringAfterLast('.').lowercase()
+                val cacheControl = when (extension) {
+                    "html", "js", "mjs", "wasm" -> "no-cache"
+                    else -> "public, max-age=3600"
+                }
+                call.response.headers.append(HttpHeaders.CacheControl, cacheControl)
             }
         }
     }

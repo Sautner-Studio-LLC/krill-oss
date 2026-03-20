@@ -31,12 +31,12 @@ class NodeHttp(private val trustHost: TrustHost) {
                     header("Authorization", "Bearer $apiKey")
                 }
             }
-            if (response.status == HttpStatusCode.OK) {
-                return response.body<Node>().copy(state = NodeState.NONE)
+            return if (response.status == HttpStatusCode.OK) {
+                response.body<Node>().copy(state = NodeState.NONE)
 
             } else {
                 logger.e("error calling $url ${response.status} ${response.status.description}")
-                return null
+                null
             }
 
         } catch (e: Exception) {

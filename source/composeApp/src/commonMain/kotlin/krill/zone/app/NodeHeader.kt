@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import krill.zone.*
 import krill.zone.app.IconManager.iconLargeImageModifier
 import krill.zone.shared.*
 import krill.zone.shared.node.manager.*
@@ -33,7 +32,7 @@ fun NodeHeader() {
                     n.icon()
                 }
                 Text(
-                    text = n.type.content().title,
+                    text = n.type.title(),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = CommonLayout.PADDING_SMALL)

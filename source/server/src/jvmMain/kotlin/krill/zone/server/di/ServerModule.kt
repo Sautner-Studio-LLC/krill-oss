@@ -7,6 +7,7 @@ import krill.zone.server.*
 import krill.zone.server.db.*
 import krill.zone.server.events.*
 import krill.zone.server.io.beacon.*
+import krill.zone.server.io.http.*
 import krill.zone.server.krillapp.datapoint.*
 import krill.zone.server.krillapp.executor.calculation.*
 import krill.zone.server.krillapp.executor.cron.*
@@ -101,7 +102,7 @@ val serverModule = module {
         )
     }
 
-
+    single<ServerHttpClient> { ServerHttpClient() }
     single<BeaconSupervisor> { ServerBeaconSupervisor(get(), get(), get(), get(named(IO_SCOPE))) }
     single<BeaconSender> { ServerBeaconSender(get(), get()) }
     single<BeaconWireHandler> { ServerBeaconWireHandler(get(), get(),get(named(IO_SCOPE))) }

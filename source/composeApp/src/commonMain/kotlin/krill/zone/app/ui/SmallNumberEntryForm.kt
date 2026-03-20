@@ -93,12 +93,12 @@ fun ManualEntry(node: Node, value: Double, showSaveButton: Boolean , callback: (
 
                                 is TriggerMetaData -> {
                                     val meta = (node.meta as TriggerMetaData).copy(value = entry.value)
-                                    nodeManager.updateMetaData(node, meta)
+                                    nodeManager.submit(node.copy(meta = meta))
                                 }
 
                                 is FilterMetaData -> {
                                     val meta = (node.meta as FilterMetaData).copy(value = entry.value)
-                                    nodeManager.updateMetaData(node, meta)
+                                    nodeManager.submit(node.copy(meta = meta))
                                 }
 
                                 else -> {

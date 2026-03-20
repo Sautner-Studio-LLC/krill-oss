@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.painter.*
 import androidx.compose.ui.text.style.*
 import co.touchlab.kermit.*
 import krill.composeapp.generated.resources.*
-import krill.zone.*
 import krill.zone.app.NodeViewConstants.NODE_LABEL_BACKGROUND_ALPHA
 import krill.zone.app.NodeViewConstants.NODE_LABEL_CORNER_SHAPE
 import krill.zone.app.NodeViewConstants.NODE_LABEL_FONT_SIZE
@@ -26,6 +25,7 @@ import krill.zone.app.NodeViewConstants.NODE_LABEL_VERTICAL_PADDING
 import krill.zone.app.NodeViewConstants.NODE_LABEL_Y_OFFSET
 import krill.zone.app.krillapp.server.pin.*
 import krill.zone.shared.*
+import krill.zone.shared.feature.*
 import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.server.pin.*
@@ -35,6 +35,12 @@ import org.jetbrains.compose.resources.*
 import org.koin.compose.*
 
 private val logger = Logger.withTag("IconManager")
+
+fun KrillApp.title() : String {
+    return this.resourceName().substringAfterLast(".")
+}
+
+
 val Node.icon: @Composable (() -> Unit)
     get() = @Composable {
         IconManager.NodeCompoundImage(Modifier, this)
@@ -47,7 +53,11 @@ val KrillApp.icon: @Composable (() -> Unit)
     }
 
 val Node.label: @Composable (() -> Unit)
-    get() = @Composable { NodeLabel(this.type.title()) }
+
+    get() = @Composable {
+
+        NodeLabel(this.type.title())
+    }
 
 
 object IconManager {
@@ -68,6 +78,7 @@ object IconManager {
 
         return when (node.type) {
             KrillApp.Client -> painterResource(Res.drawable.shrimp)
+            KrillApp.Client.About -> painterResource(Res.drawable.question_duotone_regular_full)
             KrillApp.Server -> painterResource(Res.drawable.server_duotone_regular_full)
             KrillApp.DataPoint -> {
                 val meta = node.meta as DataPointMetaData
@@ -138,7 +149,7 @@ object IconManager {
             MenuCommand.Update -> painterResource(Res.drawable.pencil_duotone_solid_full)
             MenuCommand.Delete -> painterResource(Res.drawable.trash_duotone_solid_full)
             MenuCommand.Expand -> painterResource(Res.drawable.maximize_duotone_regular)
-            MenuCommand.About -> painterResource(Res.drawable.question_duotone_regular_full)
+
             KrillApp.Trigger.Button -> painterResource(Res.drawable.play_duotone_regular_full)
 
             KrillApp.Executor.LogicGate -> {
@@ -160,6 +171,7 @@ object IconManager {
 
             KrillApp.MQTT -> painterResource(Res.drawable.chart_network_duotone_regular)
             KrillApp.Server.Peer -> painterResource(Res.drawable.network_wired_duotone_solid)
+            KrillApp.Server.LLM -> painterResource(Res.drawable.brain_circuit_duotone_regular)
         }
     }
 
@@ -179,7 +191,7 @@ object IconManager {
             Image(
                 modifier = iconImageModifier,
                 painter = painter,
-                contentDescription = node.type.content().title,
+                contentDescription = node.type.title(),
                 colorFilter = iconColorFilter,
             )
         }
@@ -240,7 +252,7 @@ object IconManager {
                 Image(
                     modifier = Modifier.size(iconEnclosureSize),
                     painter = circlePainter,
-                    contentDescription = node.type.content().title,
+                    contentDescription = node.type.title(),
                     colorFilter = ColorFilter.tint(getNodeStateColor(node))
                 )
             }
