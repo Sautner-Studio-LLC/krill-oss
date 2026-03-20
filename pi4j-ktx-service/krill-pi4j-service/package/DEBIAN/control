@@ -1,5 +1,5 @@
 Package: krill-pi4j
-Version: 1.0-SNAPSHOT
+Version: 0.0.1
 Section: utils
 Priority: optional
 Architecture: all

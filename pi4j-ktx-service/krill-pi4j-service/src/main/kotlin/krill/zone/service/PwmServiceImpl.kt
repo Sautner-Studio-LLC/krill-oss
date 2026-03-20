@@ -2,7 +2,7 @@ package krill.zone.service
 
 import io.grpc.Status
 import krill.zone.Pi4jContextManager
-import krill.zone.pi4j.proto.*
+import com.krillforge.pi4j.proto.*
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 

@@ -2,3 +2,6 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 rootProject.name = "pi4j-ktx-service"
+
+include(":krill-pi4j")
+include(":krill-pi4j-service")

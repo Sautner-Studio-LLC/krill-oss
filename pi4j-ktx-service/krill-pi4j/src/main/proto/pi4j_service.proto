@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package krill.zone.pi4j;
 
-option java_package         = "krill.zone.pi4j.proto";
+option java_package         = "com.krillforge.pi4j.proto";
 option java_multiple_files  = true;
 option java_outer_classname = "Pi4jServiceProto";
 

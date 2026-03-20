@@ -3,7 +3,7 @@ package krill.zone.service
 import com.google.protobuf.Empty
 import io.grpc.Server
 import krill.zone.Pi4jContextManager
-import krill.zone.pi4j.proto.*
+import com.krillforge.pi4j.proto.*
 import org.slf4j.LoggerFactory
 
 /**
