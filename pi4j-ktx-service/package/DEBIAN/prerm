@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    remove|upgrade)
+        if [ -x "/bin/systemctl" ]; then
+            systemctl stop krill-pi4j.service || true
+            systemctl disable krill-pi4j.service || true
+            systemctl daemon-reload || true
+        fi
+        ;;
+    failed-upgrade)
+        ;;
+    *)
+        ;;
+esac
+
+exit 0

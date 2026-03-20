@@ -1,0 +1,96 @@
+#!/bin/sh
+
+set -e
+
+export DEBIAN_FRONTEND=noninteractive
+
+# ── System user / group ───────────────────────────────────────────────────────
+# Idempotent: creates the krill user only when it does not already exist.
+# If the krill server package is also installed it will have already created
+# this user — that is fine, these checks are safe to run twice.
+
+if ! getent group krill >/dev/null; then
+    addgroup --system krill
+fi
+
+if ! id -u krill >/dev/null 2>&1; then
+    adduser --system --ingroup krill --no-create-home --disabled-login krill
+fi
+
+# Add krill to hardware-control groups required for GPIO / I2C / SPI / serial
+for group in gpio i2c spi dialout video plugdev tty; do
+    if getent group "$group" >/dev/null; then
+        adduser krill "$group"
+    fi
+done
+
+# ── Runtime directories ───────────────────────────────────────────────────────
+
+install -d -o krill -g krill -m 0750 /var/log/krill
+install -d -o krill -g krill -m 0750 /etc/krill-pi4j
+
+# ── Version tracking ──────────────────────────────────────────────────────────
+
+PKG_VERSION=$(dpkg-query -W -f='${Version}' krill-pi4j 2>/dev/null || echo "unknown")
+echo "$PKG_VERSION" > /etc/krill-pi4j/version
+chown krill:krill /etc/krill-pi4j/version
+chmod 0640 /etc/krill-pi4j/version
+
+# ── systemd service ───────────────────────────────────────────────────────────
+# Build SupplementaryGroups line dynamically based on groups present on this system.
+
+SUPPLEMENTARY_GROUPS=""
+for group in gpio i2c spi dialout video; do
+    if getent group "$group" >/dev/null; then
+        if [ -z "$SUPPLEMENTARY_GROUPS" ]; then
+            SUPPLEMENTARY_GROUPS="$group"
+        else
+            SUPPLEMENTARY_GROUPS="$SUPPLEMENTARY_GROUPS $group"
+        fi
+    fi
+done
+
+if [ -n "$SUPPLEMENTARY_GROUPS" ]; then
+    SUPPLEMENTARY_GROUPS_LINE="SupplementaryGroups=$SUPPLEMENTARY_GROUPS"
+else
+    SUPPLEMENTARY_GROUPS_LINE=""
+fi
+
+cat > /etc/systemd/system/krill-pi4j.service << EOF
+[Unit]
+Description=Krill Pi4J gRPC Service
+Documentation=https://krill.zone
+After=network.target
+# Start after the main krill server if it is installed, but do not require it.
+Wants=krill.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/java \
+    --enable-native-access=ALL-UNNAMED \
+    -jar /usr/local/bin/krill-pi4j.jar
+User=krill
+Group=krill
+${SUPPLEMENTARY_GROUPS_LINE}
+Restart=on-failure
+RestartSec=5
+Environment=GRPC_PORT=50051
+Environment=PI4J_MOCK=false
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=krill-pi4j
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable krill-pi4j.service
+systemctl restart krill-pi4j.service
+
+echo ""
+echo "🦐 krill-pi4j installation complete."
+echo ""
+echo "   gRPC service listening on port 50051 (GRPC_PORT to override)"
+echo "   Logs: journalctl -u krill-pi4j -f"
+echo ""

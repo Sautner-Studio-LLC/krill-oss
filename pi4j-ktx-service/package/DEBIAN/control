@@ -1,0 +1,17 @@
+Package: krill-pi4j
+Version: 1.0-SNAPSHOT
+Section: utils
+Priority: optional
+Architecture: all
+Depends: i2c-tools, pigpiod
+Recommends: krill
+Maintainer: Benjamin Sautner <ben@krill.zone>
+Description: Krill Pi4J gRPC Service for Raspberry Pi
+ Exposes the pi4j-ktx hardware abstraction layer (GPIO, PWM, I2C) as a
+ local gRPC service on port 50051.  Clients running on any JDK version
+ can use the generated stubs to control hardware without needing JDK 25.
+ .
+ This package is a companion to the Krill Server (krill) and is intended
+ to be installed alongside it on Raspberry Pi hardware.
+ .
+ Requires Java 25 or later (Zulu 25 recommended on ARM64).

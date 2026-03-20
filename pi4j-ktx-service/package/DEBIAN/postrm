@@ -1,0 +1,23 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    remove)
+        ;;
+    purge)
+        if [ -f "/etc/systemd/system/krill-pi4j.service" ]; then
+            rm -f /etc/systemd/system/krill-pi4j.service
+            systemctl daemon-reload || true
+        fi
+        if [ -d "/etc/krill-pi4j" ]; then
+            rm -rf /etc/krill-pi4j
+        fi
+        ;;
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+    *)
+        ;;
+esac
+
+exit 0

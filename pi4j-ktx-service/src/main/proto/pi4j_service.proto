@@ -1,0 +1,221 @@
+syntax = "proto3";
+
+package krill.zone.pi4j;
+
+option java_package         = "krill.zone.pi4j.proto";
+option java_multiple_files  = true;
+option java_outer_classname = "Pi4jServiceProto";
+
+import "google/protobuf/empty.proto";
+
+// ─── Shared types ─────────────────────────────────────────────────────────────
+
+enum PinState {
+  PIN_STATE_LOW  = 0;
+  PIN_STATE_HIGH = 1;
+}
+
+enum PullResistance {
+  PULL_RESISTANCE_OFF  = 0;
+  PULL_RESISTANCE_DOWN = 1;
+  PULL_RESISTANCE_UP   = 2;
+}
+
+message PinAddress {
+  int32 pin = 1;   // BCM pin number
+}
+
+// ─── GPIO Digital I/O Service ─────────────────────────────────────────────────
+//
+// Clients on any JDK version connect to this service; the Pi4J FFM code only
+// runs inside this daemon (JDK 25+).
+
+service GpioService {
+  // Configure output and immediately drive it high or low.
+  rpc SetOutput(SetOutputRequest) returns (PinResponse);
+
+  // Toggle a previously configured output pin.
+  rpc ToggleOutput(PinAddress) returns (PinStateResponse);
+
+  // Drive an output pin to pulse_state for duration_millis, then revert.
+  rpc Pulse(PulseRequest) returns (PinResponse);
+
+  // Read the current state of a digital input pin.
+  rpc GetInput(InputConfig) returns (PinStateResponse);
+
+  // Server-streaming: subscribe to every state-change event on an input pin.
+  // The stream stays open until the client cancels it.
+  rpc WatchInput(InputConfig) returns (stream PinEvent);
+}
+
+message SetOutputRequest {
+  int32    pin   = 1;   // BCM pin number
+  PinState state = 2;
+  string   id    = 3;   // optional logical label
+}
+
+message InputConfig {
+  int32          pin             = 1;
+  PullResistance pull            = 2;
+  int64          debounce_micros = 3;   // hardware debounce (μs, 0 = off)
+  string         id              = 4;   // optional logical label
+}
+
+message PulseRequest {
+  int32    pin             = 1;
+  int64    duration_millis = 2;
+  PinState pulse_state     = 3;   // state during pulse (reverts to opposite after)
+}
+
+message PinResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message PinStateResponse {
+  int32    pin   = 1;
+  PinState state = 2;
+}
+
+message PinEvent {
+  int32    pin             = 1;
+  PinState state           = 2;
+  int64    timestamp_nanos = 3;   // System.nanoTime() from the Pi
+}
+
+// ─── PWM Service ──────────────────────────────────────────────────────────────
+
+service PwmService {
+  // Configure and start a PWM channel.
+  rpc Configure(PwmConfig) returns (PwmResponse);
+
+  // Update duty cycle of a running channel (no restart).
+  rpc SetDutyCycle(DutyCycleRequest) returns (PwmResponse);
+
+  // Update frequency of a running channel.
+  rpc SetFrequency(FrequencyRequest) returns (PwmResponse);
+
+  // Stop a channel (output goes low).
+  rpc Stop(PinAddress) returns (PwmResponse);
+
+  // Read back the current configuration of a channel.
+  rpc GetStatus(PinAddress) returns (PwmStatus);
+}
+
+message PwmConfig {
+  int32  pin        = 1;
+  int32  frequency  = 2;   // Hz
+  float  duty_cycle = 3;   // 0.0 – 100.0
+  string id         = 4;
+}
+
+message DutyCycleRequest {
+  int32 pin        = 1;
+  float duty_cycle = 2;   // 0.0 – 100.0
+}
+
+message FrequencyRequest {
+  int32 pin       = 1;
+  int32 frequency = 2;   // Hz
+}
+
+message PwmResponse {
+  bool   success    = 1;
+  string message    = 2;
+  int32  actual_frequency  = 3;
+  float  actual_duty_cycle = 4;
+}
+
+message PwmStatus {
+  int32 pin        = 1;
+  bool  running    = 2;
+  int32 frequency  = 3;
+  float duty_cycle = 4;
+}
+
+// ─── I2C Service ──────────────────────────────────────────────────────────────
+
+service I2cService {
+  // Read one byte from a device register.
+  rpc ReadRegister(I2cRegisterRequest) returns (I2cByteResponse);
+
+  // Write one byte to a device register.
+  rpc WriteRegister(I2cWriteRegisterRequest) returns (I2cResponse);
+
+  // Read multiple bytes starting at a register.
+  rpc ReadBytes(I2cReadBytesRequest) returns (I2cBytesResponse);
+
+  // Write a byte array starting at a register.
+  rpc WriteBytes(I2cWriteBytesRequest) returns (I2cResponse);
+}
+
+message I2cDeviceId {
+  int32 bus     = 1;
+  int32 address = 2;   // 7-bit I2C device address
+}
+
+message I2cRegisterRequest {
+  I2cDeviceId device   = 1;
+  int32        register = 2;
+}
+
+message I2cWriteRegisterRequest {
+  I2cDeviceId device   = 1;
+  int32        register = 2;
+  int32        value    = 3;   // byte value 0–255
+}
+
+message I2cReadBytesRequest {
+  I2cDeviceId device   = 1;
+  int32        register = 2;
+  int32        length   = 3;
+}
+
+message I2cWriteBytesRequest {
+  I2cDeviceId device   = 1;
+  int32        register = 2;
+  bytes        data     = 3;
+}
+
+message I2cByteResponse {
+  bool   success = 1;
+  int32  value   = 2;
+  string message = 3;
+}
+
+message I2cBytesResponse {
+  bool   success = 1;
+  bytes  data    = 2;
+  string message = 3;
+}
+
+message I2cResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// ─── System Service ───────────────────────────────────────────────────────────
+
+service SystemService {
+  // Liveness probe.
+  rpc Ping(google.protobuf.Empty) returns (PingResponse);
+
+  // Pi4J platform / provider inventory.
+  rpc GetInfo(google.protobuf.Empty) returns (SystemInfoResponse);
+
+  // Graceful shutdown of the daemon.
+  rpc Shutdown(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message PingResponse {
+  int64  timestamp_millis = 1;
+  string version          = 2;
+}
+
+message SystemInfoResponse {
+  string            service_version = 1;
+  string            pi4j_version    = 2;
+  repeated string   platforms       = 3;
+  repeated string   providers       = 4;
+  map<string,string> properties     = 5;
+}
