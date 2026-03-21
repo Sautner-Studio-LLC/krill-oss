@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "krill.zone"
-version = "0.0.2"
+version = "0.0.3"
 
 repositories {
     mavenCentral()
@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.pi4j.core)
     implementation(libs.pi4j.plugin.raspberrypi)
     implementation(libs.pi4j.plugin.pigpio)
+    implementation(libs.pi4j.plugin.gpiod)  // Required for Raspberry Pi 5 (RP1 chip, chardev interface)
 
     // gRPC transport
     implementation(libs.grpc.netty.shaded)

@@ -19,6 +19,7 @@ pi4j-ktx                  = { module = "com.pi4j:pi4j-ktx",                    v
 pi4j-core                 = { module = "com.pi4j:pi4j-core",                   version.ref = "pi4j" }
 pi4j-plugin-raspberrypi   = { module = "com.pi4j:pi4j-plugin-raspberrypi",     version.ref = "pi4j" }
 pi4j-plugin-pigpio        = { module = "com.pi4j:pi4j-plugin-pigpio",          version.ref = "pi4j" }
+pi4j-plugin-gpiod         = { module = "com.pi4j:pi4j-plugin-gpiod",           version.ref = "pi4j" }
 
 # gRPC
 grpc-netty-shaded         = { module = "io.grpc:grpc-netty-shaded",            version.ref = "grpc" }
