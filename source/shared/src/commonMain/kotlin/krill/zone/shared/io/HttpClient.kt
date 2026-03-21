@@ -7,6 +7,12 @@ import krill.zone.shared.node.*
 
 expect val httpClient: HttpClient
 
+/**
+ * Dedicated HttpClient for SSE connections. On WASM/JS this is a separate instance
+ * so the long-lived SSE stream does not block regular HTTP requests in the same client.
+ */
+expect val sseHttpClient: HttpClient
+
 
 
 

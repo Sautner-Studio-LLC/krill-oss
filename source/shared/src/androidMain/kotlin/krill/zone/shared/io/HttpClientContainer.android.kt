@@ -22,6 +22,9 @@ private val clientProvider = HttpClientProvider()
 actual val httpClient: HttpClient
     get() = clientProvider.getInstance()
 
+actual val sseHttpClient: HttpClient
+    get() = clientProvider.getInstance()
+
 
 internal fun rebuildHttpClient() {
     clientProvider.rebuild()

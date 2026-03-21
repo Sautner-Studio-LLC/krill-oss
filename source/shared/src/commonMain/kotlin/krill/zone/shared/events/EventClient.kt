@@ -44,7 +44,7 @@ class EventClient(private val nodeManager: ClientNodeManager, private val scope:
             while (isActive) {
                 try {
                     logger.i { "${node.details()}: establishing SSE connection (attempt $attempt)" }
-                    httpClient.sse(
+                    sseHttpClient.sse(
                         urlString = sseUrl.toString(),
                         request = {
                             header(HttpHeaders.Authorization, "Bearer $apiKey")
