@@ -3,8 +3,9 @@ Version: 0.0.1
 Section: utils
 Priority: optional
 Architecture: all
-Depends: i2c-tools, pigpiod
+Depends: i2c-tools
 Recommends: krill
+Suggests: pigpiod
 Maintainer: Benjamin Sautner <ben@krill.zone>
 Description: Krill Pi4J gRPC Service for Raspberry Pi
  Exposes the pi4j-ktx hardware abstraction layer (GPIO, PWM, I2C) as a
