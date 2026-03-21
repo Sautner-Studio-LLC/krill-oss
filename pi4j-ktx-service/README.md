@@ -254,4 +254,4 @@ Requires JDK 25 for the service module (JDK 21 suffices for the client library a
 
 Apache License 2.0 — see [LICENSE](https://www.apache.org/licenses/LICENSE-2.0).
 
-© 2026 [Benjamin Sautner](https://krill.zone)
+© 2026 [Sautner Studio LLC](https://krillswarm.com)
