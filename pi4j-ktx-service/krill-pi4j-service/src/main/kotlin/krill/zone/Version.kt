@@ -1,5 +1,5 @@
 package krill.zone
 
 object Version {
-    const val SERVICE = "1.0-SNAPSHOT"
+    const val SERVICE = "0.0.2"
 }

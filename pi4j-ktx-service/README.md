@@ -64,12 +64,12 @@ Add the dependency to your project:
 
 **Gradle (Kotlin DSL)**
 ```kotlin
-implementation("com.krillforge:krill-pi4j:0.0.1")
+implementation("com.krillforge:krill-pi4j:0.0.2")
 ```
 
 **Gradle (Groovy DSL)**
 ```groovy
-implementation 'com.krillforge:krill-pi4j:0.0.1'
+implementation 'com.krillforge:krill-pi4j:0.0.2'
 ```
 
 **Maven**
@@ -77,7 +77,7 @@ implementation 'com.krillforge:krill-pi4j:0.0.1'
 <dependency>
     <groupId>com.krillforge</groupId>
     <artifactId>krill-pi4j</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
 </dependency>
 ```
 
