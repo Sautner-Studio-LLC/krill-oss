@@ -4,6 +4,12 @@ A gRPC microservice that exposes Raspberry Pi hardware — GPIO, PWM, and I2C �
 
 ## Why this exists
 
+I'm not afilliated with the Pi4J or Pi4K teams (nice guys though) and built this independently after Pi4J 4.0.0 was released with published artifacts targeting Java 25 and a lot of my projects use Kotlin Multiplatform which for various reasons around Gradle and Kotlin keep me stuck on Java 21. It may be just as performant and easy to stay on v3.0.3 and the entire inspriation for this project is I can't stand yellow squigglies in my version file. 
+
+Considering 4.0.0 uses a modern stack to work with the Pi, and this project using a fast gRPC protocol it's entirly possible there is a benefit here as well as adding a "seperation of concerns" from my projects and dependencies.
+
+Enjoy :)
+
 [Pi4J v4](https://pi4j.com) uses the Foreign Function & Memory API (finalized in JDK 22) to talk directly to hardware. That makes it fast, but it means your entire application has to run on **JDK 25+** if you want to use it directly.
 
 `krill-pi4j` solves this by running the Pi4J code in a small **daemon** (`krill-pi4j-service`) that speaks gRPC over localhost. Your application — a Ktor server, Spring Boot app, Android Things device, anything on the JVM — connects to it using the **client library** (`com.krillforge:krill-pi4j`) which requires only **JDK 21 or higher**.
