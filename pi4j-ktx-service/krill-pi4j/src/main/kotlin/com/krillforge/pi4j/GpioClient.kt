@@ -65,6 +65,17 @@ class GpioClient internal constructor(channel: Channel) {
         id: String = "",
     ): Flow<PinEvent> = stub.watchInput(inputConfig(pin, pull, debouncesMicros, id))
 
+    /** Read the current state of a previously configured output pin. */
+    suspend fun getOutputState(pin: Int): PinStateResponse =
+        stub.getOutputState(PinAddress.newBuilder().setPin(pin).build())
+
+    /**
+     * Release a pin from the daemon's cache and Pi4J registry.
+     * Safe to call even if the pin was never configured.
+     */
+    suspend fun unregisterPin(pin: Int): PinResponse =
+        stub.unregisterPin(PinAddress.newBuilder().setPin(pin).build())
+
     private fun inputConfig(
         pin: Int,
         pull: PullResistance,

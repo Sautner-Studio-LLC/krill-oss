@@ -1,6 +1,7 @@
 package krill.zone.service
 
 import com.google.protobuf.Empty
+import com.pi4j.boardinfo.util.BoardInfoHelper
 import io.grpc.Server
 import krill.zone.Pi4jContextManager
 import com.krillforge.pi4j.proto.*
@@ -42,6 +43,27 @@ class SystemServiceImpl(
             properties["java.version"]  = System.getProperty("java.version", "unknown")
             properties["os.name"]       = System.getProperty("os.name", "unknown")
             properties["os.arch"]       = System.getProperty("os.arch", "unknown")
+        }
+    }
+
+    // ── GetBoardInfo ─────────────────────────────────────────────────────────
+
+    override suspend fun getBoardInfo(request: Empty): BoardInfoResponse {
+        val info = BoardInfoHelper.current()
+        return boardInfoResponse {
+            boardModel = info.boardModel?.label ?: "unknown"
+            operatingSystem = info.operatingSystem?.name ?: "unknown"
+            info.boardModel?.headerVersion?.headerTypes
+                ?.flatMap { it.pins }
+                ?.forEach { pin ->
+                    headerPins += headerPin {
+                        name = pin.name.ifEmpty { "GPIO_${pin.bcmNumber ?: 0}" }
+                        pinNumber = pin.pinNumber
+                        bcmNumber = pin.bcmNumber ?: -1
+                        pinType = pin.pinType?.name ?: "GROUND"
+                        color = pin.pinType?.color?.toString() ?: ""
+                    }
+                }
         }
     }
 

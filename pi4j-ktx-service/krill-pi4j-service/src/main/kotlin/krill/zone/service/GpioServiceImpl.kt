@@ -87,6 +87,20 @@ class GpioServiceImpl(
         }
     }
 
+    // ── GetOutputState ──────────────────────────────────────────────────────────
+
+    override suspend fun getOutputState(request: PinAddress): PinStateResponse {
+        val out = outputs[request.pin]
+            ?: throw Status.NOT_FOUND
+                .withDescription("Output pin ${request.pin} has not been configured via SetOutput")
+                .asException()
+        return runCatching {
+            pinStateResponse { pin = request.pin; state = out.state().toProto() }
+        }.getOrElse { e ->
+            throw Status.INTERNAL.withDescription(e.message).withCause(e).asException()
+        }
+    }
+
     // ── GetInput ──────────────────────────────────────────────────────────────
 
     override suspend fun getInput(request: InputConfig): PinStateResponse = runCatching {
@@ -123,6 +137,32 @@ class GpioServiceImpl(
             log.debug("WatchInput: removing listener from pin {}", request.pin)
             inp.removeListener(listener)
         }
+    }
+
+    // ── UnregisterPin ───────────────────────────────────────────────────────
+
+    override suspend fun unregisterPin(request: PinAddress): PinResponse = runCatching {
+        val bcm = request.pin
+        var released = false
+
+        outputs.remove(bcm)?.let { out ->
+            log.debug("Releasing output pin {}", bcm)
+            ctx.context.registry().remove<com.pi4j.io.IO<*, *, *>>(out.id())
+            out.close()
+            released = true
+        }
+        inputs.remove(bcm)?.let { inp ->
+            log.debug("Releasing input pin {}", bcm)
+            ctx.context.registry().remove<com.pi4j.io.IO<*, *, *>>(inp.id())
+            inp.close()
+            released = true
+        }
+
+        if (released) log.info("Unregistered pin {}", bcm)
+        pinResponse { success = true; message = if (released) "released" else "not registered" }
+    }.getOrElse { e ->
+        log.warn("unregisterPin {}: {}", request.pin, e.message)
+        pinResponse { success = false; message = e.message.orEmpty() }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -40,12 +40,19 @@ service GpioService {
   // Drive an output pin to pulse_state for duration_millis, then revert.
   rpc Pulse(PulseRequest) returns (PinResponse);
 
+  // Read the current state of a previously configured output pin.
+  rpc GetOutputState(PinAddress) returns (PinStateResponse);
+
   // Read the current state of a digital input pin.
   rpc GetInput(InputConfig) returns (PinStateResponse);
 
   // Server-streaming: subscribe to every state-change event on an input pin.
   // The stream stays open until the client cancels it.
   rpc WatchInput(InputConfig) returns (stream PinEvent);
+
+  // Remove a pin from the daemon's cache and release it from the Pi4J registry.
+  // Safe to call even if the pin was never configured (returns success=true).
+  rpc UnregisterPin(PinAddress) returns (PinResponse);
 }
 
 message SetOutputRequest {
@@ -203,6 +210,9 @@ service SystemService {
   // Pi4J platform / provider inventory.
   rpc GetInfo(google.protobuf.Empty) returns (SystemInfoResponse);
 
+  // Physical board layout — header pins, model name, OS.
+  rpc GetBoardInfo(google.protobuf.Empty) returns (BoardInfoResponse);
+
   // Graceful shutdown of the daemon.
   rpc Shutdown(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
@@ -218,4 +228,18 @@ message SystemInfoResponse {
   repeated string   platforms       = 3;
   repeated string   providers       = 4;
   map<string,string> properties     = 5;
+}
+
+message BoardInfoResponse {
+  string              board_model      = 1;
+  string              operating_system = 2;
+  repeated HeaderPin  header_pins      = 3;
+}
+
+message HeaderPin {
+  string name       = 1;
+  int32  pin_number = 2;   // physical header position (1-40)
+  int32  bcm_number = 3;   // BCM GPIO number (-1 if not a GPIO)
+  string pin_type   = 4;   // POWER, GROUND, DIGITAL, DIGITAL_AND_PWM, etc.
+  string color      = 5;   // display colour from Pi4J board model
 }
