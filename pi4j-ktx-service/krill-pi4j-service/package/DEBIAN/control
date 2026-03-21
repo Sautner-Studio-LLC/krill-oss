@@ -4,7 +4,6 @@ Section: utils
 Priority: optional
 Architecture: all
 Depends: i2c-tools
-Recommends: krill
 Suggests: pigpiod
 Maintainer: Benjamin Sautner <ben@krill.zone>
 Description: Krill Pi4J gRPC Service for Raspberry Pi
@@ -13,6 +12,6 @@ Description: Krill Pi4J gRPC Service for Raspberry Pi
  can use the generated stubs to control hardware without needing JDK 25.
  .
  This package is a companion to the Krill Server (krill) and is intended
- to be installed alongside it on Raspberry Pi hardware.
+ to be installed alongside it on Raspberry Pi hardware. Learn more at https://krillswarm.com
  .
  Requires Java 25 or later (Zulu 25 recommended on ARM64).
