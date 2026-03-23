@@ -1,12 +1,11 @@
 package krill.zone.service
 
-import io.grpc.Status
-import krill.zone.Pi4jContextManager
 import com.krillforge.pi4j.proto.*
-import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentHashMap
-
-import com.pi4j.ktx.io.pwm
+import com.pi4j.ktx.io.*
+import io.grpc.*
+import krill.zone.*
+import org.slf4j.*
+import java.util.concurrent.*
 
 /**
  * gRPC service implementation for PWM channels.
@@ -15,11 +14,11 @@ import com.pi4j.ktx.io.pwm
  * Duty cycle and frequency can be updated independently without reconfiguring
  * the channel from scratch.
  */
-class PwmServiceImpl(
+class DefaultPwmService(
     private val ctx: Pi4jContextManager = Pi4jContextManager
 ) : PwmServiceGrpcKt.PwmServiceCoroutineImplBase() {
 
-    private val log = LoggerFactory.getLogger(PwmServiceImpl::class.java)
+    private val log = LoggerFactory.getLogger(DefaultPwmService::class.java)
 
     private val channels = ConcurrentHashMap<Int, com.pi4j.io.pwm.Pwm>()
 
@@ -41,9 +40,9 @@ class PwmServiceImpl(
         channels[request.pin] = ch
 
         pwmResponse {
-            success          = true
-            actualFrequency  = ch.frequency()
-            actualDutyCycle  = ch.dutyCycle().toFloat()
+            success = true
+            actualFrequency = ch.frequency()
+            actualDutyCycle = ch.dutyCycle().toFloat()
         }
     }.getOrElse { e ->
         log.warn("configure PWM pin {}: {}", request.pin, e.message)
@@ -59,9 +58,9 @@ class PwmServiceImpl(
         return runCatching {
             ch.on(request.dutyCycle.toInt())
             pwmResponse {
-                success          = true
-                actualFrequency  = ch.frequency()
-                actualDutyCycle  = ch.dutyCycle().toFloat()
+                success = true
+                actualFrequency = ch.frequency()
+                actualDutyCycle = ch.dutyCycle().toFloat()
             }
         }.getOrElse { e ->
             pwmResponse { success = false; message = e.message.orEmpty() }
@@ -78,9 +77,9 @@ class PwmServiceImpl(
             // Re-apply with updated frequency, keeping current duty cycle
             ch.on(ch.dutyCycle(), request.frequency)
             pwmResponse {
-                success          = true
-                actualFrequency  = ch.frequency()
-                actualDutyCycle  = ch.dutyCycle().toFloat()
+                success = true
+                actualFrequency = ch.frequency()
+                actualDutyCycle = ch.dutyCycle().toFloat()
             }
         }.getOrElse { e ->
             pwmResponse { success = false; message = e.message.orEmpty() }
@@ -107,10 +106,10 @@ class PwmServiceImpl(
     override suspend fun getStatus(request: PinAddress): PwmStatus {
         val ch = channels[request.pin]
         return pwmStatus {
-            pin        = request.pin
-            running    = ch != null && ch.isOn
-            frequency  = ch?.frequency() ?: 0
-            dutyCycle  = ch?.dutyCycle()?.toFloat() ?: 0f
+            pin = request.pin
+            running = ch != null && ch.isOn
+            frequency = ch?.frequency() ?: 0
+            dutyCycle = ch?.dutyCycle()?.toFloat() ?: 0f
         }
     }
 }

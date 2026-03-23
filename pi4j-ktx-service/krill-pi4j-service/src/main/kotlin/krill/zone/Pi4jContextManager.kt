@@ -1,8 +1,8 @@
 package krill.zone
 
-import com.pi4j.Pi4J
-import com.pi4j.context.Context
-import org.slf4j.LoggerFactory
+import com.pi4j.*
+import com.pi4j.context.*
+import org.slf4j.*
 
 /**
  * Singleton that owns the single Pi4J [Context] for the lifetime of the service.
@@ -20,8 +20,6 @@ object Pi4jContextManager {
     val context: Context
         get() = _context ?: error("Pi4J context not initialized — call initialize() first")
 
-    val isInitialized: Boolean
-        get() = _context != null
 
     /**
      * Initialize the Pi4J context.
@@ -54,9 +52,9 @@ object Pi4jContextManager {
     private fun buildMockContext(): Context {
         return try {
             // Reflective load so pi4j-plugin-mock is not a hard compile dependency
-            val platformClass  = Class.forName("com.pi4j.plugin.mock.platform.MockPlatform")
+            val platformClass = Class.forName("com.pi4j.plugin.mock.platform.MockPlatform")
             val platform = platformClass.getDeclaredConstructor().newInstance()
-                as com.pi4j.platform.Platform
+                    as com.pi4j.platform.Platform
 
             Pi4J.newContextBuilder()
                 .add(platform)

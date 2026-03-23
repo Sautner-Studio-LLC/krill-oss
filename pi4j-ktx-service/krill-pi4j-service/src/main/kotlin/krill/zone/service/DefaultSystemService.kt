@@ -1,11 +1,11 @@
 package krill.zone.service
 
-import com.google.protobuf.Empty
-import com.pi4j.boardinfo.util.BoardInfoHelper
-import io.grpc.Server
-import krill.zone.Pi4jContextManager
+import com.google.protobuf.*
 import com.krillforge.pi4j.proto.*
-import org.slf4j.LoggerFactory
+import com.pi4j.boardinfo.util.*
+import io.grpc.*
+import krill.zone.*
+import org.slf4j.*
 
 /**
  * Liveness, inventory, and graceful shutdown.
@@ -13,11 +13,11 @@ import org.slf4j.LoggerFactory
  * A reference to the [Server] is injected after construction so that
  * the [shutdown] RPC can initiate a clean teardown.
  */
-class SystemServiceImpl(
+class DefaultSystemService(
     private val ctx: Pi4jContextManager = Pi4jContextManager
 ) : SystemServiceGrpcKt.SystemServiceCoroutineImplBase() {
 
-    private val log = LoggerFactory.getLogger(SystemServiceImpl::class.java)
+    private val log = LoggerFactory.getLogger(DefaultSystemService::class.java)
 
     /** Injected by Main after the server is started. */
     var server: Server? = null
@@ -26,7 +26,7 @@ class SystemServiceImpl(
 
     override suspend fun ping(request: Empty): PingResponse = pingResponse {
         timestampMillis = System.currentTimeMillis()
-        version         = serviceVersion()
+        version = serviceVersion()
     }
 
     // ── GetInfo ───────────────────────────────────────────────────────────────
@@ -34,15 +34,15 @@ class SystemServiceImpl(
     override suspend fun getInfo(request: Empty): SystemInfoResponse {
         val context = ctx.context
         return systemInfoResponse {
-            serviceVersion = krill.zone.Version.SERVICE
-            pi4JVersion    = context.versionString()
+            serviceVersion = Version.SERVICE
+            pi4JVersion = context.versionString()
 
             platforms += context.platforms().all().values.map { it.id() }
             providers += context.providers().all().values.map { it.id() }
 
-            properties["java.version"]  = System.getProperty("java.version", "unknown")
-            properties["os.name"]       = System.getProperty("os.name", "unknown")
-            properties["os.arch"]       = System.getProperty("os.arch", "unknown")
+            properties["java.version"] = System.getProperty("java.version", "unknown")
+            properties["os.name"] = System.getProperty("os.name", "unknown")
+            properties["os.arch"] = System.getProperty("os.arch", "unknown")
         }
     }
 
@@ -82,7 +82,7 @@ class SystemServiceImpl(
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun serviceVersion() = krill.zone.Version.SERVICE
+    private fun serviceVersion() = Version.SERVICE
 
     private fun com.pi4j.context.Context.versionString(): String =
         runCatching { this.javaClass.`package`.implementationVersion ?: "4.x" }

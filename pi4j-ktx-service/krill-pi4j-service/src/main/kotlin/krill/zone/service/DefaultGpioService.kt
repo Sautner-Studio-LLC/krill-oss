@@ -1,21 +1,18 @@
 package krill.zone.service
 
-import com.pi4j.io.gpio.digital.DigitalState
-import com.pi4j.io.gpio.digital.DigitalStateChangeListener
-import com.pi4j.io.gpio.digital.PullResistance as Pi4jPull
-import io.grpc.Status
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import krill.zone.Pi4jContextManager
-import com.krillforge.pi4j.proto.*
-import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-
 // pi4j-ktx extension functions are top-level in com.pi4j.ktx
-import com.pi4j.ktx.io.digital.digitalInput
-import com.pi4j.ktx.io.digital.digitalOutput
+import com.krillforge.pi4j.proto.*
+import com.krillforge.pi4j.proto.PullResistance
+import com.pi4j.io.gpio.digital.*
+import com.pi4j.ktx.io.digital.*
+import io.grpc.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import krill.zone.*
+import org.slf4j.*
+import java.util.concurrent.*
+import com.pi4j.io.gpio.digital.PullResistance as Pi4jPull
 
 /**
  * gRPC service implementation for GPIO digital I/O.
@@ -30,8 +27,8 @@ class GpioServiceImpl(
 
     private val log = LoggerFactory.getLogger(GpioServiceImpl::class.java)
 
-    private val inputs  = ConcurrentHashMap<Int, com.pi4j.io.gpio.digital.DigitalInput>()
-    private val outputs = ConcurrentHashMap<Int, com.pi4j.io.gpio.digital.DigitalOutput>()
+    private val inputs = ConcurrentHashMap<Int, DigitalInput>()
+    private val outputs = ConcurrentHashMap<Int, DigitalOutput>()
 
     // ── SetOutput ─────────────────────────────────────────────────────────────
 
@@ -46,7 +43,7 @@ class GpioServiceImpl(
         }
         when (request.state) {
             PinState.PIN_STATE_HIGH -> out.high()
-            else                   -> out.low()
+            else -> out.low()
         }
         log.debug("Pin {} → {}", request.pin, request.state)
         pinResponse { success = true }
@@ -126,9 +123,9 @@ class GpioServiceImpl(
         val listener = DigitalStateChangeListener { event ->
             trySend(
                 pinEvent {
-                    pin             = request.pin
-                    state           = event.state().toProto()
-                    timestampNanos  = System.nanoTime()
+                    pin = request.pin
+                    state = event.state().toProto()
+                    timestampNanos = System.nanoTime()
                 }
             )
         }
@@ -167,7 +164,7 @@ class GpioServiceImpl(
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun getOrCreateInput(config: InputConfig): com.pi4j.io.gpio.digital.DigitalInput =
+    private fun getOrCreateInput(config: InputConfig): DigitalInput =
         inputs.getOrPut(config.pin) {
             log.debug("Configuring digital input pin {}", config.pin)
             ctx.context.digitalInput(config.pin) {
@@ -185,6 +182,6 @@ private fun DigitalState.toProto(): PinState =
 
 private fun PullResistance.toPi4j(): Pi4jPull = when (this) {
     PullResistance.PULL_RESISTANCE_DOWN -> Pi4jPull.PULL_DOWN
-    PullResistance.PULL_RESISTANCE_UP   -> Pi4jPull.PULL_UP
-    else                                -> Pi4jPull.OFF
+    PullResistance.PULL_RESISTANCE_UP -> Pi4jPull.PULL_UP
+    else -> Pi4jPull.OFF
 }

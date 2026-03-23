@@ -1,13 +1,11 @@
 package krill.zone.service
 
-import com.pi4j.io.i2c.I2C
-import io.grpc.Status
-import krill.zone.Pi4jContextManager
 import com.krillforge.pi4j.proto.*
-import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentHashMap
-
-import com.pi4j.ktx.io.i2c
+import com.pi4j.io.i2c.*
+import com.pi4j.ktx.io.*
+import krill.zone.*
+import org.slf4j.*
+import java.util.concurrent.*
 
 /**
  * gRPC service for I2C bus operations.
@@ -16,11 +14,11 @@ import com.pi4j.ktx.io.i2c
  * All operations are synchronous at the hardware level; they run in the gRPC
  * coroutine dispatcher and will not block the calling thread pool for long.
  */
-class I2cServiceImpl(
+class DefaultI2cService(
     private val ctx: Pi4jContextManager = Pi4jContextManager
 ) : I2cServiceGrpcKt.I2cServiceCoroutineImplBase() {
 
-    private val log = LoggerFactory.getLogger(I2cServiceImpl::class.java)
+    private val log = LoggerFactory.getLogger(DefaultI2cService::class.java)
 
     /** Key: Pair(bus, address) */
     private val devices = ConcurrentHashMap<Pair<Int, Int>, I2C>()
@@ -55,7 +53,7 @@ class I2cServiceImpl(
         dev.readRegister(request.register, buf, 0, request.length)
         i2cBytesResponse {
             success = true
-            data    = com.google.protobuf.ByteString.copyFrom(buf)
+            data = com.google.protobuf.ByteString.copyFrom(buf)
         }
     }.getOrElse { e ->
         log.warn("readBytes {}: {}", request.device?.toKey(), e.message)
@@ -65,7 +63,7 @@ class I2cServiceImpl(
     // ── WriteBytes ────────────────────────────────────────────────────────────
 
     override suspend fun writeBytes(request: I2cWriteBytesRequest): I2cResponse = runCatching {
-        val dev   = device(request.device)
+        val dev = device(request.device)
         val bytes = request.data.toByteArray()
         dev.writeRegister(request.register, bytes, 0, bytes.size)
         i2cResponse { success = true }
