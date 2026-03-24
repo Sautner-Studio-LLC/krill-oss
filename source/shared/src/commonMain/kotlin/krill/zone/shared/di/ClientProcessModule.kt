@@ -11,6 +11,7 @@ import krill.zone.shared.krillapp.executor.compute.*
 import krill.zone.shared.krillapp.executor.lambda.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.executor.mqtt.*
+import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
@@ -69,6 +70,7 @@ val clientProcessModule = module {
         TaskListProcessor::class,
         JournalProcessor::class,
         LLMProcessor::class,
+        SMTPProcessorInterface::class,
     )
 
 }

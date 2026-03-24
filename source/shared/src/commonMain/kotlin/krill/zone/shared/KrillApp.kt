@@ -13,6 +13,7 @@ import krill.zone.shared.krillapp.executor.compute.*
 import krill.zone.shared.krillapp.executor.lambda.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.executor.mqtt.*
+import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
@@ -87,7 +88,8 @@ val krillAppChildren: Map<KrillApp?, List<KrillApp>> = mapOf(
         KrillApp.Executor.OutgoingWebHook,
         KrillApp.Executor.Lambda,
         KrillApp.Executor.Calculation,
-        KrillApp.Executor.Compute
+        KrillApp.Executor.Compute,
+        KrillApp.Executor.SMTP
     ),
 
     // Trigger children
@@ -331,6 +333,13 @@ sealed class KrillApp(
         data object Compute : KrillApp(meta = { ComputeMetaData() }, emit = { node ->
             object : KoinComponent {
                 val processor: ComputeProcessor by inject(mode = LazyThreadSafetyMode.SYNCHRONIZED)
+            }.processor.post(node)
+        })
+
+        @Serializable
+        data object SMTP : KrillApp(meta = { SMTPMetaData() }, emit = { node ->
+            object : KoinComponent {
+                val processor: SMTPProcessorInterface by inject(mode = LazyThreadSafetyMode.SYNCHRONIZED)
             }.processor.post(node)
         })
     }

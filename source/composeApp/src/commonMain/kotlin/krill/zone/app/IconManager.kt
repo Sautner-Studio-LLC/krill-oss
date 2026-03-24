@@ -143,6 +143,7 @@ object IconManager {
             KrillApp.Executor.Lambda -> painterResource(Res.drawable.python_brands_solid_full)
             KrillApp.Trigger.IncomingWebHook -> painterResource(Res.drawable.triple_chevrons_down_sharp_duotone_solid_full)
             KrillApp.Executor.OutgoingWebHook -> painterResource(Res.drawable.triple_chevrons_up_duotone_solid_full)
+            KrillApp.Executor.SMTP -> painterResource(Res.drawable.arrow_up_right_from_square_duotone_regular)
             KrillApp.Trigger.CronTimer -> painterResource(Res.drawable.clock_duotone_regular_full)
 
             MenuCommand.Focus -> painterResource(Res.drawable.maximize_duotone_regular)

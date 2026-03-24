@@ -15,6 +15,7 @@ import krill.zone.app.krillapp.executor.compute.*
 import krill.zone.app.krillapp.executor.cron.*
 import krill.zone.app.krillapp.executor.lambda.*
 import krill.zone.app.krillapp.executor.logicgate.*
+import krill.zone.app.krillapp.executor.smtp.*
 import krill.zone.app.krillapp.executor.webhook.*
 import krill.zone.app.krillapp.mqtt.*
 import krill.zone.app.krillapp.project.*
@@ -123,6 +124,14 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
                             OutboundWebhookConfigDisplay(n)
                         } else {
                             EditOutboundWebHook(n)
+                        }
+                    }
+
+                    KrillApp.Executor.SMTP -> {
+                        if (viewMode == ViewMode.ROW) {
+                            SMTPConfigDisplay(n)
+                        } else {
+                            EditSMTP(n)
                         }
                     }
 

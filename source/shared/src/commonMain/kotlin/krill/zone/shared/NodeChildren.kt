@@ -60,6 +60,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
         KrillApp.Executor.LogicGate,
         KrillApp.Executor.Calculation,
         KrillApp.Executor.Compute,
+            KrillApp.Executor.SMTP,
         KrillApp.MQTT
         )
     }

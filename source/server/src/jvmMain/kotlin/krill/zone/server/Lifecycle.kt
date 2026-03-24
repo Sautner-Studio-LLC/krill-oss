@@ -7,6 +7,7 @@ import io.ktor.server.application.*
 import kotlinx.coroutines.*
 import krill.zone.server.events.*
 import krill.zone.server.krillapp.executor.cron.*
+import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
 import krill.zone.server.logging.*
 import krill.zone.shared.*
@@ -35,6 +36,7 @@ internal class ServerLifecycleManager(
     private val eventMonitor: EventMonitor,
     private val cronTask: CronTask,
     private val mqttManager: MqttManager,
+    private val pinReconciliationTask: PinReconciliationTask,
     private val scope: CoroutineScope,
 ) {
     private val logger = Logger.withTag(this::class.getFullName())
@@ -87,6 +89,9 @@ internal class ServerLifecycleManager(
                         serverBoss.addTask(serial)
                         serverBoss.addTask(eventMonitor)
                         serverBoss.addTask(cronTask)
+                        if (platform == Platform.RASPBERRY_PI) {
+                            serverBoss.addTask(pinReconciliationTask)
+                        }
                         serverBoss.start()
                     }
                     job.invokeOnCompletion {

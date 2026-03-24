@@ -14,6 +14,7 @@ import krill.zone.server.krillapp.executor.cron.*
 import krill.zone.server.krillapp.executor.lambda.*
 import krill.zone.server.krillapp.executor.logicgate.*
 import krill.zone.server.krillapp.mqtt.*
+import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
 import krill.zone.server.krillapp.trigger.*
 import krill.zone.server.logging.*
@@ -50,6 +51,7 @@ val serverModule = module {
     }
 
     single<CronTask> { CronTask(get(), get()) }
+    single<PinReconciliationTask> { PinReconciliationTask(get(), get(), get(), get()) }
     // Provide NodePersistence for NodeManager
     single<NodePersistence> { get<NodeRepository>() }
 
@@ -82,9 +84,8 @@ val serverModule = module {
             get(),
             get(),
             get(),
+            get(),
             get()
-
-
         )
     }
 

@@ -13,6 +13,10 @@ import kotlin.time.*
 
 class EventMonitor(private val nodeManager: ServerNodeManager, private val nodePersistence: NodePersistence,  private val scope : CoroutineScope): ServerTask {
 
+    companion object {
+        const val STALE_EVENT_THRESHOLD_MS = 10_000L
+    }
+
     private val logger = Logger.withTag(this::class.getFullName())
 
     override suspend fun start() {
@@ -29,6 +33,11 @@ class EventMonitor(private val nodeManager: ServerNodeManager, private val nodeP
                         }
                     }
                     EventType.PIN_CHANGED -> {
+                        val eventAgeMs = Clock.System.now().toEpochMilliseconds() - event.timestamp
+                        if (eventAgeMs > STALE_EVENT_THRESHOLD_MS) {
+                            logger.w("Discarding stale PIN_CHANGED event for ${event.id} (age=${eventAgeMs}ms). Reconciliation will correct state.")
+                            return@launch
+                        }
                         nodePersistence.read(event.id)?.let { node ->
                             // Persist the pin state from the event payload before executing
                             // downstream sources. Without this, the logic gate reads live

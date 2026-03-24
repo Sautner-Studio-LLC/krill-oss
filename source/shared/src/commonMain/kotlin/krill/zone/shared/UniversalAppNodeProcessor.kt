@@ -11,6 +11,7 @@ import krill.zone.shared.krillapp.executor.compute.*
 import krill.zone.shared.krillapp.executor.lambda.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.executor.mqtt.*
+import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
@@ -60,7 +61,8 @@ UniversalAppNodeProcessor(
     DiagramProcessor,
     TaskListProcessor,
     JournalProcessor,
-    LLMProcessor {
+    LLMProcessor,
+    SMTPProcessorInterface {
     private val logger = Logger.withTag(this::class.getFullName())
 
     @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
@@ -128,6 +130,7 @@ UniversalAppNodeProcessor(
             KrillApp.Trigger.IncomingWebHook,
             KrillApp.Server.SerialDevice,
 
+            KrillApp.Executor.SMTP,
             KrillApp.MQTT -> {
 
                 logger.d { "noting interaction of ${node.details()} --> ${(node.meta as TargetingNodeMetaData).targets} " }

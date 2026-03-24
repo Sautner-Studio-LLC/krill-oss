@@ -13,6 +13,7 @@ import krill.zone.shared.krillapp.executor.compute.*
 import krill.zone.shared.krillapp.executor.lambda.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.executor.mqtt.*
+import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
@@ -59,6 +60,7 @@ val platformSerializerModule = SerializersModule {
         subclass(TaskListMetaData::class)
         subclass(JournalMetaData::class)
         subclass(LLMMetaData::class)
+        subclass(SMTPMetaData::class)
 
     }
     polymorphic(baseClass = KrillApp::class) {
@@ -87,6 +89,7 @@ val platformSerializerModule = SerializersModule {
         subclass(MenuCommand.Update::class)
         subclass(MenuCommand.Delete::class)
         subclass(MenuCommand.Expand::class)
+        subclass(KrillApp.Executor.SMTP::class)
         subclass(MenuCommand.Focus::class)
     }
     polymorphic(baseClass = EventPayload::class) {

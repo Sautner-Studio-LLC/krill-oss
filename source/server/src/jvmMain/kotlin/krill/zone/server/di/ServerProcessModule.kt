@@ -9,6 +9,7 @@ import krill.zone.server.krillapp.executor.compute.*
 import krill.zone.server.krillapp.executor.lambda.*
 import krill.zone.server.krillapp.executor.logicgate.*
 import krill.zone.server.krillapp.executor.mqtt.*
+import krill.zone.server.krillapp.executor.smtp.*
 import krill.zone.server.krillapp.executor.webhook.*
 import krill.zone.server.krillapp.project.*
 import krill.zone.server.krillapp.server.llm.*
@@ -30,6 +31,7 @@ import krill.zone.shared.krillapp.executor.compute.*
 import krill.zone.shared.krillapp.executor.lambda.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.executor.mqtt.*
+import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
@@ -161,6 +163,12 @@ val serverProcessModule = module {
     single<WebHookOutboundProcessorInterface> {
 
         ServerWebHookOutboundProcessor(get(), get(), get(named(IO_SCOPE)))
+
+    }
+
+    single<SMTPProcessorInterface> {
+
+        ServerSMTPProcessor(get(), get(named(IO_SCOPE)))
 
     }
 

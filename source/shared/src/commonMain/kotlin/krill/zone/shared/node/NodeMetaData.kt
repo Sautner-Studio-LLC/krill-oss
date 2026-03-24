@@ -11,6 +11,7 @@ import krill.zone.shared.krillapp.executor.compute.*
 import krill.zone.shared.krillapp.executor.lambda.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.executor.mqtt.*
+import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
@@ -92,6 +93,7 @@ fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData {
         is DiagramMetaData -> meta.copy(error = error)
         is TaskListMetaData -> meta.copy(error = error)
         is JournalMetaData -> meta.copy(error = error)
+        is SMTPMetaData -> meta.copy(error = error)
         else -> meta // Fallback for unknown types
     }
 }
