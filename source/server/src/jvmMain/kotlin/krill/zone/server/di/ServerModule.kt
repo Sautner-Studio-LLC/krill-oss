@@ -107,7 +107,8 @@ val serverModule = module {
     single<BeaconSupervisor> { ServerBeaconSupervisor(get(), get(), get(), get(named(IO_SCOPE))) }
     single<BeaconSender> { ServerBeaconSender(get(), get()) }
     single<BeaconWireHandler> { ServerBeaconWireHandler(get(), get(),get(named(IO_SCOPE))) }
-    single<ServerConnector> { ServerServerConnector(get(), get(), get(named(IO_SCOPE))) }
+    single<LanTrustTokenProvider> { LanTrustTokenProvider() }
+    single<ServerConnector> { ServerServerConnector(get(), get(), get(), get(named(IO_SCOPE))) }
     single<ServerNodeManager> { ServerNodeManager(get(), get(), get(), get(), get(named(IO_SCOPE)) ) }
     single<ServerBoss> { ServerBoss(get(named(IO_SCOPE))) }
     single<SilentAlarmMonitor> { SilentAlarmMonitor(get(), get()) }

@@ -33,9 +33,10 @@ fun Application.module() {
     val dataProcessor: DataProcessor by inject()
 
     val serialDirectoryMonitor: SerialDirectoryMonitor by inject()
+    val lanTrustTokenProvider: LanTrustTokenProvider by inject()
 
     routing {
-        configureApiRoutes(nodeManager, dataProcessor, piManager,serialDirectoryMonitor, scope)
+        configureApiRoutes(nodeManager, dataProcessor, piManager, serialDirectoryMonitor, lanTrustTokenProvider, scope)
     }
 
 

@@ -13,6 +13,7 @@ import org.koin.ktor.plugin.*
 import java.io.*
 
 private const val API_KEY_FILE_PATH = "/etc/krill/credentials/api_key"
+private const val PEER_API_KEY_FILE_PATH = "/etc/krill/credentials/peer_api_key"
 
 /**
  * Configures all Ktor plugins for the server
@@ -47,6 +48,19 @@ fun readApiKey(): String? {
     }
 }
 
+fun readPeerApiKey(): String? {
+    return try {
+        val file = File(PEER_API_KEY_FILE_PATH)
+        if (file.exists()) {
+            file.readText().trim().takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+
 private fun Application.configureCores() {
     install(CORS) {
         allowHeader("Authorization")
@@ -66,10 +80,13 @@ private fun Application.configureAuthentication() {
                 }
                 else {
                     val expectedApiKey = readApiKey()
-                    if (expectedApiKey != null && tokenCredential.token == expectedApiKey) {
-                        UserIdPrincipal("krill-client")
-                    } else {
-                        null
+                    val expectedPeerKey = readPeerApiKey()
+                    when {
+                        expectedApiKey != null && tokenCredential.token == expectedApiKey ->
+                            UserIdPrincipal("krill-client")
+                        expectedPeerKey != null && tokenCredential.token == expectedPeerKey ->
+                            UserIdPrincipal("krill-peer")
+                        else -> null
                     }
                 }
             }
