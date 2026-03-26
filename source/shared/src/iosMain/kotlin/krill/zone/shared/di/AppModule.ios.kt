@@ -3,6 +3,7 @@ package krill.zone.shared.di
 import co.touchlab.kermit.*
 import kotlinx.coroutines.*
 import krill.zone.shared.io.*
+import krill.zone.shared.security.*
 import org.koin.core.qualifier.*
 import org.koin.dsl.*
 
@@ -16,5 +17,5 @@ actual val platformModule = module {
         CoroutineScope(SupervisorJob() + Dispatchers.IO + handler)
     }
     single<FileOperations> {  IosFileOperations() }
-
+    single<ClientPinStore> { IosClientPinStore() }
 }

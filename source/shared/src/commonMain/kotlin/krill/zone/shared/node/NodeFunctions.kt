@@ -18,7 +18,7 @@ fun Node.https(): Url {
     val meta = this.meta as ServerMetaData
     return URLBuilder(
         protocol = URLProtocol.HTTPS,
-        host = meta.name,
+        host = meta.resolvedHost(),
         port = meta.port
     ).build()
 }

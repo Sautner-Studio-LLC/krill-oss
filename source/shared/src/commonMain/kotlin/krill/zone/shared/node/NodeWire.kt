@@ -10,7 +10,8 @@ data class NodeWire(
     val installId: String,
     private val host: String,
     val port: Int,
-    val platform: Platform
+    val platform: Platform,
+    val clusterToken: String = ""
 )  {
     fun host() : String {
         return host.replace("\n","").trim().removeSuffix("http://").removeSuffix("https://")

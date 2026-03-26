@@ -39,6 +39,7 @@ class DefaultTrustHttpClient : TrustHost {
             path("trust")
         }.build()
         try {
+            logger.w("checking url: ${trustUrl}")
             val byteArray: ByteArray = insecureClient.prepareGet(trustUrl).execute { response ->
                 if (response.status.isSuccess()) {
                     // Read the response body directly as bytes to avoid using blocking file I/O helpers.
@@ -70,7 +71,7 @@ class DefaultTrustHttpClient : TrustHost {
         val trustDir = File(context.filesDir, "trusted")
         val meta = node.meta as ServerMetaData
         val url = URLBuilder(
-            host = meta.name,
+            host = meta.resolvedHost(),
             port = meta.port,
             protocol = URLProtocol.HTTPS,
             pathSegments = listOf("trust")

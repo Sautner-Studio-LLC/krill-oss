@@ -14,7 +14,7 @@ import krill.zone.shared.krillapp.server.*
 import org.koin.ext.*
 import kotlin.uuid.*
 
-class NodeHttp(private val trustHost: TrustHost) {
+class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider: () -> String?) {
     private val logger = Logger.withTag(this::class.getFullName())
 
     @OptIn(ExperimentalUuidApi::class)
@@ -22,13 +22,12 @@ class NodeHttp(private val trustHost: TrustHost) {
         try {
             logger.i("${host.details()}: read health")
             val meta = host.meta as ServerMetaData
-            val name = if (SystemInfo.wasmApiKey?.isNotEmpty() == true) {"localhost" } else meta.name
+            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
             val url = "https://$name:${meta.port}/health"
-            val apiKey = meta.apiKey
 
             val response = httpClient.get(url) {
-                if (apiKey.isNotBlank()) {
-                    header("Authorization", "Bearer $apiKey")
+                bearerTokenProvider()?.let { token ->
+                    header("Authorization", "Bearer $token")
                 }
             }
             return if (response.status == HttpStatusCode.OK) {
@@ -51,15 +50,16 @@ class NodeHttp(private val trustHost: TrustHost) {
         logger.i("${host.details()}: read chart")
 
             val meta = host.meta as ServerMetaData
-            val apiKey = getApiKey(host)
 
             val client: HttpClient = httpClient
-            val name = if (SystemInfo.wasmApiKey?.isNotEmpty() == true) {"localhost" } else meta.name
+            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
 
             val url = "https://${name}:${meta.port}/node/$id/data/plot"
             val response = client.get(url) {
                 contentType(ContentType.Application.Xml)
-                header("Authorization", "Bearer $apiKey")
+                bearerTokenProvider()?.let { token ->
+                    header("Authorization", "Bearer $token")
+                }
             }
 
             return if (response.status.isSuccess()) {
@@ -77,17 +77,20 @@ class NodeHttp(private val trustHost: TrustHost) {
         suspend fun readNode(host: Node, id: String): Node? {
             logger.i("${host.details()}: read node")
             try {
-
+                bearerTokenProvider().let { token ->
+                    logger.i("token: $token")
+                }
                 val meta = host.meta as ServerMetaData
-                val apiKey = getApiKey(host)
 
                 val client: HttpClient = httpClient
-                val name = if (SystemInfo.wasmApiKey?.isNotEmpty() == true) {"localhost" } else meta.name
+                val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
 
                 val url = "https://${name}:${meta.port}/node/${id}"
                 val response = client.get(url) {
                     contentType(ContentType.Application.Json)
-                    header("Authorization", "Bearer $apiKey")
+                    bearerTokenProvider()?.let { token ->
+                        header("Authorization", "Bearer $token")
+                    }
                 }
                 return if (response.status == HttpStatusCode.OK) {
                     val r = response.body<Node>()
@@ -113,16 +116,17 @@ class NodeHttp(private val trustHost: TrustHost) {
             try {
 
                 val meta = host.meta as ServerMetaData
-                val apiKey = getApiKey(host)
 
 
                 val client: HttpClient = httpClient
-                val name = if (SystemInfo.wasmApiKey?.isNotEmpty() == true) {"localhost" } else meta.name
+                val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
 
                 val url = "https://${name}:${meta.port}/nodes"
                 val response = client.get(url) {
                     contentType(ContentType.Application.Json)
-                    header("Authorization", "Bearer $apiKey")
+                    bearerTokenProvider()?.let { token ->
+                        header("Authorization", "Bearer $token")
+                    }
                 }
                 return if (response.status == HttpStatusCode.OK) {
                     response.body<List<Node>>().map {
@@ -150,9 +154,8 @@ class NodeHttp(private val trustHost: TrustHost) {
 
 
             val meta = host.meta as ServerMetaData
-            val apiKey = getApiKey(host)
 
-            val name = if (SystemInfo.wasmApiKey?.isNotEmpty() == true) {"localhost" } else meta.name
+            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
 
             val url = "https://${name}:${meta.port}/node/${node.id}"
 
@@ -163,7 +166,9 @@ class NodeHttp(private val trustHost: TrustHost) {
             try {
                 val response = client.post(url) {
                     contentType(ContentType.Application.Json)
-                    header("Authorization", "Bearer $apiKey")
+                    bearerTokenProvider()?.let { token ->
+                        header("Authorization", "Bearer $token")
+                    }
                     setBody(node)
 
                 }
@@ -181,23 +186,10 @@ class NodeHttp(private val trustHost: TrustHost) {
             }
         }
 
-        private fun getApiKey(host: Node): String {
-
-            val meta = host.meta as ServerMetaData //maybe we're in a delete flow
-            if (meta.apiKey.isNotEmpty()) {
-                return meta.apiKey
-            } else {
-                throw Exception("The node ${host.details()} is not available and/or api key is missing")
-            }
-
-
-        }
-
         suspend fun deleteNode(host: Node, node: Node) {
             if (node.type == KrillApp.Client) return
             val meta = host.meta as ServerMetaData
-            val apiKey = getApiKey(host)
-            val name = if (SystemInfo.wasmApiKey?.isNotEmpty() == true) {"localhost" } else meta.name
+            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
 
 
             val url = "https://${name}:${meta.port}/node/${node.id}"
@@ -209,7 +201,9 @@ class NodeHttp(private val trustHost: TrustHost) {
             try {
                 val response = client.delete(url) {
                     contentType(ContentType.Application.Json)
-                    header("Authorization", "Bearer $apiKey")
+                    bearerTokenProvider()?.let { token ->
+                        header("Authorization", "Bearer $token")
+                    }
                     setBody(node)
 
                 }

@@ -106,14 +106,6 @@ class ServerNodeManager(
     fun update(node: Node) {
 
         readNodeStateOrNull(node.id).value?.let { origin ->
-            if (origin.type is KrillApp.Server) {
-                val meta = origin.meta as ServerMetaData
-                val newMeta = node.meta as ServerMetaData
-                if (meta.apiKey.isNotBlank() && newMeta.apiKey.isBlank()) {
-                    return
-                }
-            }
-
 
             if (node.state != NodeState.NONE && origin.state != node.state && node.timestamp - origin.timestamp > 1000) {
                 logger.w("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")

@@ -14,17 +14,6 @@ import org.koin.core.context.*
 fun main() {
     SystemInfo.setServer(false)
     SystemInfo.wasmPort = window.location.port.toInt()
-    SystemInfo.wasmApiKey = window.location.search
-        .removePrefix("?")
-        .split("&")
-        .mapNotNull { param ->
-            val (key, value) = param.split("=", limit = 2).let {
-                it[0] to it.getOrElse(1) { "" }
-            }
-            if (key == "api_key") value else null
-        }
-        .firstOrNull()
-        ?.takeIf { it.isNotBlank() }
 
     startKoin {
         modules(

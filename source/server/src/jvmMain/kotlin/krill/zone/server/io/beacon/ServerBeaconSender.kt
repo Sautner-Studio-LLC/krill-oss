@@ -18,7 +18,7 @@ import kotlin.time.*
  *
  * @param multicast Multicast service for sending beacons
  */
-class ServerBeaconSender(private val nodeManager: ServerNodeManager, private val multicast: Multicast ) : BeaconSender {
+class ServerBeaconSender(private val nodeManager: ServerNodeManager, private val multicast: Multicast, private val pinProvider: PinProvider) : BeaconSender {
     private val logger = Logger.withTag(this::class.getFullName())
 
     @OptIn(ExperimentalAtomicApi::class)
@@ -44,6 +44,7 @@ class ServerBeaconSender(private val nodeManager: ServerNodeManager, private val
                 host = im.name,
                 port = meta.port,
                 platform = platform,
+                clusterToken = pinProvider.computeBeaconToken(installId()) ?: ""
             )
 
 

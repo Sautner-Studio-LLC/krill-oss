@@ -42,13 +42,11 @@ fun WasmAppContent() {
     val clientNode = nodeManager.readNodeState(installId()).collectAsState()
     val clientMeta = clientNode.value.meta as ClientMetaData
 
-    // Kiosk mode: api_key in URL — skip FTUE and auto-connect
-    val kioskApiKey = SystemInfo.wasmApiKey
-    logger.i { "WASM Api key $kioskApiKey" }
-    if (clientMeta.ftue && kioskApiKey != null) {
-        logger.i { "Kiosk mode — auto-connecting with API key from URL" }
+    // WASM is served from the Ktor host — always auto-connect to localhost.
+    // PIN-derived Bearer token is injected via <meta> tag or provided by ClientPinStore.
+    if (clientMeta.ftue) {
+        logger.i { "WASM FTUE — auto-connecting to host server" }
         KioskAutoConnect(
-            apiKey = kioskApiKey,
             onConnected = { serverNode ->
                 fileOperations.update(serverNode)
                 nodeManager.update(serverNode)
@@ -56,29 +54,7 @@ fun WasmAppContent() {
                     clientNode.value,
                     clientMeta.copy(ftue = false)
                 )
-                logger.i { "Kiosk auto-connect complete — saved server ${serverNode.details()}, ftue=false" }
-                nodeManager.execute(clientNode.value)
-            }
-        )
-    } else if (clientMeta.ftue) {
-        // FTUE: Show the welcome/setup screen
-        logger.i { "FTUE active — showing ConnectBrowser" }
-        ConnectBrowser(
-            onConnected = { serverNode ->
-                // Save the server node returned from health check (has real server ID, metadata)
-                fileOperations.update(serverNode)
-                nodeManager.update(serverNode)
-
-                // Mark FTUE complete on the client node — this triggers recomposition
-                // into the else branch
-                nodeManager.updateMetaData(
-                    clientNode.value,
-                    clientMeta.copy(ftue = false)
-                )
-                logger.i { "FTUE complete — saved server ${serverNode.details()}, ftue=false" }
-
-                // Execute the client node to trigger ClientClientProcessor startup,
-                // which loads stored servers and connects via serverConnector
+                logger.i { "Auto-connect complete — saved server ${serverNode.details()}, ftue=false" }
                 nodeManager.execute(clientNode.value)
             }
         )
@@ -97,7 +73,6 @@ fun WasmAppContent() {
 @OptIn(ExperimentalUuidApi::class)
 @Composable
 private fun KioskAutoConnect(
-    apiKey: String,
     onConnected: (serverNode: Node) -> Unit
 ) {
     val nodeHttp: NodeHttp = koinInject()
@@ -110,7 +85,6 @@ private fun KioskAutoConnect(
             val serverMeta = ServerMetaData(
                 name = hostName,
                 port = SystemInfo.wasmPort,
-                apiKey = apiKey
             )
             val tempServer = NodeBuilder()
                 .type(KrillApp.Server)
@@ -122,12 +96,9 @@ private fun KioskAutoConnect(
 
             nodeHttp.readHealth(tempServer)?.let { healthNode ->
                 val healthMeta = healthNode.meta as ServerMetaData
-                val completeServer = healthNode.copy(
-                    meta = healthMeta.copy(apiKey = apiKey)
-                )
 
                 logger.i { "Kiosk connected to ${healthMeta.name} (${healthNode})" }
-                onConnected(completeServer)
+                onConnected(healthNode)
             }
 
         } catch (e: Exception) {

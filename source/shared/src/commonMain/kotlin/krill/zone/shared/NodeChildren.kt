@@ -15,9 +15,6 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
 
     fun serverCapabilities(node: Node): Set<KrillApp> {
         val set = mutableSetOf<KrillApp>()
-        if (node.meta is ServerMetaData && node.meta.apiKey.isEmpty()) {
-            return emptySet()
-        }
         if (node.state == NodeState.ERROR || node.state == NodeState.WARN) {
             return setOf(
                 MenuCommand.Update,
@@ -242,18 +239,6 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
             else -> {}
         }
 
-        when (host.meta) {
-            is ServerMetaData -> {
-                val meta = host.meta
-                if (meta.apiKey.isEmpty()) {
-                    return emptyList()
-                }
-            }
-
-            else -> {}
-
-
-        }
 
         return distinct.distinct()
 

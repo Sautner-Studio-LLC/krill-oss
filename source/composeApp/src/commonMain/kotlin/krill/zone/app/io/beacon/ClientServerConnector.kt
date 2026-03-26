@@ -71,7 +71,7 @@ class ClientServerConnector(
     }
 
     private fun beginConnectionAttempt(node: Node) {
-        logger.i("${node.details()}: begin connection attempt")
+        logger.i("${node.details()}: begin connection attempt $node")
         val handler = CoroutineExceptionHandler { _, exception ->
             logger.e(exception) { "${node.details()} Uncaught exception in connection coroutine" }
             nodeManager.alarm(node)
@@ -144,17 +144,10 @@ class ClientServerConnector(
     }
 
     /**
-     * Step 3. Update API Keys if present
+     * Step 3. (No-op) API key migration removed — authentication is now PIN-based.
      */
     private fun updateApiKeysIfNewer(node: Node) {
-        val meta = node.meta as ServerMetaData
-        nodeManager.readNodeState(node.id).value.let { state ->
-            val storedMeta = state.meta as ServerMetaData
-            if (storedMeta.apiKey.isNotEmpty() && storedMeta.apiKey != meta.apiKey) {
-                logger.i { "${node.details()}: updated api key" }
-                nodeManager.updateMetaData(state, storedMeta.copy(apiKey = meta.apiKey))
-            }
-        }
+        // No longer needed — PIN-based auth handles credentials globally
     }
 
     /**
@@ -165,7 +158,7 @@ class ClientServerConnector(
         try {
             val meta = node.meta as ServerMetaData
             val url = URLBuilder(
-                host = meta.name,
+                host = meta.resolvedHost(),
                 port = meta.port,
                 protocol = URLProtocol.HTTPS,
                 pathSegments = listOf("trust")
@@ -264,21 +257,10 @@ class ClientServerConnector(
         } //already connecting
 
 
-        if (!apiKeyAvailable(node)) {
-            logger.d { "${node.details()} unauthorized" }
-            nodeManager.unauthorized(node)
-            createNodeRecordIfMissing(node)
-            return false
-        } //not worth trying
+        // PIN-based auth — no per-server API key check needed
         return true
     }
 
-    private fun apiKeyAvailable(node: Node): Boolean {
-        val meta = node.meta as ServerMetaData
-        return meta.apiKey.isNotEmpty()
-
-
-    }
 
     @OptIn(ExperimentalUuidApi::class)
     private fun convertWireToServer(wire: NodeWire): Node {
@@ -286,8 +268,7 @@ class ClientServerConnector(
             logger.d { "find known server during wire injest" }
             return nodeManager.readNodeState(wire.installId).value.copy(state = NodeState.PAIRING)
         }
-        val name = if (wire.host().endsWith(".local")) {wire.host()} else { "${wire.host()}.local" }
-        val meta = ServerMetaData(name = name, port = wire.port)
+        val meta = ServerMetaData(name = wire.host(), port = wire.port, isLocal = true)
 
         return NodeBuilder().id(wire.installId).type(KrillApp.Server).state(NodeState.PAIRING).parent(wire.installId).meta(meta)
             .host(wire.installId).create()

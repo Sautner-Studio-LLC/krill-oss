@@ -29,6 +29,10 @@ class DefaultTrustHttpClient : TrustHost {
         logger.i { "JVM FeatureProcessor: Fetching certificate from $url" }
         val file = File("${trustStore}/${url.host}.crt")
         logger.i("checking trust store: ${file.exists()} ${file.absolutePath}")
+        val store = File(trustStore)
+        if (!store.exists()) {
+            store.mkdirs()
+        }
         val insecureClient = HttpClient(CIO) {
             engine {
                 https {
@@ -49,7 +53,7 @@ class DefaultTrustHttpClient : TrustHost {
             }
         }
 
-        val trustUrl = URLBuilder(url).apply {  path("trust")   }.build()
+        val trustUrl = URLBuilder(url).apply { path("trust") }.build()
 
         try {
             val byteArray: ByteArray = insecureClient.prepareGet(trustUrl).execute { response ->
@@ -68,7 +72,7 @@ class DefaultTrustHttpClient : TrustHost {
                 var certChanged = false
                 if (file.exists()) {
                     val existing = file.readBytes()
-                    if ( ! existing.contentEquals(byteArray)) {
+                    if (!existing.contentEquals(byteArray)) {
                         file.delete()
                         file.writeBytes(byteArray)
                         logger.i("Replaced cert for ${url.host} to ${file.absolutePath}")
@@ -87,18 +91,16 @@ class DefaultTrustHttpClient : TrustHost {
                     rebuildHttpClient()
                 }
 
-                 true
+                true
             } else {
-                 false
+                false
             }
-
 
 
         } catch (e: Exception) {
             logger.e("jvm Exception while attempting to fetch peer certificate $trustUrl", e)
             return false
-        }
-        finally {
+        } finally {
             insecureClient.close()
         }
     }
@@ -106,7 +108,7 @@ class DefaultTrustHttpClient : TrustHost {
     override suspend fun deleteCert(node: Node) {
         val meta = node.meta as ServerMetaData
         val url = URLBuilder(
-            host = meta.name,
+            host = meta.resolvedHost(),
             port = meta.port,
             protocol = URLProtocol.HTTPS,
             pathSegments = listOf("trust")

@@ -10,10 +10,6 @@ import krill.zone.server.di.*
 import krill.zone.shared.*
 import krill.zone.shared.di.*
 import org.koin.ktor.plugin.*
-import java.io.*
-
-private const val API_KEY_FILE_PATH = "/etc/krill/credentials/api_key"
-private const val PEER_API_KEY_FILE_PATH = "/etc/krill/credentials/peer_api_key"
 
 /**
  * Configures all Ktor plugins for the server
@@ -31,36 +27,6 @@ private fun Application.configureSSE() {
     install(SSE) {  }
 }
 
-/**
- * Reads the API key from the credentials file.
- * Returns null if the file doesn't exist or is empty.
- */
-fun readApiKey(): String? {
-    return try {
-        val file = File(API_KEY_FILE_PATH)
-        if (file.exists()) {
-            file.readText().trim().takeIf { it.isNotEmpty() }
-        } else {
-            null
-        }
-    } catch (_: Exception) {
-        null
-    }
-}
-
-fun readPeerApiKey(): String? {
-    return try {
-        val file = File(PEER_API_KEY_FILE_PATH)
-        if (file.exists()) {
-            file.readText().trim().takeIf { it.isNotEmpty() }
-        } else {
-            null
-        }
-    } catch (_: Exception) {
-        null
-    }
-}
-
 private fun Application.configureCores() {
     install(CORS) {
         allowHeader("Authorization")
@@ -70,24 +36,30 @@ private fun Application.configureCores() {
 
 }
 
+/**
+ * PIN-based authentication.
+ *
+ * All cluster members (clients and peers) use the same Bearer token derived from
+ * the shared cluster PIN. If no PIN is configured, the server starts in open
+ * access mode (all requests accepted) until a PIN is set during install.
+ */
 private fun Application.configureAuthentication() {
     install(Authentication) {
         bearer("auth-api-key") {
             realm = "Krill API"
             authenticate { tokenCredential ->
-                if (File("/etc/krill/kiosk").exists()) {
-                    UserIdPrincipal("krill-kiosk")
-                }
-                else {
-                    val expectedApiKey = readApiKey()
-                    val expectedPeerKey = readPeerApiKey()
-                    when {
-                        expectedApiKey != null && tokenCredential.token == expectedApiKey ->
-                            UserIdPrincipal("krill-client")
-                        expectedPeerKey != null && tokenCredential.token == expectedPeerKey ->
-                            UserIdPrincipal("krill-peer")
-                        else -> null
-                    }
+                val pinProvider = PinProviderContainer.pinProvider
+                println("tokenCredential: ${tokenCredential.token}")
+                when {
+                    // No PIN configured — open access until postinst sets one
+                    pinProvider == null || !pinProvider.isConfigured() ->
+                        UserIdPrincipal("krill-open")
+                    // PIN-derived Bearer token matches
+
+                    pinProvider.validateBearer(tokenCredential.token) ->
+                        UserIdPrincipal("krill-member")
+                    // Invalid token
+                    else -> null
                 }
             }
         }
@@ -118,6 +90,3 @@ private fun Application.configureContentNegotiation() {
         json(fastJson)
     }
 }
-
-
-

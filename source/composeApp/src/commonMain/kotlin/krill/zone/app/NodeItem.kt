@@ -267,16 +267,7 @@ private fun AnimatedNodeVisibility(isNewNode: Boolean, node: Node, isRemoving: B
 
         ) {
 
-            val text = if (node.type is KrillApp.Server) {
-                val meta = node.meta as ServerMetaData
-                if (meta.apiKey.isEmpty()) {
-                    "${node.name()} (missing api key)"
-                } else {
-                    node.name()
-                }
-            } else {
-                node.name()
-            }
+            val text = node.name()
 
 
             // Use Box with wrapContentSize(unbounded=true) to allow NamePill to overflow

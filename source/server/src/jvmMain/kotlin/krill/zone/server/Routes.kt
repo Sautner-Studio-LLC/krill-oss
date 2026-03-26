@@ -17,9 +17,7 @@ import krill.zone.server.krillapp.server.serial.*
 import krill.zone.shared.*
 import krill.zone.shared.events.*
 import krill.zone.shared.krillapp.datapoint.*
-import krill.zone.shared.io.*
 import krill.zone.shared.krillapp.server.*
-import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.trigger.webhook.*
 import krill.zone.shared.node.*
@@ -39,11 +37,11 @@ internal fun Routing.configureApiRoutes(
     dataProcessor: DataProcessor,
     piManager: PiManager,
     serialDirectoryMonitor: SerialDirectoryMonitor,
-    lanTrustTokenProvider: LanTrustTokenProvider,
+    pinProvider: PinProvider,
     scope: CoroutineScope
 ) {
     configureNodeRoutes(nodeManager, dataProcessor, serialDirectoryMonitor, piManager, scope)
-    configureSystemRoutes(nodeManager, piManager, serialDirectoryMonitor, lanTrustTokenProvider, scope)
+    configureSystemRoutes(nodeManager, piManager, serialDirectoryMonitor, pinProvider, scope)
     configurePlatformRoutes(piManager)
     configureStaticContent()
 }
@@ -525,7 +523,7 @@ private fun Routing.configureSystemRoutes(
     nodeManager: ServerNodeManager,
     piManager: PiManager,
     serialDirectoryMonitor: SerialDirectoryMonitor,
-    lanTrustTokenProvider: LanTrustTokenProvider,
+    pinProvider: PinProvider,
     scope: CoroutineScope
 ) {
     // download the servers self signed cert, no api key required
@@ -558,84 +556,18 @@ private fun Routing.configureSystemRoutes(
         }
     }
 
-    // Peer handshake — no Bearer auth required; validated by LAN trust token.
-    // Peers exchange API keys so they can authenticate subsequent requests.
-    post("/peer/handshake") {
-        try {
-            val request = call.receive<HandshakeRequest>()
 
-            // Validate LAN trust token
-            if (!lanTrustTokenProvider.validate(request.lanTrustToken)) {
-                logger.w("Peer handshake rejected from ${request.hostname} (${request.installId}): invalid trust token")
-                call.respond(HttpStatusCode.Forbidden, "Invalid or missing trust token")
-                return@post
-            }
 
-            val serverId = installId()
-            val serverMeta = nodeManager.readNodeState(serverId).value.meta as ServerMetaData
-
-            // Build the composite peer node ID (same format as beacon-created peers)
-            val peerNodeId = "$serverId:${request.installId}"
-
-            // Find or create the Peer node
-            val existingPeer = nodeManager.readPersistedNode(peerNodeId)
-            if (existingPeer != null) {
-                // Peer already exists — update API key if changed (supports key rotation)
-                val peerMeta = existingPeer.meta as ServerMetaData
-                if (peerMeta.apiKey != request.peerApiKey) {
-                    nodeManager.updateMetaData(
-                        existingPeer,
-                        peerMeta.copy(apiKey = request.peerApiKey)
-                    )
-                    logger.i("Peer handshake: updated API key for ${request.hostname} (${request.installId})")
-                } else {
-                    logger.i("Peer handshake: idempotent request from ${request.hostname} (${request.installId})")
-                }
-            } else {
-                // Create new Peer node with the initiator's API key
-                val peerMeta = ServerMetaData(
-                    name = request.hostname,
-                    port = request.port,
-                    apiKey = request.peerApiKey
-                )
-                val peerNode = NodeBuilder()
-                    .id(peerNodeId)
-                    .type(KrillApp.Server.Peer)
-                    .parent(serverId)
-                    .host(request.installId)
-                    .meta(peerMeta)
-                    .create()
-                nodeManager.create(peerNode)
-                logger.i("Peer handshake: created peer for ${request.hostname} (${request.installId})")
-            }
-
-            // Download the initiator's certificate (fire-and-forget, best-effort)
-            scope.launch {
-                try {
-                    val certUrl = io.ktor.http.URLBuilder(
-                        host = request.hostname,
-                        port = request.port,
-                        protocol = io.ktor.http.URLProtocol.HTTPS,
-                        pathSegments = listOf("trust")
-                    ).build()
-                    trustHttpClient.fetchPeerCert(certUrl)
-                    logger.i("Peer handshake: downloaded certificate from ${request.hostname}")
-                } catch (e: Exception) {
-                    logger.w("Peer handshake: failed to download cert from ${request.hostname}: ${e.message}")
-                }
-            }
-
-            // Respond with this server's peer API key
-            call.respond(
-                HttpStatusCode.OK,
-                HandshakeResponse(
-                    installId = serverId,
-                    peerApiKey = serverMeta.peerApiKey
-                )
-            )
-        } catch (ex: Exception) {
-            logger.e("Error in peer handshake", ex)
-            call.respond(HttpStatusCode.InternalServerError, "Handshake failed")
+    // PIN-derived Bearer token for WASM clients served from this host.
+    // Unauthenticated — the WASM app is already trusted (served from the same server).
+    // Returns the token so the WASM app can authenticate subsequent API calls.
+    get("/krill-token") {
+        val token = pinProvider.bearerToken()
+        if (token != null) {
+            call.respondText(token, ContentType.Text.Plain, HttpStatusCode.OK)
+        } else {
+            // No PIN configured — WASM will operate without auth (open access)
+            call.respondText("", ContentType.Text.Plain, HttpStatusCode.OK)
         }
     }
 

@@ -5,9 +5,6 @@ object SystemInfo {
 
     var wasmPort = 0
 
-    /** API key passed via query string (kiosk mode: ?api_key=...) */
-    var wasmApiKey: String? = null
-
     private var isReady = false
 
     fun isServer(): Boolean {  return isServer }

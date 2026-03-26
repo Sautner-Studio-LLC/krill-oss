@@ -72,13 +72,6 @@ UniversalAppNodeProcessor(
         logger.d { "${node.details()} node processor posted " }
         if (node.state != NodeState.DELETING) {
             when (node.type) {
-                KrillApp.Server.Peer -> {
-                    val meta = node.meta as ServerMetaData
-                    if (meta.apiKey.isEmpty()) {
-                        nodeManager.alarm(node)
-                        return
-                    }
-                }
                 else -> {}
             }
         }

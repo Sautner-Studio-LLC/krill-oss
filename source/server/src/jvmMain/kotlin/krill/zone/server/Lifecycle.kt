@@ -37,6 +37,7 @@ internal class ServerLifecycleManager(
     private val cronTask: CronTask,
     private val mqttManager: MqttManager,
     private val pinReconciliationTask: PinReconciliationTask,
+    private val pinProvider: PinProvider,
     private val scope: CoroutineScope,
 ) {
     private val logger = Logger.withTag(this::class.getFullName())
@@ -54,7 +55,10 @@ internal class ServerLifecycleManager(
      */
     fun onReady() {
         logger.i("Server is ready ${SystemInfo.isServer()} ")
-
+            PinProviderContainer.init(pinProvider)
+           pinProvider.bearerToken()?.let { token ->
+               logger.i("Token is $token")
+           }
             try {
                 nodeManager.init {
                     val job = scope.launch {
@@ -113,8 +117,6 @@ internal class ServerLifecycleManager(
         if (!nodeManager.nodeAvailable(installId())) return
         val server = nodeManager.readNodeState(installId()).value
         val meta = server.meta as ServerMetaData
-        val apiKey = File("/etc/krill/credentials/api_key").readText().trim()
-        val peerKey = File("/etc/krill/credentials/peer_api_key").readText().trim()
         val version = File("/etc/krill/version").readText().trim()
         val serverInfo = if (platform == Platform.RASPBERRY_PI) {
             piManager.getServerInfo()
@@ -126,8 +128,6 @@ internal class ServerLifecycleManager(
                 version = version,
                 os = serverInfo.os.trim(),
                 model = serverInfo.model,
-                apiKey = apiKey,
-                peerApiKey = peerKey,
                 platform = platform,
             )
         )

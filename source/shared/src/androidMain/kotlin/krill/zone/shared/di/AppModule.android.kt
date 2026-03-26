@@ -4,6 +4,7 @@ import co.touchlab.kermit.*
 import kotlinx.coroutines.*
 import krill.zone.shared.io.AndroidFileOperations
 import krill.zone.shared.io.FileOperations
+import krill.zone.shared.security.*
 import org.koin.core.qualifier.*
 import org.koin.dsl.*
 
@@ -17,6 +18,5 @@ actual val platformModule = module {
         CoroutineScope(SupervisorJob() + Dispatchers.IO + handler)
     }
     single<FileOperations> { AndroidFileOperations() }
-
-
+    single<ClientPinStore> { AndroidClientPinStore() }
 }

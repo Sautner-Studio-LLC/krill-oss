@@ -4,6 +4,7 @@ import co.touchlab.kermit.*
 import kotlinx.coroutines.*
 import krill.zone.shared.io.*
 import krill.zone.shared.node.persistence.*
+import krill.zone.shared.security.*
 import org.koin.core.qualifier.*
 import org.koin.dsl.*
 
@@ -24,5 +25,6 @@ actual val platformModule = module {
     // Provide FileOperations for desktop clients (file-based)
     // Server overrides this with database-based implementation in serverModule
     single<FileOperations> { FileBasedOperations(get()) }
+    single<ClientPinStore> { JvmClientPinStore() }
 }
 

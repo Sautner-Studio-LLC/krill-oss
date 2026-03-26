@@ -17,7 +17,7 @@ import kotlin.time.*
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-class EventClient(private val nodeManager: ClientNodeManager, private val scope: CoroutineScope) {
+class EventClient(private val nodeManager: ClientNodeManager, private val bearerTokenProvider: () -> String?, private val scope: CoroutineScope) {
 
     private val logger = Logger.withTag(this::class.getFullName())
     private val jobs = mutableMapOf<String, Job>()
@@ -30,15 +30,13 @@ class EventClient(private val nodeManager: ClientNodeManager, private val scope:
         if (jobs.containsKey(node.id)) return
 
         val meta = node.meta as ServerMetaData
-        val name = if (SystemInfo.wasmApiKey?.isNotEmpty() == true) "localhost" else meta.name
+        val name = if (SystemInfo.wasmPort > 0) "localhost" else meta.resolvedHost()
         val sseUrl = URLBuilder(
             protocol = URLProtocol.HTTPS,
             host = name,
             port = meta.port,
             pathSegments = listOf("events")
         ).build()
-        val apiKey = meta.apiKey
-
         val job = scope.launch {
             var attempt = 0
             while (isActive) {
@@ -47,7 +45,9 @@ class EventClient(private val nodeManager: ClientNodeManager, private val scope:
                     sseHttpClient.sse(
                         urlString = sseUrl.toString(),
                         request = {
-                            header(HttpHeaders.Authorization, "Bearer $apiKey")
+                            bearerTokenProvider()?.let { token ->
+                                header(HttpHeaders.Authorization, "Bearer $token")
+                            }
                         },
                         deserialize = { _, json ->
                             fastJson.decodeFromString<Event>(json)

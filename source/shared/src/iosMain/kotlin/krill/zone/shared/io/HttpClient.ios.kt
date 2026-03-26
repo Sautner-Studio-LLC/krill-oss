@@ -116,7 +116,7 @@ class DefaultTrustHttpClient : TrustHost {
     override suspend fun deleteCert(node: Node) {
         val meta = node.meta as ServerMetaData
         val url = URLBuilder(
-            host = meta.name,
+            host = meta.resolvedHost(),
             port = meta.port,
             protocol = URLProtocol.HTTPS,
             pathSegments = listOf("trust")

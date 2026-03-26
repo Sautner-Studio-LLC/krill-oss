@@ -84,15 +84,6 @@ class ClientNodeManager(
 
     fun update(node: Node) {
 
-        // Reject server updates without API key if one exists
-        if (nodeAvailable(node.id) && node.type is KrillApp.Server) {
-            val meta = node.meta as ServerMetaData
-            if (meta.apiKey.isEmpty()) {
-                logger.d("Rejecting server update with no API key when one exists")
-                return
-            }
-        }
-
         // Update or create StateFlow
         val flow = nodes.getOrPut(node.id) { MutableStateFlow(node).also { observeNode(it) } }
         flow.value = node
