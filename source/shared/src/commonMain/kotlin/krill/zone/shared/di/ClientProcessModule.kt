@@ -23,6 +23,7 @@ import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.krillapp.spacer.*
+import krill.zone.shared.security.*
 import krill.zone.shared.krillapp.trigger.*
 import krill.zone.shared.krillapp.trigger.button.*
 import krill.zone.shared.krillapp.trigger.cron.*
@@ -35,7 +36,7 @@ val clientProcessModule = module {
     factory<CronLogic> { cronLogic }
 
     single<ClientProcessor> {
-        ClientClientProcessor(get(), get(), get(), get(), get(named(IO_SCOPE)))
+        ClientClientProcessor(get(), get(), get(), get(), getOrNull(), get(named(IO_SCOPE)))
     }
 
     single<ServerProcessor> {

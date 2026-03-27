@@ -20,8 +20,9 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
     @OptIn(ExperimentalUuidApi::class)
     suspend fun readHealth(host: Node): Node? {
         try {
-            logger.i("${host.details()}: read health")
+            logger.i("${host.details()}: read health $host")
             val meta = host.meta as ServerMetaData
+
             val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
             val url = "https://$name:${meta.port}/health"
 

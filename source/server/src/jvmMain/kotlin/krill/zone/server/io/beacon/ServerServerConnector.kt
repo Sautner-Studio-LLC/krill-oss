@@ -138,6 +138,14 @@ class ServerServerConnector(
             return false
         }
 
+        // Already connected — don't re-download certs and health on every beacon
+        if (nodeManager.nodeAvailable(node.id)) {
+            val existing = nodeManager.readNodeState(node.id).value
+            if (existing.state != NodeState.ERROR && existing.state != NodeState.UNAUTHORISED) {
+                return false
+            }
+        }
+
         return true
     }
 

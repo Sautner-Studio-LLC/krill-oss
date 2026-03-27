@@ -59,8 +59,7 @@ fun PinEntryScreen(
                         pin = filtered
                         showError = null
                     },
-                    label = { Text("Cluster PIN") },
-                    placeholder = { Text("0000") },
+
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.NumberPassword,

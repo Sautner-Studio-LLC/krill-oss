@@ -32,10 +32,21 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                 KrillApp.Trigger.CronTimer,
                 KrillApp.Trigger.IncomingWebHook,
                 KrillApp.MQTT,
+                KrillApp.Server.Pin
                 )
         )
+        when (node.type) {
+            KrillApp.Server -> {
+                val meta = node.meta as ServerMetaData
+                
+            }
+        }
+
         if (node.meta is ServerMetaData && node.meta.platform == Platform.RASPBERRY_PI) {
             set.add(KrillApp.Server.Pin)
+        }
+        if (node.meta is ServerMetaData) {
+
         }
         set.remove(MenuCommand.Delete)
         return set

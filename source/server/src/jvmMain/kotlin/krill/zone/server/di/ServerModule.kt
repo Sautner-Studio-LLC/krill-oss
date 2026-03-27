@@ -28,6 +28,7 @@ import krill.zone.shared.krillapp.executor.mqtt.*
 import krill.zone.shared.krillapp.server.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.node.persistence.*
+import krill.zone.shared.security.*
 import org.koin.core.qualifier.*
 import org.koin.dsl.*
 
@@ -109,6 +110,15 @@ val serverModule = module {
     single<BeaconSender> { ServerBeaconSender(get(), get(), get()) }
     single<BeaconWireHandler> { ServerBeaconWireHandler(get(), get(), get(), get(named(IO_SCOPE))) }
     single<PinProvider> { PinProvider() }
+    // Expose PinProvider as ClientPinStore so shared module's NodeHttp/EventClient can get bearer tokens
+    single<ClientPinStore> {
+        val pinProvider: PinProvider = get()
+        object : ClientPinStore {
+            override fun bearerToken(): String? = pinProvider.bearerToken()
+            override fun storePin(pin: String) {} // Server PIN is set via postinst, not runtime
+            override fun clear() {}
+        }
+    }
     single<ServerConnector> { ServerServerConnector(get(), get(), get(named(IO_SCOPE))) }
     single<ServerNodeManager> { ServerNodeManager(get(), get(), get(), get(), get(named(IO_SCOPE)) ) }
     single<ServerBoss> { ServerBoss(get(named(IO_SCOPE))) }
