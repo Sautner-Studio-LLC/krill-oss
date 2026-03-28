@@ -14,6 +14,7 @@ import org.koin.core.context.*
 fun main() {
     SystemInfo.setServer(false)
     SystemInfo.wasmPort = window.location.port.toInt()
+    SystemInfo.wasmHost = window.location.hostname
 
     startKoin {
         modules(

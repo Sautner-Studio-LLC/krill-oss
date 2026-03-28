@@ -23,7 +23,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
             logger.i("${host.details()}: read health $host")
             val meta = host.meta as ServerMetaData
 
-            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
+            val name = if (SystemInfo.wasmPort > 0) { SystemInfo.wasmHost } else meta.resolvedHost()
             val url = "https://$name:${meta.port}/health"
 
             val response = httpClient.get(url) {
@@ -53,7 +53,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
             val meta = host.meta as ServerMetaData
 
             val client: HttpClient = httpClient
-            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
+            val name = if (SystemInfo.wasmPort > 0) { SystemInfo.wasmHost } else meta.resolvedHost()
 
             val url = "https://${name}:${meta.port}/node/$id/data/plot"
             val response = client.get(url) {
@@ -84,7 +84,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
                 val meta = host.meta as ServerMetaData
 
                 val client: HttpClient = httpClient
-                val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
+                val name = if (SystemInfo.wasmPort > 0) { SystemInfo.wasmHost } else meta.resolvedHost()
 
                 val url = "https://${name}:${meta.port}/node/${id}"
                 val response = client.get(url) {
@@ -120,7 +120,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
 
 
                 val client: HttpClient = httpClient
-                val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
+                val name = if (SystemInfo.wasmPort > 0) { SystemInfo.wasmHost } else meta.resolvedHost()
 
                 val url = "https://${name}:${meta.port}/nodes"
                 val response = client.get(url) {
@@ -156,7 +156,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
 
             val meta = host.meta as ServerMetaData
 
-            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
+            val name = if (SystemInfo.wasmPort > 0) { SystemInfo.wasmHost } else meta.resolvedHost()
 
             val url = "https://${name}:${meta.port}/node/${node.id}"
 
@@ -190,7 +190,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
         suspend fun deleteNode(host: Node, node: Node) {
             if (node.type == KrillApp.Client) return
             val meta = host.meta as ServerMetaData
-            val name = if (SystemInfo.wasmPort > 0) {"localhost" } else meta.resolvedHost()
+            val name = if (SystemInfo.wasmPort > 0) { SystemInfo.wasmHost } else meta.resolvedHost()
 
 
             val url = "https://${name}:${meta.port}/node/${node.id}"

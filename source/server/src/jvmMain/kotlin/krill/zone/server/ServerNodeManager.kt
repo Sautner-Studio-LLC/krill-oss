@@ -122,7 +122,7 @@ class ServerNodeManager(
             }
         }
         nodePersistence.save(node)
-        //TODO move to server events based on what changed
+
         node.type.emit(node)
 
 

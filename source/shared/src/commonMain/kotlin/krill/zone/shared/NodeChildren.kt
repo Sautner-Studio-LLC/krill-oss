@@ -38,12 +38,24 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
         when (node.type) {
             KrillApp.Server -> {
                 val meta = node.meta as ServerMetaData
-                
+                if (meta.platform == Platform.RASPBERRY_PI) {
+                    set.add(KrillApp.Server.Pin)
+                }
             }
+            KrillApp.Project -> {
+                nodeManager.readNodeStateOrNull(node.host).value?.let { host ->
+                    val meta = host.meta as ServerMetaData
+                    if (meta.platform == Platform.RASPBERRY_PI) {
+                        set.add(KrillApp.Server.Pin)
+                    }
+                }
+            }
+
+            else -> {}
         }
 
         if (node.meta is ServerMetaData && node.meta.platform == Platform.RASPBERRY_PI) {
-            set.add(KrillApp.Server.Pin)
+
         }
         if (node.meta is ServerMetaData) {
 

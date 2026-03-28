@@ -30,7 +30,7 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
         if (jobs.containsKey(node.id)) return
 
         val meta = node.meta as ServerMetaData
-        val name = if (SystemInfo.wasmPort > 0) "localhost" else meta.resolvedHost()
+        val name = if (SystemInfo.wasmPort > 0) SystemInfo.wasmHost else meta.resolvedHost()
         val sseUrl = URLBuilder(
             protocol = URLProtocol.HTTPS,
             host = name,

@@ -6,7 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import co.touchlab.kermit.*
 import krill.zone.app.*
-import krill.zone.app.krillapp.server.*
+import krill.zone.app.krillapp.client.ftue.*
 import krill.zone.app.startup.*
 import krill.zone.shared.*
 import krill.zone.shared.io.*
@@ -14,160 +14,163 @@ import krill.zone.shared.krillapp.client.*
 import krill.zone.shared.krillapp.server.*
 import krill.zone.shared.node.*
 import krill.zone.shared.node.manager.*
+import krill.zone.shared.security.*
 import org.koin.compose.*
+import org.koin.core.context.*
 import kotlin.uuid.*
 
 
 private val logger = Logger.withTag("WASM")
 
 /**
- * WASM-specific app content that handles browser first-time user experience.
+ * WASM-specific app content — follows the same flow as native platforms:
  *
- * Lifecycle:
- * 1. Client node exists (created by ClientNodeManager.init() in App.kt) with ftue=true on first visit
- * 2. FTUE: Show ConnectBrowser where user accepts TOS, enters API key, tests connection
- * 3. On successful test + Continue: save server node with API key, set client ftue=false,
- *    then execute client node to trigger ClientClientProcessor startup flow
- * 4. Subsequent visits: client ftue=false, App.kt's onReady executes client node,
- *    ClientClientProcessor loads stored server and connects via serverConnector —
- *    we just wait for a server to appear in the swarm, then show KrillScreen
+ * 1. FTUE: Accept TOS (WelcomeDialog)
+ * 2. PIN entry (PinEntryScreen) — stored in browser localStorage
+ * 3. Auto-connect to host server using browser's hostname
+ * 4. Show KrillScreen
+ *
+ * On subsequent visits: PIN is loaded from localStorage, auto-connect proceeds immediately.
  */
 @OptIn(ExperimentalUuidApi::class)
 @Composable
 fun WasmAppContent() {
     val nodeManager: ClientNodeManager = koinInject()
     val fileOperations: FileOperations = koinInject()
+    val pinStore: ClientPinStore? = GlobalContext.get().getOrNull()
 
-    // Read FTUE state reactively from the client node that was created by nodeManager.init()
     val clientNode = nodeManager.readNodeState(installId()).collectAsState()
     val clientMeta = clientNode.value.meta as ClientMetaData
 
-    // WASM is served from the Ktor host — always auto-connect to localhost.
-    // PIN-derived Bearer token is injected via <meta> tag or provided by ClientPinStore.
-    if (clientMeta.ftue) {
-        logger.i { "WASM FTUE — auto-connecting to host server" }
-        KioskAutoConnect(
-            onConnected = { serverNode ->
-                fileOperations.update(serverNode)
-                nodeManager.update(serverNode)
-                nodeManager.updateMetaData(
-                    clientNode.value,
-                    clientMeta.copy(ftue = false)
-                )
-                logger.i { "Auto-connect complete — saved server ${serverNode.details()}, ftue=false" }
-                nodeManager.execute(clientNode.value)
-            }
-        )
-    } else {
-        // Post-FTUE: ClientClientProcessor startup flow (triggered by App.kt onReady)
-        // is already connecting to stored servers. Just wait for a server to appear.
-        WasmAwaitServer(nodeManager, fileOperations, clientNode.value, clientMeta)
-    }
-}
+    val showFtue = remember { mutableStateOf(clientMeta.ftue) }
+    val needsPin = remember { mutableStateOf(pinStore?.bearerToken() == null) }
 
-/**
- * Kiosk auto-connect: uses the API key from the URL query string to call /health,
- * then invokes [onConnected] with the verified server Node. Shows a spinner while
- * connecting and an error message with retry on failure.
- */
-@OptIn(ExperimentalUuidApi::class)
-@Composable
-private fun KioskAutoConnect(
-    onConnected: (serverNode: Node) -> Unit
-) {
-    val nodeHttp: NodeHttp = koinInject()
-    var error by remember { mutableStateOf<String?>(null) }
-    var retryTrigger by remember { mutableStateOf(0) }
-
-    LaunchedEffect(retryTrigger) {
-        error = null
-        try {
-            val serverMeta = ServerMetaData(
-                name = hostName,
-                port = SystemInfo.wasmPort,
-            )
-            val tempServer = NodeBuilder()
-                .type(KrillApp.Server)
-                .meta(serverMeta)
-                .id("_")
-                .parent("_")
-                .host("_")
-                .create()
-
-            nodeHttp.readHealth(tempServer)?.let { healthNode ->
-                val healthMeta = healthNode.meta as ServerMetaData
-
-                logger.i { "Kiosk connected to ${healthMeta.name} (${healthNode})" }
-                onConnected(healthNode)
-            }
-
-        } catch (e: Exception) {
-            logger.e(e) { "Kiosk auto-connect failed" }
-            error = e.message ?: "Connection failed"
-        }
-    }
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(CommonLayout.SPACING_LARGE)
-        ) {
-            if (error != null) {
-                Text(
-                    text = "Kiosk connection failed: $error",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Button(onClick = { retryTrigger++ }) {
-                    Text("Retry")
+    when {
+        // Step 1: TOS acceptance
+        showFtue.value -> {
+            logger.i { "WASM FTUE — showing TOS" }
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .widthIn(max = CommonLayout.SERVER_FORM_MAX_WIDTH)
+                        .padding(CommonLayout.PADDING_LARGE)
+                ) {
+                    Column(modifier = Modifier.padding(CommonLayout.PADDING_LARGE)) {
+                        WelcomeDialog {
+                            nodeManager.updateMetaData(
+                                nodeManager.readNodeState(clientNode.value.id).value,
+                                clientMeta.copy(ftue = false)
+                            )
+                            showFtue.value = false
+                        }
+                    }
                 }
-            } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.width(CommonLayout.PROGRESS_INDICATOR_SIZE),
-                    color = MaterialTheme.colorScheme.secondary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-                Text(
-                    text = "Connecting to server...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
             }
+        }
+
+        // Step 2: PIN entry
+        needsPin.value -> {
+            logger.i { "WASM — showing PIN entry" }
+            PinEntryScreen(
+                onPinEntered = { pin ->
+                    pinStore?.storePin(pin)
+                    needsPin.value = false
+                }
+            )
+        }
+
+        // Step 3: Connect and show app
+        else -> {
+            WasmConnectAndShow(nodeManager, fileOperations, clientNode.value, clientMeta)
         }
     }
 }
 
 /**
- * Waits for ClientClientProcessor to connect a server (via the normal startup flow),
- * then shows KrillScreen. Shows a spinner while waiting. Falls back to ConnectBrowser
- * if no stored server exists.
+ * Handles the connection flow after TOS + PIN are complete.
+ * If no server is stored yet, auto-connects to the host server.
+ * Then waits for the server to appear in the swarm and shows KrillScreen.
  */
 @OptIn(ExperimentalUuidApi::class)
 @Composable
-private fun WasmAwaitServer(
+private fun WasmConnectAndShow(
     nodeManager: ClientNodeManager,
     fileOperations: FileOperations,
     clientNode: Node,
     clientMeta: ClientMetaData
 ) {
-    // Check if we have a stored server at all
     val hasStoredServer = remember {
         fileOperations.load().any { it.type is KrillApp.Server }
     }
 
+    // If no stored server, auto-connect to the host (the Ktor server serving this WASM app)
     if (!hasStoredServer) {
-        // Edge case: ftue=false but no server stored — recover by resetting FTUE
-        logger.e { "No stored server found but ftue=false — resetting FTUE" }
+        val nodeHttp: NodeHttp = koinInject()
+        var connecting by remember { mutableStateOf(true) }
+        var error by remember { mutableStateOf<String?>(null) }
+
         LaunchedEffect(Unit) {
-            nodeManager.updateMetaData(clientNode, clientMeta.copy(ftue = true))
+            try {
+                val serverMeta = ServerMetaData(
+                    name = SystemInfo.wasmHost,
+                    port = SystemInfo.wasmPort,
+                )
+                val tempServer = NodeBuilder()
+                    .type(KrillApp.Server)
+                    .meta(serverMeta)
+                    .id("_").parent("_").host("_")
+                    .create()
+
+                nodeHttp.readHealth(tempServer)?.let { healthNode ->
+                    fileOperations.update(healthNode)
+                    nodeManager.update(healthNode)
+                    logger.i { "WASM auto-connect complete — ${healthNode.details()}" }
+                    nodeManager.execute(clientNode)
+                    connecting = false
+                } ?: run {
+                    error = "Server not reachable"
+                    connecting = false
+                }
+            } catch (e: Exception) {
+                logger.e(e) { "WASM auto-connect failed" }
+                error = e.message ?: "Connection failed"
+                connecting = false
+            }
         }
-        return
+
+        if (connecting || error != null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(CommonLayout.SPACING_LARGE)
+                ) {
+                    if (error != null) {
+                        Text(
+                            text = "Connection failed: $error",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        CircularProgressIndicator(
+                            modifier = Modifier.width(CommonLayout.PROGRESS_INDICATOR_SIZE),
+                            color = MaterialTheme.colorScheme.secondary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                        Text("Connecting to server...", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            return
+        }
     }
 
-    // Observe the swarm for any server node to appear
+    // Wait for server to appear in swarm, then show KrillScreen
     val swarm by nodeManager.swarm.collectAsState()
     val hasServer = swarm.any { id ->
         nodeManager.nodeAvailable(id) && nodeManager.readNodeState(id).value.type is KrillApp.Server
@@ -176,7 +179,6 @@ private fun WasmAwaitServer(
     if (hasServer) {
         KrillScreen()
     } else {
-        // Show spinner while ClientClientProcessor connects
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -190,11 +192,7 @@ private fun WasmAwaitServer(
                     color = MaterialTheme.colorScheme.secondary,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
-                Text(
-                    text = "Connecting...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Text("Connecting...", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
