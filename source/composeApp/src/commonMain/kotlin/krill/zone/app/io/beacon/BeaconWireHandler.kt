@@ -4,6 +4,7 @@ import co.touchlab.kermit.*
 import kotlinx.coroutines.*
 import krill.zone.shared.*
 import krill.zone.shared.io.beacon.*
+import krill.zone.shared.lifecycle.*
 import krill.zone.shared.node.*
 import krill.zone.shared.node.manager.*
 import org.koin.ext.*
@@ -26,6 +27,9 @@ class ClientBeaconWireHandler(
     override fun handleIncomingWire(wire: NodeWire) {
         scope.launch {
             try {
+                // Skip beacon processing when app is backgrounded to save energy
+                if (!AppLifecycle.isForeground.value) return@launch
+
                 // Ignore our own beacons
                 if (wire.host() == hostName) {
                     return@launch

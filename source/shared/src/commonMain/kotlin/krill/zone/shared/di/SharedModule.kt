@@ -12,7 +12,10 @@ const val IO_SCOPE = "IO_SCOPE"
 
 val sharedModule = module {
     single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
-    single<NodeHttp> { NodeHttp(get(), bearerTokenProvider = { getOrNull<ClientPinStore>()?.bearerToken() }) }
+    single<NodeHttp> {
+        val pinStore: ClientPinStore? = getOrNull()
+        NodeHttp(get(), bearerTokenProvider = { pinStore?.bearerToken() })
+    }
     single<TrustHost> { trustHttpClient }
 
     factory<Multicast> { Multicast(get(named(IO_SCOPE))) }

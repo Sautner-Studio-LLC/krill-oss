@@ -45,8 +45,10 @@ enum class ViewMode {
 @Composable
 fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
     val nodeManager: ClientNodeManager = koinInject()
-    val nodeState = if (nodeManager.nodeAvailable(node.id)) { nodeManager.readNodeState(node.id).collectAsState() } else {
-        MutableStateFlow(node).collectAsState() }
+    val nodeFlow = remember(node.id) {
+        if (nodeManager.nodeAvailable(node.id)) nodeManager.readNodeState(node.id) else MutableStateFlow(node)
+    }
+    val nodeState = nodeFlow.collectAsState()
 
     nodeState.value.let { n ->
         // Key on both node ID and type to force full recreation when switching between

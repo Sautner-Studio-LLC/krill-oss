@@ -59,11 +59,14 @@ class ClientServerConnector(
         }
 
             mutex.withLock {
+                // Evict completed/cancelled jobs to prevent unbounded growth
+                jobs.entries.removeAll { (_, job) -> !job.isActive }
+
                 if (jobs.containsKey(node.id)) {
                     logger.i { "${node.details()} already connecting (mutex check)" }
                     return@withLock
                 }
-                logger.w("${node.details()}: starting connection flow existing jobs: ${jobs.keys}")
+                logger.d("${node.details()}: starting connection flow existing jobs: ${jobs.keys}")
                 beginConnectionAttempt(node)
             }
 

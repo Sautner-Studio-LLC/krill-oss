@@ -16,7 +16,6 @@ import krill.zone.shared.node.*
 import krill.zone.shared.node.manager.*
 import krill.zone.shared.security.*
 import org.koin.compose.*
-import org.koin.core.context.*
 import kotlin.uuid.*
 
 
@@ -37,7 +36,7 @@ private val logger = Logger.withTag("WASM")
 fun WasmAppContent() {
     val nodeManager: ClientNodeManager = koinInject()
     val fileOperations: FileOperations = koinInject()
-    val pinStore: ClientPinStore? = GlobalContext.get().getOrNull()
+    val pinStore: ClientPinStore? = getKoin().getOrNull()
 
     val clientNode = nodeManager.readNodeState(installId()).collectAsState()
     val clientMeta = clientNode.value.meta as ClientMetaData

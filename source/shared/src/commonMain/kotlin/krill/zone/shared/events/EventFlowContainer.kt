@@ -13,13 +13,13 @@ object EventFlowContainer {
     val events = _events.asSharedFlow()
 
     suspend fun postEvent(event: Event) {
-        logger.i("postEvent: $event")
+        logger.d("postEvent: $event")
         if (! EventTracker.dbounce(event)) {
             EventTracker.track(event)
             _events.emit(event)
 
         } else {
-            logger.i("debounced postEvent: $event")
+            logger.d("debounced postEvent: $event")
         }
 
     }

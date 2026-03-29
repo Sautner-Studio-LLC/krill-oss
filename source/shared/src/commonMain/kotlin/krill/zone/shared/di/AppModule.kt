@@ -17,7 +17,10 @@ expect val platformModule: Module
 val appModule = module {
     single<ServerBoss> { ServerBoss(get()) }
     single<NodeObserver> { DefaultNodeObserver(get()) }
-    single<EventClient> { EventClient(get(), bearerTokenProvider = { getOrNull<ClientPinStore>()?.bearerToken() }, get(named(IO_SCOPE))) }
+    single<EventClient> {
+        val pinStore: ClientPinStore? = getOrNull()
+        EventClient(get(), bearerTokenProvider = { pinStore?.bearerToken() }, get(named(IO_SCOPE)))
+    }
     factory<ComputeLogic> { DefaultComputeLogic() }
     factory<NodeChildren> { NodeChildren(get()) }
 }

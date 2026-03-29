@@ -38,7 +38,7 @@ open class PinProvider {
      */
     fun validateBearer(candidate: String): Boolean {
         val expected = bearerToken() ?: return false
-        return constantTimeEquals(expected, candidate)
+        return constantTimeEquals(expected.lowercase(), candidate.lowercase())
     }
 
     /**
@@ -118,7 +118,7 @@ open class PinProvider {
 
     companion object {
         const val DERIVED_KEY_PATH = "/etc/krill/credentials/pin_derived_key"
-        const val PIN_HASH_PATH = "/etc/krill/credentials/pin_hash"
+
         private const val RELOAD_INTERVAL_MS = 60_000L
 
         fun constantTimeEquals(a: String, b: String): Boolean {

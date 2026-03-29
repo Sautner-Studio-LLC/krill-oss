@@ -108,7 +108,7 @@ class ServerNodeManager(
         readNodeStateOrNull(node.id).value?.let { origin ->
 
             if (node.state != NodeState.NONE && origin.state != node.state && node.timestamp - origin.timestamp > 1000) {
-                logger.w("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")
+                logger.d("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")
                 scope.launch {
                     EventFlowContainer.postEvent(
                         Event(

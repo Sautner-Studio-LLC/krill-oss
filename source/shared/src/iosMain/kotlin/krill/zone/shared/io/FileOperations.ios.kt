@@ -11,16 +11,21 @@ class IosFileOperations : FileOperations {
     private val defaults = NSUserDefaults(suiteName = "krill_nodes_v3")
 
     override fun read(id: String): Node? {
-        val json = defaults.stringForKey(id) ?: return null
-        return fastJson.decodeFromString<Node>(json)
+        val json = defaults.stringForKey("$PREFIX$id") ?: return null
+        return try {
+            fastJson.decodeFromString<Node>(json)
+        } catch (ex: Exception) {
+            logger.e("bad json for node $id", ex)
+            null
+        }
     }
 
     override fun update(node: Node) {
-        defaults.setObject(fastJson.encodeToString(node ), forKey = node.id)
+        defaults.setObject(fastJson.encodeToString(node), forKey = "$PREFIX${node.id}")
     }
 
     override fun delete(id: String) {
-        defaults.removeObjectForKey(id)
+        defaults.removeObjectForKey("$PREFIX$id")
     }
 
     override fun load(): List<Node> {
@@ -28,6 +33,7 @@ class IosFileOperations : FileOperations {
         val keys = defaults.dictionaryRepresentation().keys
         for (key in keys) {
             val keyString = key as? String ?: continue
+            if (!keyString.startsWith(PREFIX)) continue
             val json = defaults.stringForKey(keyString) ?: continue
             try {
                 val node = fastJson.decodeFromString<Node>(json)
@@ -37,5 +43,9 @@ class IosFileOperations : FileOperations {
             }
         }
         return list
+    }
+
+    companion object {
+        private const val PREFIX = "krill_node_"
     }
 }

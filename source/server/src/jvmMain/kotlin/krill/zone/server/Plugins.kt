@@ -49,7 +49,8 @@ private fun Application.configureAuthentication() {
             realm = "Krill API"
             authenticate { tokenCredential ->
                 val pinProvider = PinProviderContainer.pinProvider
-                println("tokenCredential: ${tokenCredential.token}")
+//                println("tokenCredential: ${tokenCredential.token}")
+//                println("pinProvider: ${pinProvider?.bearerToken()}")
                 when {
                     // No PIN configured — open access until postinst sets one
                     pinProvider == null || !pinProvider.isConfigured() ->

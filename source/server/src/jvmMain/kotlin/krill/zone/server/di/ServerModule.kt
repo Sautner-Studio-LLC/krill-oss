@@ -108,7 +108,7 @@ val serverModule = module {
     single<ServerHttpClient> { ServerHttpClient() }
     single<BeaconSupervisor> { ServerBeaconSupervisor(get(), get(), get(), get(named(IO_SCOPE))) }
     single<BeaconSender> { ServerBeaconSender(get(), get(), get()) }
-    single<BeaconWireHandler> { ServerBeaconWireHandler(get(), get(), get(), get(named(IO_SCOPE))) }
+    single<BeaconWireHandler> { ServerBeaconWireHandler(get(), get(), get(), get(), get(named(IO_SCOPE))) }
     single<PinProvider> { PinProvider() }
     // Expose PinProvider as ClientPinStore so shared module's NodeHttp/EventClient can get bearer tokens
     single<ClientPinStore> {
