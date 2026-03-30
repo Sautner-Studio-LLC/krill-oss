@@ -132,7 +132,7 @@ fun KrillScreen() {
                     MenuCommand.Expand -> {
                         selectedNodeId.value?.let { id ->
                             if (nodeManager.nodeAvailable(id)) {
-                                NodeSummaryAndEditor(nodeManager.readNodeState(id).value, ViewMode.VIEW)
+                                NodeSummaryAndEditor(nodeManager.readNodeState(id).value, ViewMode.EDIT)
                             }
                         }
                     }
