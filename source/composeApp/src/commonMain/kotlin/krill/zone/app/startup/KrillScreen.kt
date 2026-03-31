@@ -4,11 +4,14 @@ import androidx.compose.runtime.*
 import krill.zone.app.*
 import krill.zone.app.krillapp.client.*
 import krill.zone.app.krillapp.client.about.*
+import krill.zone.app.krillapp.project.camera.*
 import krill.zone.app.krillapp.project.diagram.*
 import krill.zone.app.krillapp.server.*
 import krill.zone.app.krillapp.server.peer.*
 import krill.zone.app.ui.*
 import krill.zone.shared.*
+import krill.zone.shared.krillapp.project.camera.*
+import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.node.manager.*
 import org.koin.compose.*
 import kotlin.uuid.*
@@ -30,15 +33,17 @@ fun KrillScreen() {
 
     // Determine if we should show ClientScreen - consolidate all paths that lead to ClientScreen
     // to ensure it's always called from the same composition location
+    val fullScreenTypes = setOf(KrillApp.Project.Diagram, KrillApp.Project.Camera)
+
     val showClientScreen = when {
         nodeType == KrillApp.Server && command.value == KrillApp.Server.Peer -> false
         nodeType == KrillApp.Client && command.value == MenuCommand.Focus -> true
-        nodeType == KrillApp.Project.Diagram && command.value !in listOf(MenuCommand.Expand, MenuCommand.Update) -> true
+        nodeType in fullScreenTypes && command.value !in listOf(MenuCommand.Expand, MenuCommand.Update) -> true
         nodeType == null && command.value !in listOf(MenuCommand.Update, MenuCommand.Expand) -> true
-        nodeType != null && nodeType != KrillApp.Client && nodeType != KrillApp.Project.Diagram &&
+        nodeType != null && nodeType != KrillApp.Client && nodeType !in fullScreenTypes &&
                 command.value == MenuCommand.Focus && selectedNodeId.value == null -> true
 
-        nodeType != null && nodeType != KrillApp.Client && nodeType != KrillApp.Project.Diagram &&
+        nodeType != null && nodeType != KrillApp.Client && nodeType !in fullScreenTypes &&
                 command.value !in listOf(MenuCommand.Update, MenuCommand.Expand, MenuCommand.Focus) -> true
 
         else -> false
@@ -111,13 +116,45 @@ fun KrillScreen() {
             KrillApp.Project.Diagram -> {
                 selectedNodeId.value?.let { id ->
                     nodeManager.readNodeStateOrNull(id).value?.let { n ->
-                        DiagramScreen(n)
+                        val meta = n.meta as DiagramMetaData
+                        when {
+                            // Edit command or no source yet → show editor
+                            command.value == MenuCommand.Update -> {
+                                NodeSummaryAndEditor(n, ViewMode.EDIT)
+                            }
+                            // Source set → show diagram view
+                            meta.source.isNotEmpty() -> {
+                                DiagramScreen(n)
+                            }
+                            // No source → show editor
+                            else -> {
+                                NodeSummaryAndEditor(n, ViewMode.EDIT)
+                            }
+                        }
                     }
                 }
 
 
             }
 
+            KrillApp.Project.Camera -> {
+                selectedNodeId.value?.let { id ->
+                    nodeManager.readNodeStateOrNull(id).value?.let { n ->
+                        val meta = n.meta as CameraMetaData
+                        when {
+                            command.value == MenuCommand.Update -> {
+                                NodeSummaryAndEditor(n, ViewMode.EDIT)
+                            }
+                            meta.enabled -> {
+                                CameraScreen(n)
+                            }
+                            else -> {
+                                NodeSummaryAndEditor(n, ViewMode.EDIT)
+                            }
+                        }
+                    }
+                }
+            }
 
             else -> {
                 when (command.value) {

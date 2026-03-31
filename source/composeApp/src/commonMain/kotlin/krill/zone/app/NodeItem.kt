@@ -64,7 +64,7 @@ fun BoxScope.NodeItem(
                 // LLM nodes show chat in the avatar speech bubble — no command needed
             }
 
-            node.type is KrillApp.DataPoint.Graph || node.type is KrillApp.Project.Diagram -> {
+            node.type is KrillApp.DataPoint.Graph || node.type is KrillApp.Project.Diagram || node.type is KrillApp.Project.Camera -> {
                 screenCore.executeCommand(MenuCommand.Expand)
             }
 
@@ -102,7 +102,7 @@ fun BoxScope.NodeItem(
                                     logger.i("Node Right Clicked ${node.details()}")
 
                                     screenCore.selectNode(node.id, alt = true)
-                                    if (node.type is KrillApp.Server.LLM) {
+                                    if (node.type is KrillApp.Server.LLM || node.type is KrillApp.Project.Diagram || node.type is KrillApp.Project.Camera) {
                                         screenCore.executeCommand(MenuCommand.Update)
                                     }
 
@@ -194,7 +194,7 @@ fun BoxScope.NodeItem(
                             logger.i("Node Long Pressed ${node.type}")
                             // Use selectNodeById to always get current state
                             screenCore.selectNode(node.id, alt = true)
-                            if (node.type is KrillApp.Server.LLM) {
+                            if (node.type is KrillApp.Server.LLM || node.type is KrillApp.Project.Diagram || node.type is KrillApp.Project.Camera) {
                                 screenCore.executeCommand(MenuCommand.Update)
                             }
                         }

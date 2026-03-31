@@ -6,9 +6,11 @@ import krill.zone.shared.*
 import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.datapoint.graph.*
 import krill.zone.shared.krillapp.project.*
+import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.backup.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import kotlin.uuid.*
@@ -84,6 +86,14 @@ fun Node.name() : String {
 
        KrillApp.Project.Journal -> {
            (this.meta as JournalMetaData).name
+       }
+
+       KrillApp.Project.Camera -> {
+           (this.meta as CameraMetaData).name.ifEmpty { "Camera" }
+       }
+
+       KrillApp.Server.Backup -> {
+           (this.meta as BackupMetaData).name.ifEmpty { "Backup" }
        }
 
        KrillApp.Project -> {

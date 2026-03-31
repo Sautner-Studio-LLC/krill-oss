@@ -173,6 +173,8 @@ object IconManager {
             KrillApp.MQTT -> painterResource(Res.drawable.chart_network_duotone_regular)
             KrillApp.Server.Peer -> painterResource(Res.drawable.network_wired_duotone_solid)
             KrillApp.Server.LLM -> painterResource(Res.drawable.brain_circuit_duotone_regular)
+            KrillApp.Project.Camera -> painterResource(Res.drawable.camera_security_duotone_regular)
+            KrillApp.Server.Backup -> painterResource(Res.drawable.clone_duotone_regular)
         }
     }
 

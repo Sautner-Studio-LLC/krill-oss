@@ -20,9 +20,11 @@ import krill.zone.app.krillapp.executor.webhook.*
 import krill.zone.app.krillapp.mqtt.*
 import krill.zone.app.krillapp.project.*
 import krill.zone.app.krillapp.project.diagram.*
+import krill.zone.app.krillapp.project.camera.*
 import krill.zone.app.krillapp.project.journal.*
 import krill.zone.app.krillapp.project.tasklist.*
 import krill.zone.app.krillapp.server.*
+import krill.zone.app.krillapp.server.backup.*
 import krill.zone.app.krillapp.server.llm.*
 import krill.zone.app.krillapp.server.peer.*
 import krill.zone.app.krillapp.server.pin.*
@@ -242,6 +244,13 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
                         }
                     }
 
+                    KrillApp.Project.Camera -> {
+                        when (viewMode) {
+                            ViewMode.EDIT -> EditCamera(n)
+                            ViewMode.VIEW -> CameraView(n)
+                            ViewMode.ROW -> CameraRow(n.id)
+                        }
+                    }
 
                     KrillApp.Trigger.HighThreshold, KrillApp.Trigger.LowThreshold, KrillApp.Trigger.SilentAlarmMs -> {
                         when (viewMode) {
@@ -258,6 +267,14 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
                             }
                         }
 
+                    }
+
+                    KrillApp.Server.Backup -> {
+                        when (viewMode) {
+                            ViewMode.EDIT -> EditBackup(n)
+                            ViewMode.VIEW -> BackupView(n)
+                            ViewMode.ROW -> BackupRow(n.id)
+                        }
                     }
 
                     KrillApp.Client.About -> {

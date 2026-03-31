@@ -32,8 +32,10 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                 KrillApp.Trigger.CronTimer,
                 KrillApp.Trigger.IncomingWebHook,
                 KrillApp.MQTT,
-                KrillApp.Server.Pin
-                )
+                KrillApp.Server.Pin,
+                KrillApp.Server.Backup
+
+            )
         )
         when (node.type) {
             KrillApp.Server -> {
@@ -42,6 +44,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                     set.add(KrillApp.Server.Pin)
                 }
             }
+
             KrillApp.Project -> {
                 nodeManager.readNodeStateOrNull(node.host).value?.let { host ->
                     val meta = host.meta as ServerMetaData
@@ -69,19 +72,21 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
             MenuCommand.Update,
 
 
-        ).plus(dataExecutors())
+            ).plus(dataExecutors())
     }
 
     fun dataExecutors(): Set<KrillApp> {
         return setOf(
-        KrillApp.Executor.LogicGate,
-        KrillApp.Executor.OutgoingWebHook,
-        KrillApp.Executor.Lambda,
-        KrillApp.Executor.LogicGate,
-        KrillApp.Executor.Calculation,
-        KrillApp.Executor.Compute,
+            KrillApp.Executor.LogicGate,
+            KrillApp.Executor.OutgoingWebHook,
+            KrillApp.Executor.Lambda,
+            KrillApp.Executor.LogicGate,
+            KrillApp.Executor.Calculation,
+            KrillApp.Executor.Compute,
             KrillApp.Executor.SMTP,
-        KrillApp.MQTT
+            KrillApp.MQTT,
+            KrillApp.Project.Camera,
+            KrillApp.Server.Backup
         )
     }
 
@@ -130,7 +135,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
 
 
                 if (meta.pinNumber > 0) {
-                    distinct.addAll( triggerCapabilities()  )
+                    distinct.addAll(triggerCapabilities())
                 }
 
             }
@@ -173,7 +178,6 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
 
 
             }
-
 
 
             KrillApp.Trigger.IncomingWebHook -> {
@@ -224,22 +228,28 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
             }
 
             KrillApp.Trigger -> {
-                distinct.addAll(listOf(
-                    MenuCommand.Delete,
-                    KrillApp.Trigger.HighThreshold,
-                    KrillApp.Trigger.LowThreshold,
-                    KrillApp.Trigger.SilentAlarmMs
-                ).plus(dataExecutors()))
+                distinct.addAll(
+                    listOf(
+                        MenuCommand.Delete,
+                        KrillApp.Trigger.HighThreshold,
+                        KrillApp.Trigger.LowThreshold,
+                        KrillApp.Trigger.SilentAlarmMs
+                    ).plus(dataExecutors())
+                )
             }
 
-            KrillApp.Trigger.Button -> { distinct.addAll(triggerCapabilities()) }
+            KrillApp.Trigger.Button -> {
+                distinct.addAll(triggerCapabilities())
+            }
 
             KrillApp.Executor, KrillApp.DataPoint.Filter.DiscardAbove, KrillApp.DataPoint.Filter.DiscardBelow, KrillApp.DataPoint.Filter.Deadband, KrillApp.DataPoint.Filter.Debounce -> {
                 distinct.remove(MenuCommand.Update)
 
             }
 
-            KrillApp.Executor.LogicGate -> {distinct.addAll(triggerCapabilities()) }
+            KrillApp.Executor.LogicGate -> {
+                distinct.addAll(triggerCapabilities())
+            }
 
             KrillApp.Project -> {
                 distinct.addAll(serverCapabilities(state))
@@ -252,6 +262,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                 val meta = host.meta as ServerMetaData
                 if (meta.platform == Platform.RASPBERRY_PI) {
                     distinct.add(KrillApp.Server.Pin)
+                    distinct.add(KrillApp.Project.Camera)
                 }
             }
 

@@ -221,6 +221,132 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
     }
 
     /**
+     * Fetches a JPEG snapshot from a camera node.
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    suspend fun getCameraSnapshot(host: Node, cameraId: String): ByteArray? {
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/camera/$cameraId/snapshot"
+
+            val response = httpClient.get(url) { withAuth() }
+            return if (response.status.isSuccess()) {
+                response.body<ByteArray>()
+            } else {
+                logger.w { "Camera snapshot failed: ${response.status}" }
+                null
+            }
+        } catch (e: Exception) {
+            logger.e(e) { "Error fetching camera snapshot" }
+            return null
+        }
+    }
+
+    /**
+     * Lists saved camera snapshot filenames (newest first).
+     */
+    suspend fun getCameraThumbnails(host: Node, cameraId: String): List<String> {
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/camera/$cameraId/thumbnails"
+            val response = httpClient.get(url) {
+                contentType(ContentType.Application.Json)
+                withAuth()
+            }
+            return if (response.status.isSuccess()) {
+                response.body()
+            } else emptyList()
+        } catch (e: Exception) {
+            logger.e(e) { "Error fetching camera thumbnails" }
+            return emptyList()
+        }
+    }
+
+    /**
+     * Fetches a saved camera thumbnail as bytes via the trusted httpClient.
+     */
+    suspend fun getCameraThumbnailBytes(host: Node, cameraId: String, filename: String): ByteArray? {
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/camera/$cameraId/thumbnails/$filename"
+            val response = httpClient.get(url) { withAuth() }
+            return if (response.status.isSuccess()) response.body<ByteArray>() else null
+        } catch (e: Exception) {
+            logger.e(e) { "Error fetching thumbnail $filename" }
+            return null
+        }
+    }
+
+    /**
+     * Returns the URL for a saved camera thumbnail.
+     */
+    fun getCameraThumbnailUrl(host: Node, cameraId: String, filename: String): String {
+        val meta = host.meta as ServerMetaData
+        return "${baseUrl(meta)}/camera/$cameraId/thumbnails/$filename"
+    }
+
+    // ==================== Backup ====================
+
+    /**
+     * Lists backup archives from the server.
+     */
+    suspend fun getBackupList(host: Node): List<Map<String, Any?>> {
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/backup/list"
+            val response = httpClient.get(url) {
+                contentType(ContentType.Application.Json)
+                withAuth()
+            }
+            @Suppress("UNCHECKED_CAST")
+            return if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            logger.e(e) { "Error fetching backup list" }
+            return emptyList()
+        }
+    }
+
+    /**
+     * Deletes a backup archive file.
+     */
+    suspend fun deleteBackupFile(host: Node, filename: String): Boolean {
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/backup/file?file=${filename.encodeURLPath()}"
+            val response = httpClient.delete(url) { withAuth() }
+            return response.status.isSuccess()
+        } catch (e: Exception) {
+            logger.e(e) { "Error deleting backup file $filename" }
+            return false
+        }
+    }
+
+    /**
+     * Initiates a restore from a backup archive.
+     */
+    suspend fun restoreBackup(host: Node, filename: String): String? {
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/backup/restore"
+            val response = httpClient.post(url) {
+                contentType(ContentType.Application.Json)
+                withAuth()
+                setBody(mapOf("filename" to filename))
+            }
+            return if (response.status.isSuccess()) {
+                val result = response.body<Map<String, String>>()
+                result["message"]
+            } else {
+                logger.w { "Restore failed: ${response.status}" }
+                null
+            }
+        } catch (e: Exception) {
+            logger.e(e) { "Error restoring backup $filename" }
+            return null
+        }
+    }
+
+    /**
      * Uploads an SVG diagram file to a project.
      */
     @OptIn(ExperimentalUuidApi::class)

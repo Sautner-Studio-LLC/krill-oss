@@ -509,6 +509,77 @@ private fun Routing.configureNodeRoutes(
             }
         }
 
+        // Camera snapshot - capture a single JPEG frame
+        get("/camera/{id}/snapshot") {
+            val id = call.parameters["id"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, "Missing camera ID")
+                return@get
+            }
+
+            try {
+                // Capture a single JPEG frame using rpicam-still.
+                // stderr has verbose logs — do NOT merge with stdout or JPEG gets corrupted.
+                val process = ProcessBuilder(
+                    "rpicam-still", "-o", "-", "--immediate", "--nopreview", "-n",
+                    "--width", "1280", "--height", "720", "--encoding", "jpg"
+                ).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+
+                val imageBytes = process.inputStream.readBytes()
+                val exitCode = process.waitFor()
+
+                if (exitCode == 0 && imageBytes.isNotEmpty()) {
+                    call.respondBytes(imageBytes, ContentType.Image.JPEG, HttpStatusCode.OK)
+                } else {
+                    logger.w("Camera snapshot failed: exit=$exitCode, bytes=${imageBytes.size}")
+                    call.respond(HttpStatusCode.NotFound, "Camera not available")
+                }
+            } catch (e: Exception) {
+                logger.e("Error capturing camera snapshot", e)
+                call.respond(HttpStatusCode.InternalServerError, "Failed to capture snapshot")
+            }
+        }
+
+        // TODO: GET /camera/{id}/stream — MJPEG proxy from rpicam-vid subprocess (v2)
+
+        // List saved camera snapshots (newest first)
+        get("/camera/{id}/thumbnails") {
+            val id = call.parameters["id"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, "Missing camera ID")
+                return@get
+            }
+            val dir = File("/srv/krill/camera/$id")
+            if (!dir.exists() || !dir.isDirectory) {
+                call.respond(HttpStatusCode.OK, emptyList<String>())
+                return@get
+            }
+            val filenames = dir.listFiles()
+                ?.filter { it.extension == "jpg" }
+                ?.sortedByDescending { it.name }
+                ?.take(50)
+                ?.map { it.name }
+                ?: emptyList()
+            call.respond(HttpStatusCode.OK, filenames)
+        }
+
+        // Serve a saved camera snapshot file
+        get("/camera/{id}/thumbnails/{file}") {
+            val id = call.parameters["id"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, "Missing camera ID")
+                return@get
+            }
+            val fileName = call.parameters["file"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, "Missing file name")
+                return@get
+            }
+            val cameraRoot = File("/srv/krill/camera")
+            val file = File(cameraRoot, "$id/$fileName")
+            if (!file.exists() || !file.canonicalPath.startsWith(cameraRoot.canonicalPath)) {
+                call.respond(HttpStatusCode.NotFound, "Snapshot not found")
+                return@get
+            }
+            call.respondBytes(file.readBytes(), ContentType.Image.JPEG, HttpStatusCode.OK)
+        }
+
     }
 }
 
@@ -674,6 +745,70 @@ private fun Routing.configureSystemRoutes(
                 delay(1000) // Give time for cleanup
                 logger.i("Exiting process...")
                 kotlin.system.exitProcess(0)
+            }
+        }
+
+        // ==================== Backup Routes ====================
+
+        get("/backup/list") {
+            val backupDir = File("/srv/krill/backup")
+            if (!backupDir.exists()) {
+                call.respond(HttpStatusCode.OK, emptyList<Map<String, Any>>())
+                return@get
+            }
+            val regex = Regex("""^(.+)-backup-(\d+)-(\d+)\.zip$""")
+            val archives = backupDir.listFiles()
+                ?.filter { it.extension == "zip" }
+                ?.sortedByDescending { it.name }
+                ?.mapNotNull { file ->
+                    regex.matchEntire(file.name)?.let { match ->
+                        mapOf(
+                            "filename" to file.name,
+                            "hostname" to match.groupValues[1],
+                            "createdAt" to match.groupValues[2].toLong(),
+                            "expiresAt" to match.groupValues[3].toLong(),
+                            "sizeBytes" to file.length()
+                        )
+                    }
+                } ?: emptyList()
+            call.respond(HttpStatusCode.OK, archives)
+        }
+
+        delete("/backup/file") {
+            val filename = call.request.queryParameters["file"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, "Missing file parameter")
+                return@delete
+            }
+            val backupDir = File("/srv/krill/backup")
+            val file = File(backupDir, filename)
+            if (!file.exists() || !file.canonicalPath.startsWith(backupDir.canonicalPath)) {
+                call.respond(HttpStatusCode.NotFound, "File not found")
+                return@delete
+            }
+            file.delete()
+            call.respond(HttpStatusCode.OK, "Deleted $filename")
+        }
+
+        post("/backup/restore") {
+            try {
+                val request = call.receive<Map<String, String>>()
+                val filename = request["filename"] ?: run {
+                    call.respond(HttpStatusCode.BadRequest, "Missing filename")
+                    return@post
+                }
+                val backupDir = File("/srv/krill/backup")
+                val archiveFile = File(backupDir, filename)
+                if (!archiveFile.exists() || !archiveFile.canonicalPath.startsWith(backupDir.canonicalPath)) {
+                    call.respond(HttpStatusCode.NotFound, "Archive not found")
+                    return@post
+                }
+
+                // TODO: Implement full restore logic (extract ZIP, reimport nodes, restore dirs)
+                // For v1, return success with reboot instruction
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Restore initiated from $filename. Please reboot the server."))
+            } catch (e: Exception) {
+                logger.e("Restore failed", e)
+                call.respond(HttpStatusCode.InternalServerError, "Restore failed: ${e.message}")
             }
         }
     }

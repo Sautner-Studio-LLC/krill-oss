@@ -12,6 +12,8 @@ import krill.zone.server.krillapp.executor.mqtt.*
 import krill.zone.server.krillapp.executor.smtp.*
 import krill.zone.server.krillapp.executor.webhook.*
 import krill.zone.server.krillapp.project.*
+import krill.zone.server.krillapp.project.camera.*
+import krill.zone.server.krillapp.server.backup.*
 import krill.zone.server.krillapp.server.llm.*
 import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
@@ -34,9 +36,11 @@ import krill.zone.shared.krillapp.executor.mqtt.*
 import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
+import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
+import krill.zone.shared.krillapp.server.backup.*
 import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
@@ -205,6 +209,18 @@ val serverProcessModule = module {
     single<JournalProcessor> {
 
         ServerJournalProcessor()
+
+    }
+
+    single<CameraProcessorInterface> {
+
+        ServerCameraProcessor(get(), get(named(IO_SCOPE)))
+
+    }
+
+    single<BackupProcessorInterface> {
+
+        ServerBackupProcessor(get(), get(named(IO_SCOPE)))
 
     }
 

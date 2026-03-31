@@ -14,16 +14,17 @@ import krill.zone.shared.krillapp.executor.mqtt.*
 import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
+import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.backup.*
 import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.krillapp.spacer.*
-import krill.zone.shared.security.*
 import krill.zone.shared.krillapp.trigger.*
 import krill.zone.shared.krillapp.trigger.button.*
 import krill.zone.shared.krillapp.trigger.cron.*
@@ -48,7 +49,7 @@ val clientProcessModule = module {
     }
 
     // One shared instance handles all remaining processor interfaces
-    single { UniversalAppNodeProcessor(get(), get(), get(), get(named(IO_SCOPE))) } binds arrayOf(
+    single { UniversalAppNodeProcessor(get(), get(),   get(named(IO_SCOPE))) } binds arrayOf(
         PeerProcessor::class,
         ProjectProcessor::class,
         MqttProcessor::class,
@@ -72,6 +73,8 @@ val clientProcessModule = module {
         JournalProcessor::class,
         LLMProcessor::class,
         SMTPProcessorInterface::class,
+        CameraProcessorInterface::class,
+        BackupProcessorInterface::class,
     )
 
 }

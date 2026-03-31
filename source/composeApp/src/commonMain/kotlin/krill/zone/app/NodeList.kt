@@ -18,9 +18,11 @@ import krill.zone.app.krillapp.executor.webhook.*
 import krill.zone.app.krillapp.mqtt.*
 import krill.zone.app.krillapp.project.*
 import krill.zone.app.krillapp.project.diagram.*
+import krill.zone.app.krillapp.project.camera.*
 import krill.zone.app.krillapp.project.journal.*
 import krill.zone.app.krillapp.project.tasklist.*
 import krill.zone.app.krillapp.server.*
+import krill.zone.app.krillapp.server.backup.*
 import krill.zone.app.krillapp.server.llm.*
 import krill.zone.app.krillapp.server.pin.*
 import krill.zone.shared.*
@@ -223,6 +225,12 @@ fun NodeRow(node: Node, callback: (String) -> Unit) {
             }
             KrillApp.Project.Journal -> {
                 JournalRow(node.id)
+            }
+            KrillApp.Project.Camera -> {
+                CameraRow(node.id)
+            }
+            KrillApp.Server.Backup -> {
+                BackupRow(node.id)
             }
             else -> {}
         }

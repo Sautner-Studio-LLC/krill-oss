@@ -17,9 +17,11 @@ import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
+import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.backup.*
 import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
@@ -61,6 +63,8 @@ val platformSerializerModule = SerializersModule {
         subclass(JournalMetaData::class)
         subclass(LLMMetaData::class)
         subclass(SMTPMetaData::class)
+        subclass(CameraMetaData::class)
+        subclass(BackupMetaData::class)
 
     }
     polymorphic(baseClass = KrillApp::class) {
@@ -90,6 +94,8 @@ val platformSerializerModule = SerializersModule {
         subclass(MenuCommand.Delete::class)
         subclass(MenuCommand.Expand::class)
         subclass(KrillApp.Executor.SMTP::class)
+        subclass(KrillApp.Project.Camera::class)
+        subclass(KrillApp.Server.Backup::class)
         subclass(MenuCommand.Focus::class)
     }
     polymorphic(baseClass = EventPayload::class) {

@@ -17,9 +17,11 @@ import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
+import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.backup.*
 import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
@@ -63,12 +65,13 @@ val krillAppChildren: Map<KrillApp?, List<KrillApp>> = mapOf(
     // Server children
     KrillApp.Server to listOf(
         KrillApp.Server.Pin, KrillApp.Server.Peer,
-        KrillApp.Server.LLM, KrillApp.Server.SerialDevice
+        KrillApp.Server.LLM, KrillApp.Server.SerialDevice,
+        KrillApp.Server.Backup
     ),
 
     // Project children
     KrillApp.Project to listOf(
-        KrillApp.Project.Diagram, KrillApp.Project.TaskList, KrillApp.Project.Journal
+        KrillApp.Project.Diagram, KrillApp.Project.TaskList, KrillApp.Project.Journal, KrillApp.Project.Camera
     ),
 
     // DataPoint children
@@ -194,6 +197,12 @@ sealed class KrillApp(
                 }.processor.post(node)
             })
 
+        @Serializable
+        data object Backup : KrillApp(meta = { BackupMetaData() }, emit = { node ->
+            object : KoinComponent {
+                val processor: BackupProcessorInterface by inject(mode = LazyThreadSafetyMode.SYNCHRONIZED)
+            }.processor.post(node)
+        })
 
     }
 
@@ -221,6 +230,13 @@ sealed class KrillApp(
         data object Journal : KrillApp(meta = { JournalMetaData() }, emit = { node ->
             object : KoinComponent {
                 val processor: JournalProcessor by inject(mode = LazyThreadSafetyMode.SYNCHRONIZED)
+            }.processor.post(node)
+        })
+
+        @Serializable
+        data object Camera : KrillApp(meta = { CameraMetaData() }, emit = { node ->
+            object : KoinComponent {
+                val processor: CameraProcessorInterface by inject(mode = LazyThreadSafetyMode.SYNCHRONIZED)
             }.processor.post(node)
         })
     }

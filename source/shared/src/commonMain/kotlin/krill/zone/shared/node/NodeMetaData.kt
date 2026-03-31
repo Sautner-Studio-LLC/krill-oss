@@ -15,9 +15,11 @@ import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.diagram.*
+import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.backup.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.krillapp.spacer.*
@@ -94,6 +96,8 @@ fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData {
         is TaskListMetaData -> meta.copy(error = error)
         is JournalMetaData -> meta.copy(error = error)
         is SMTPMetaData -> meta.copy(error = error)
+        is CameraMetaData -> meta.copy(error = error)
+        is BackupMetaData -> meta.copy(error = error)
         else -> meta // Fallback for unknown types
     }
 }

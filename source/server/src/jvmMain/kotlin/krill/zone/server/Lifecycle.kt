@@ -7,6 +7,7 @@ import io.ktor.server.application.*
 import kotlinx.coroutines.*
 import krill.zone.server.events.*
 import krill.zone.server.krillapp.executor.cron.*
+import krill.zone.server.krillapp.server.backup.*
 import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
 import krill.zone.server.logging.*
@@ -96,6 +97,7 @@ internal class ServerLifecycleManager(
                         if (platform == Platform.RASPBERRY_PI) {
                             serverBoss.addTask(pinReconciliationTask)
                         }
+                        serverBoss.addTask(BackupCleanupTask())
                         serverBoss.start()
                     }
                     job.invokeOnCompletion {
@@ -123,12 +125,24 @@ internal class ServerLifecycleManager(
         } else {
             SystemCommandOperator.getSystemInfo()
         }
+        // Detect camera presence
+        val cameraAvailable = try {
+            val process = ProcessBuilder("rpicam-still", "--list-cameras")
+                .redirectErrorStream(true).start()
+            val output = process.inputStream.bufferedReader().readText()
+            process.waitFor()
+            output.contains("Available cameras") && output.contains(" : ")
+        } catch (e: Exception) {
+            false
+        }
+
         nodeManager.updateMetaData(
             server, meta.copy(
                 version = version,
                 os = serverInfo.os.trim(),
                 model = serverInfo.model,
                 platform = platform,
+                cameraAvailable = cameraAvailable,
             )
         )
     }

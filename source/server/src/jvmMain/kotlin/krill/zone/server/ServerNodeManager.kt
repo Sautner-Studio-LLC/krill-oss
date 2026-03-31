@@ -3,6 +3,7 @@ package krill.zone.server
 import co.touchlab.kermit.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.*
 import krill.zone.shared.*
 import krill.zone.shared.events.*
 import krill.zone.shared.krillapp.datapoint.*
@@ -49,6 +50,17 @@ class ServerNodeManager(
         extraBufferCapacity = 64
     )
     val nodeUpdates: SharedFlow<Node> = _nodeUpdates.asSharedFlow()
+
+    /**
+     * Mutex for coordinating backup exports with database writes.
+     * Backup processor can use [withExportLock] when exporting nodes to ensure
+     * a consistent snapshot. Currently advisory — H2 single-writer guarantees
+     * atomic reads via loadAll(), but this provides a future hook for
+     * stronger consistency if needed.
+     */
+    val exportLock = Mutex()
+
+    suspend fun <T> withExportLock(block: suspend () -> T): T = exportLock.withLock { block() }
 
     // ==================== Initialization ====================
 

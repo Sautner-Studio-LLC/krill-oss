@@ -14,10 +14,11 @@ import krill.zone.shared.krillapp.executor.mqtt.*
 import krill.zone.shared.krillapp.executor.smtp.*
 import krill.zone.shared.krillapp.executor.webhook.*
 import krill.zone.shared.krillapp.project.*
+import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
-import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.backup.*
 import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.peer.*
 import krill.zone.shared.krillapp.server.pin.*
@@ -38,7 +39,6 @@ UniversalAppNodeProcessor(
 
     private val nodeManager: ClientNodeManager,
     private val observer: NodeObserver,
-    private val nodeHttp: NodeHttp,
     private val scope: CoroutineScope
 ) : CronProcessor,
     DataPointProcessorInterface,
@@ -62,19 +62,16 @@ UniversalAppNodeProcessor(
     TaskListProcessor,
     JournalProcessor,
     LLMProcessor,
-    SMTPProcessorInterface {
+    SMTPProcessorInterface,
+    CameraProcessorInterface,
+    BackupProcessorInterface {
     private val logger = Logger.withTag(this::class.getFullName())
 
     @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
     override fun post(node: Node) {
 
 
-        logger.d { "${node.details()} node processor posted " }
-        if (node.state != NodeState.DELETING) {
-            when (node.type) {
-                else -> {}
-            }
-        }
+
         scope.launch {
             when (node.state) {
                 NodeState.PAUSED -> {}
