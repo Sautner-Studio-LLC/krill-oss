@@ -202,10 +202,13 @@ private fun layoutServerChildren(
             }
             cumulativeAngle += angularShare
 
-            // Distance increases with subtree depth to give space for descendants
-            // Also varies with node depth for organic feel
-            val depthBonus = subtreeDepth * baseDistance * 0.3
-            val distanceVariation = baseDistance * (1.0 + (depth % 3) * 0.15) + depthBonus
+            // Distance increases with subtree depth — kept tight to reduce sprawl
+            // Slight variation with depth for organic feel without excessive wobble
+            val depthBonus = subtreeDepth * baseDistance * 0.15
+            // Nodes with targeting relationships (executors, logic gates, serial devices)
+            // get a 15% outward push so their arcs route around the outside of the swarm
+            val targetingBias = if (child.meta is TargetingNodeMetaData) 1.15 else 1.0
+            val distanceVariation = (baseDistance * (1.0 + (depth % 3) * 0.08) + depthBonus) * targetingBias
 
             val x = parentPosition.x.toDouble() + distanceVariation * cos(angle)
             val y = parentPosition.y.toDouble() + distanceVariation * sin(angle)
@@ -552,6 +555,44 @@ fun computeNodePositions(swarm: Set<String>, nodeManager: ClientNodeManager): No
         )
     }
 
+    // Targeting affinity pass: pull arc-connected nodes closer together
+    // before force simulation, so source/target pairs start near each other
+    nodes.forEach { node ->
+        val meta = node.meta as? TargetingNodeMetaData ?: return@forEach
+        val nodePos = positions[node.id] ?: return@forEach
+
+        // Pull toward each target
+        meta.targets.filter { it.nodeId.isNotBlank() }.forEach { target ->
+            val targetPos = positions[target.nodeId] ?: return@forEach
+            val midX = (nodePos.x + targetPos.x) / 2f
+            val midY = (nodePos.y + targetPos.y) / 2f
+            // Move each 20% toward their midpoint
+            positions[node.id] = Offset(
+                nodePos.x + (midX - nodePos.x) * 0.2f,
+                nodePos.y + (midY - nodePos.y) * 0.2f
+            )
+            positions[target.nodeId] = Offset(
+                targetPos.x + (midX - targetPos.x) * 0.2f,
+                targetPos.y + (midY - targetPos.y) * 0.2f
+            )
+        }
+
+        // Pull toward each source
+        meta.sources.filter { it.nodeId.isNotBlank() }.forEach { source ->
+            val sourcePos = positions[source.nodeId] ?: return@forEach
+            val currentPos = positions[node.id] ?: return@forEach
+            val midX = (currentPos.x + sourcePos.x) / 2f
+            val midY = (currentPos.y + sourcePos.y) / 2f
+            positions[node.id] = Offset(
+                currentPos.x + (midX - currentPos.x) * 0.2f,
+                currentPos.y + (midY - currentPos.y) * 0.2f
+            )
+            positions[source.nodeId] = Offset(
+                sourcePos.x + (midX - sourcePos.x) * 0.2f,
+                sourcePos.y + (midY - sourcePos.y) * 0.2f
+            )
+        }
+    }
 
     var minX = 0f
     var maxX = 0f
@@ -612,8 +653,8 @@ fun optimizedNodeLayout(original: NodeLayout): NodeLayout {
         childId to parentId
     }
 
-    // Force simulation to optimize layout
-    repeat(iterations) { iteration ->
+    // Force simulation to optimize layout — stops early if energy is low
+    for (iteration in 0 until iterations) {
         val forces = mutableMapOf<String, Offset>()
         positions.keys.forEach { nodeId -> forces[nodeId] = Offset.Zero }
 
@@ -623,11 +664,18 @@ fun optimizedNodeLayout(original: NodeLayout): NodeLayout {
         // Apply spring forces for parent-child connections
         applySpringForces(original.parentConnections, positions, forces)
 
+        // Apply weak spring forces for targeting connections (source↔target proximity)
+        applyTargetingSpringForces(original.targetingConnections, positions, forces)
+
         // Apply forces to push nodes away from non-adjacent edges (crossing prevention)
         applyEdgeCrossingForces(positions, forces, edges, nodeRadius)
 
         // Apply boundary forces
         applyBoundaryForces(positions, forces, maxRadius)
+
+        // Early termination: if total energy is negligible, stop
+        val totalEnergy = forces.values.sumOf { sqrt((it.x * it.x + it.y * it.y).toDouble()) }
+        if (totalEnergy < 1.0 && iteration > 10) break
 
         // Apply forces with dampening
         applyForcesWithDampening(positions, forces, iteration, iterations, dampening, maxRadius)
@@ -666,10 +714,11 @@ private fun applySpringForces(
     positions: Map<String, Offset>,
     forces: MutableMap<String, Offset>
 ) {
+    // Spring ideal distance matches tighter base distances
     val idealDistance = when (platform) {
-        Platform.IOS -> 210f
-        Platform.ANDROID -> 210f
-        else -> 135f
+        Platform.IOS -> 170f
+        Platform.ANDROID -> 170f
+        else -> 110f
     }
 
     parentConnections.forEach { (childId, parentId) ->
@@ -689,6 +738,35 @@ private fun applySpringForces(
                 forces[childId] = forces[childId]!! + Offset(forceX, forceY)
                 forces[parentId] = forces[parentId]!! - Offset(forceX * 0.3f, forceY * 0.3f)
             }
+        }
+    }
+}
+
+/**
+ * Weak spring forces pulling source↔target connected nodes closer together.
+ * Weaker than parent-child springs (0.05 vs 0.15) to avoid disrupting the tree structure.
+ */
+private fun applyTargetingSpringForces(
+    targetingConnections: List<TargetingConnection>,
+    positions: Map<String, Offset>,
+    forces: MutableMap<String, Offset>
+) {
+    targetingConnections.forEach { conn ->
+        val sourcePos = positions[conn.sourceId] ?: return@forEach
+        val targetPos = positions[conn.targetId] ?: return@forEach
+
+        val dx = targetPos.x - sourcePos.x
+        val dy = targetPos.y - sourcePos.y
+        val distance = sqrt(dx * dx + dy * dy)
+
+        if (distance > 0) {
+            // Pull them together with a weak spring
+            val springForce = distance * 0.05f
+            val forceX = (dx / distance) * springForce
+            val forceY = (dy / distance) * springForce
+
+            forces[conn.sourceId]?.let { forces[conn.sourceId] = it + Offset(forceX, forceY) }
+            forces[conn.targetId]?.let { forces[conn.targetId] = it - Offset(forceX, forceY) }
         }
     }
 }
@@ -721,7 +799,7 @@ private fun applyEdgeCrossingForces(
 
             if (distance > 0 && distance < edgeAvoidanceDistance) {
                 // Push node away from edge
-                val force = (edgeAvoidanceDistance - distance) * 0.3f
+                val force = (edgeAvoidanceDistance - distance) * 0.5f
                 val forceX = (dx / distance) * force
                 val forceY = (dy / distance) * force
                 forces[nodeId] = forces[nodeId]!! + Offset(forceX, forceY)

@@ -27,6 +27,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
     /** Applies bearer token authorization to the request if available. */
     private fun HttpRequestBuilder.withAuth() {
         bearerTokenProvider()?.let { token ->
+            logger.w { "!!!!!!  Bearer $token" }
             header("Authorization", "Bearer $token")
         }
     }

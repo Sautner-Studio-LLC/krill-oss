@@ -26,26 +26,21 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                 KrillApp.Server.Peer,
                 KrillApp.Server.LLM,
                 KrillApp.Project,
-                KrillApp.DataPoint,
-                KrillApp.Server.SerialDevice,
-                KrillApp.Trigger.Button,
-                KrillApp.Trigger.CronTimer,
-                KrillApp.Trigger.IncomingWebHook,
-                KrillApp.MQTT,
-                KrillApp.Server.Pin,
-                KrillApp.Server.Backup
+
 
             )
         )
         when (node.type) {
-            KrillApp.Server -> {
-                val meta = node.meta as ServerMetaData
-                if (meta.platform == Platform.RASPBERRY_PI) {
-                    set.add(KrillApp.Server.Pin)
-                }
-            }
+
 
             KrillApp.Project -> {
+                set.addAll(listOf(KrillApp.DataPoint,
+                    KrillApp.Server.SerialDevice,
+                    KrillApp.Trigger.Button,
+                    KrillApp.Trigger.CronTimer,
+                    KrillApp.Trigger.IncomingWebHook,
+                    KrillApp.MQTT,
+                    KrillApp.Server.Pin))
                 nodeManager.readNodeStateOrNull(node.host).value?.let { host ->
                     val meta = host.meta as ServerMetaData
                     if (meta.platform == Platform.RASPBERRY_PI) {
