@@ -4,6 +4,7 @@ import androidx.compose.runtime.*
 import krill.zone.app.*
 import krill.zone.app.krillapp.client.*
 import krill.zone.app.krillapp.client.about.*
+import krill.zone.app.krillapp.project.*
 import krill.zone.app.krillapp.project.camera.*
 import krill.zone.app.krillapp.project.diagram.*
 import krill.zone.app.krillapp.server.*
@@ -33,7 +34,7 @@ fun KrillScreen() {
 
     // Determine if we should show ClientScreen - consolidate all paths that lead to ClientScreen
     // to ensure it's always called from the same composition location
-    val fullScreenTypes = setOf(KrillApp.Project.Diagram, KrillApp.Project.Camera)
+    val fullScreenTypes = setOf(KrillApp.Project.Diagram, KrillApp.Project.Camera, KrillApp.Project)
 
     val showClientScreen = when {
         nodeType == KrillApp.Server && command.value == KrillApp.Server.Peer -> false
@@ -150,6 +151,21 @@ fun KrillScreen() {
                             }
                             else -> {
                                 NodeSummaryAndEditor(n, ViewMode.EDIT)
+                            }
+                        }
+                    }
+                }
+            }
+
+            KrillApp.Project -> {
+                selectedNodeId.value?.let { id ->
+                    nodeManager.readNodeStateOrNull(id).value?.let { n ->
+                        when (command.value) {
+                            MenuCommand.Update -> {
+                                NodeSummaryAndEditor(n, ViewMode.EDIT)
+                            }
+                            else -> {
+                                ProjectScreen(n)
                             }
                         }
                     }

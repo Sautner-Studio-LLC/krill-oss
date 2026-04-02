@@ -629,6 +629,49 @@ private fun Routing.configureSystemRoutes(
 
 
 
+    // QR code with branded shrimp logo — unauthenticated since it just encodes a URL
+    get("/node/{id}/qr") {
+        val id = call.parameters["id"] ?: run {
+            call.respond(HttpStatusCode.BadRequest, "Missing node ID")
+            return@get
+        }
+
+        try {
+            val identity = ServerIdentity.getSelfWithInfo()
+            val meta = identity.meta as ServerMetaData
+            val host = meta.resolvedHost()
+            val nodeUrl = "https://$host:${meta.port}/node/$id"
+
+            // Load shrimp SVG brand logo and convert to PNG bytes for QR overlay
+            val logoBytes = this::class.java.classLoader.getResourceAsStream("shrimp-sharp-duotone-regular.svg")?.use { svgStream ->
+                val transcoder = org.apache.batik.transcoder.image.PNGTranscoder()
+                transcoder.addTranscodingHint(org.apache.batik.transcoder.SVGAbstractTranscoder.KEY_WIDTH, 60f)
+                transcoder.addTranscodingHint(org.apache.batik.transcoder.SVGAbstractTranscoder.KEY_HEIGHT, 60f)
+                val baos = java.io.ByteArrayOutputStream()
+                transcoder.transcode(
+                    org.apache.batik.transcoder.TranscoderInput(svgStream),
+                    org.apache.batik.transcoder.TranscoderOutput(baos)
+                )
+                baos.toByteArray()
+            }
+
+            // Generate QR code with error correction high (needed for logo overlay)
+            val builder = qrcode.QRCode.ofSquares()
+                .withSize(15)
+                .withErrorCorrectionLevel(qrcode.raw.ErrorCorrectionLevel.HIGH)
+            if (logoBytes != null) {
+                builder.withLogo(logoBytes, 60, 60)
+            }
+            val qrCode = builder.build(nodeUrl)
+            val pngBytes = qrCode.renderToBytes()
+
+            call.respondBytes(pngBytes, ContentType.Image.PNG, HttpStatusCode.OK)
+        } catch (e: Exception) {
+            logger.e("Error generating QR code", e)
+            call.respond(HttpStatusCode.InternalServerError, "Failed to generate QR code")
+        }
+    }
+
     // PIN-derived Bearer token for WASM clients served from this host.
     // Unauthenticated — the WASM app is already trusted (served from the same server).
     // Returns the token so the WASM app can authenticate subsequent API calls.

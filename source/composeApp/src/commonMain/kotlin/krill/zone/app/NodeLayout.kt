@@ -154,9 +154,11 @@ private fun layoutServerChildren(
             -PI / 2
         }
 
-        // Sweep angle depends on whether this is a root or has a parent
+        // Sweep angle: root uses full circle, children fan out in a forward cone.
+        // Tighter cone (180°) prevents children from wrapping behind their parent
+        // and crossing sibling subtrees.
         val sweepAngle = if (!isRootNode && parentOfParentPosition != null) {
-            PI * 1.5 // 270 degrees for non-root nodes
+            PI // 180 degrees — children fan forward from parent
         } else {
             2 * PI // Full circle for root
         }
@@ -202,13 +204,15 @@ private fun layoutServerChildren(
             }
             cumulativeAngle += angularShare
 
-            // Distance increases with subtree depth — kept tight to reduce sprawl
-            // Slight variation with depth for organic feel without excessive wobble
-            val depthBonus = subtreeDepth * baseDistance * 0.15
+            // Distance from parent: keep children close. The depth bonus is capped
+            // at 1 level — a project with deep subtrees stays close to the server;
+            // the subtree's own layout handles spreading its children outward.
+            val cappedDepth = minOf(subtreeDepth, 1)
+            val depthBonus = cappedDepth * baseDistance * 0.12
             // Nodes with targeting relationships (executors, logic gates, serial devices)
-            // get a 15% outward push so their arcs route around the outside of the swarm
-            val targetingBias = if (child.meta is TargetingNodeMetaData) 1.15 else 1.0
-            val distanceVariation = (baseDistance * (1.0 + (depth % 3) * 0.08) + depthBonus) * targetingBias
+            // get a small outward push so their arcs route around the outside
+            val targetingBias = if (child.meta is TargetingNodeMetaData) 1.1 else 1.0
+            val distanceVariation = (baseDistance + depthBonus) * targetingBias
 
             val x = parentPosition.x.toDouble() + distanceVariation * cos(angle)
             val y = parentPosition.y.toDouble() + distanceVariation * sin(angle)

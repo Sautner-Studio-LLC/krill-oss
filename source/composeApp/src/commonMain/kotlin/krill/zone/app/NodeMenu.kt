@@ -76,7 +76,7 @@ private fun NodeMenuContent(node: Node, menuItems: List<KrillApp>, screenCore: S
                                 }
                             ),
                     ) {
-                        command.node().icon()
+                        command.icon()
                     }
                 }
             }

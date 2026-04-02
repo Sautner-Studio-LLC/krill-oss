@@ -7,6 +7,7 @@ import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.datapoint.graph.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.camera.*
+import krill.zone.shared.krillapp.project.diagram.*
 import krill.zone.shared.krillapp.project.journal.*
 import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.*
@@ -98,6 +99,10 @@ fun Node.name() : String {
 
        KrillApp.Project -> {
            (this.meta as ProjectMetaData).name
+       }
+
+       KrillApp.Project.Diagram -> {
+           (this.meta as DiagramMetaData).name
        }
 
        else -> {

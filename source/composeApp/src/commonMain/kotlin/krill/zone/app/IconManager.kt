@@ -11,6 +11,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.graphics.painter.*
 import androidx.compose.ui.text.style.*
 import co.touchlab.kermit.*
@@ -48,8 +49,8 @@ val Node.icon: @Composable (() -> Unit)
 
 val KrillApp.icon: @Composable (() -> Unit)
     get() = @Composable {
-
-        IconManager.NodeCompoundImage(Modifier, this.node())
+        // Menu items don't get highlight effects (rings, etc.)
+        IconManager.NodeCompoundImage(Modifier, this.node(), highlight = false)
     }
 
 val Node.label: @Composable (() -> Unit)
@@ -202,7 +203,7 @@ object IconManager {
 
 
     @Composable
-    fun NodeCompoundImage(modifier: Modifier = Modifier, node: Node) {
+    fun NodeCompoundImage(modifier: Modifier = Modifier, node: Node, highlight: Boolean = true) {
 
 
         val screenCore: ScreenCore = koinInject()
@@ -250,14 +251,27 @@ object IconManager {
                 .then(modifier),
             contentAlignment = Alignment.Center
         ) {
+            val stateColor = getNodeStateColor(node)
             val circlePainter = painterResource(Res.drawable.circle_duotone_regular_full)
             key(circlePainter.intrinsicSize) {
                 Image(
                     modifier = Modifier.size(iconEnclosureSize),
                     painter = circlePainter,
                     contentDescription = node.type.title(),
-                    colorFilter = ColorFilter.tint(getNodeStateColor(node))
+                    colorFilter = ColorFilter.tint(stateColor)
                 )
+            }
+
+            // Project nodes get a bright accent border ring in the swarm view (not menus)
+            if (node.type is KrillApp.Project && highlight) {
+                val ringColor = Color(0xFF3DD9A0) // Bright mint — visible on dark backgrounds
+                Canvas(modifier = Modifier.size(iconEnclosureSize)) {
+                    drawCircle(
+                        color = ringColor.copy(alpha = 0.6f),
+                        radius = size.minDimension / 2f - 1f,
+                        style = Stroke(width = 2f)
+                    )
+                }
             }
 
             NodeIconImage(node)
@@ -298,6 +312,15 @@ object IconManager {
 fun getNodeStateColor(node: Node): Color {
 
     when (node.type) {
+
+        is KrillApp.Project -> {
+            // Projects get a slightly brighter, warmer tint to stand out as organizational hubs
+            return when (node.state) {
+                NodeState.ERROR -> colorScheme.error
+                NodeState.WARN -> Color(0xFFFF9800)
+                else -> Color(0xFF2A6B5A) // Teal-green — distinct from the default purple/gray
+            }
+        }
 
         KrillApp.Server.Pin -> {
             val meta = (node.meta as PinMetaData)

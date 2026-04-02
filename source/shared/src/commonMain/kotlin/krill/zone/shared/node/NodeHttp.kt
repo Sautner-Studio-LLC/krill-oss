@@ -27,7 +27,7 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
     /** Applies bearer token authorization to the request if available. */
     private fun HttpRequestBuilder.withAuth() {
         bearerTokenProvider()?.let { token ->
-            logger.w { "!!!!!!  Bearer $token" }
+
             header("Authorization", "Bearer $token")
         }
     }
@@ -351,6 +351,23 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
      * Uploads an SVG diagram file to a project.
      */
     @OptIn(ExperimentalUuidApi::class)
+    suspend fun getQrCode(host: Node, nodeId: String): ByteArray? {
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/node/$nodeId/qr"
+            val response = httpClient.get(url) { withAuth() }
+            return if (response.status.isSuccess()) {
+                response.body<ByteArray>()
+            } else {
+                logger.w { "QR code fetch failed: ${response.status}" }
+                null
+            }
+        } catch (e: Exception) {
+            logger.e(e) { "Error fetching QR code" }
+            return null
+        }
+    }
+
     suspend fun uploadDiagram(host: Node, projectId: String, fileName: String, svgBytes: ByteArray): Boolean {
         try {
             val meta = host.meta as ServerMetaData
