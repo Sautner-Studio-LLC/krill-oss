@@ -237,6 +237,49 @@ private fun Routing.configureNodeRoutes(
             }
         }
 
+        // CSV export of DataPoint time-series
+        get("/node/{id}/data/export") {
+            val id = call.parameters["id"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, "Missing node ID")
+                return@get
+            }
+            try {
+                if (!nodeManager.nodeAvailable(id)) {
+                    call.respond(HttpStatusCode.NotFound, "Node not found")
+                    return@get
+                }
+                val node = nodeManager.readNodeState(id).value
+                if (node.type !is KrillApp.DataPoint) {
+                    call.respond(HttpStatusCode.BadRequest, "Export is only available for DataPoint nodes")
+                    return@get
+                }
+                val meta = node.meta as DataPointMetaData
+                val timeRange = extractTimeRange(call)
+                val series = dataProcessor.range(node, timeRange.start, timeRange.end)
+
+                val nodeName = meta.name.ifEmpty { id }.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+                val filename = "${nodeName}_${timeRange.start}_${timeRange.end}.csv"
+                val formatter = DateTimeFormatter.ISO_INSTANT
+
+                val csv = buildString {
+                    appendLine("timestamp,value,unit")
+                    series.forEach { snapshot ->
+                        val ts = Instant.ofEpochMilli(snapshot.timestamp).let { formatter.format(it) }
+                        appendLine("$ts,${snapshot.value},${meta.unit}")
+                    }
+                }
+
+                call.response.header(
+                    "Content-Disposition",
+                    "attachment; filename=\"$filename\""
+                )
+                call.respondText(csv, ContentType.Text.CSV, HttpStatusCode.OK)
+            } catch (e: Exception) {
+                logger.e("Error exporting data for node $id", e)
+                call.respond(HttpStatusCode.InternalServerError, "Export failed: ${e.message}")
+            }
+        }
+
         // Get node data plot
         get("/node/{id}/data/plot") {
             try {
@@ -846,9 +889,96 @@ private fun Routing.configureSystemRoutes(
                     return@post
                 }
 
-                // TODO: Implement full restore logic (extract ZIP, reimport nodes, restore dirs)
-                // For v1, return success with reboot instruction
-                call.respond(HttpStatusCode.OK, mapOf("message" to "Restore initiated from $filename. Please reboot the server."))
+                // Validate ZIP structure before proceeding
+                val zipFile = try {
+                    java.util.zip.ZipFile(archiveFile)
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, "Invalid or corrupted archive: ${e.message}")
+                    return@post
+                }
+
+                val hasNodes = zipFile.entries().asSequence().any { it.name.startsWith("nodes/") && it.name.endsWith(".json") }
+                if (!hasNodes) {
+                    zipFile.close()
+                    call.respond(HttpStatusCode.BadRequest, "Archive contains no node data")
+                    return@post
+                }
+
+                // Create pre-restore safety backup
+                val safetyDir = File(backupDir, "pre-restore-${System.currentTimeMillis()}")
+                safetyDir.mkdirs()
+                val dbFile = File("/srv/krill/data/krill_v3.db")
+                if (dbFile.exists()) {
+                    dbFile.copyTo(File(safetyDir, "krill_v3.db"), overwrite = true)
+                }
+                // Also back up the .mv.db file H2 uses
+                val mvFile = File("/srv/krill/data/krill_v3.db.mv.db")
+                if (mvFile.exists()) {
+                    mvFile.copyTo(File(safetyDir, "krill_v3.db.mv.db"), overwrite = true)
+                }
+
+                val extractDir = File(backupDir, "restore-staging-${System.currentTimeMillis()}")
+                extractDir.mkdirs()
+
+                try {
+                    // Extract ZIP to staging
+                    zipFile.entries().asSequence().forEach { entry ->
+                        val outFile = File(extractDir, entry.name)
+                        if (!outFile.canonicalPath.startsWith(extractDir.canonicalPath)) return@forEach // path traversal guard
+                        if (entry.isDirectory) {
+                            outFile.mkdirs()
+                        } else {
+                            outFile.parentFile?.mkdirs()
+                            zipFile.getInputStream(entry).use { input ->
+                                outFile.outputStream().use { output -> input.copyTo(output) }
+                            }
+                        }
+                    }
+                    zipFile.close()
+
+                    // Restore nodes — delete all existing, then import from archive
+                    nodeManager.exportLock.lock()
+                    try {
+                        val existingNodes = nodeManager.nodes()
+                        existingNodes.forEach { node ->
+                            try { nodeManager.delete(node) } catch (_: Exception) {}
+                        }
+
+                        val nodesDir = File(extractDir, "nodes")
+                        if (nodesDir.exists()) {
+                            nodesDir.listFiles()?.filter { it.extension == "json" }?.forEach { file ->
+                                try {
+                                    val node = krill.zone.shared.fastJson.decodeFromString(Node.serializer(), file.readText())
+                                    nodeManager.create(node)
+                                } catch (e: Exception) {
+                                    logger.w("Failed to restore node from ${file.name}: ${e.message}")
+                                }
+                            }
+                        }
+                    } finally {
+                        nodeManager.exportLock.unlock()
+                    }
+
+                    // Restore optional directories
+                    val dataDir = File(extractDir, "data")
+                    if (dataDir.exists()) {
+                        dataDir.copyRecursively(File("/srv/krill/data"), overwrite = true)
+                    }
+                    val projectDir = File(extractDir, "project")
+                    if (projectDir.exists()) {
+                        projectDir.copyRecursively(File("/srv/krill/project"), overwrite = true)
+                    }
+                    val cameraDir = File(extractDir, "camera")
+                    if (cameraDir.exists()) {
+                        cameraDir.copyRecursively(File("/srv/krill/camera"), overwrite = true)
+                    }
+
+                    call.respond(HttpStatusCode.OK, mapOf(
+                        "message" to "Restore completed from $filename. Safety backup at ${safetyDir.name}. Server restart recommended."
+                    ))
+                } finally {
+                    extractDir.deleteRecursively()
+                }
             } catch (e: Exception) {
                 logger.e("Restore failed", e)
                 call.respond(HttpStatusCode.InternalServerError, "Restore failed: ${e.message}")

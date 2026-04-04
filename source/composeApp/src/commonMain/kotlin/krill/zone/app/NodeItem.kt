@@ -4,11 +4,15 @@ package krill.zone.app
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.*
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.unit.*
 import co.touchlab.kermit.*
@@ -46,7 +50,8 @@ fun BoxScope.NodeItem(
     position: Offset,
     density: Density,
     isNewNode: Boolean,
-    isRemoving: Boolean = false
+    isRemoving: Boolean = false,
+    alpha: Float = 1f
 ) {
     val nodeManager: ClientNodeManager = koinInject()
     val screenCore: ScreenCore = koinInject()
@@ -89,6 +94,7 @@ fun BoxScope.NodeItem(
         modifier = Modifier
             .align(Alignment.Center)
             .offset(x, y)
+            .alpha(alpha)
             .pointerInput(node.id, isRemoving) {
                 // Only handle right-click on platforms that support it (Desktop/WASM)
                 if (!isRemoving && supportsRightClick) {
@@ -250,11 +256,31 @@ private fun AnimatedNodeVisibility(isNewNode: Boolean, node: Node, isRemoving: B
     )
 
 
+    // Pulsing animation for WARN/ERROR states
+    val isAlerting = node.state == NodeState.WARN || node.state == NodeState.ERROR
+    val pulseScale by animateFloatAsState(
+        targetValue = if (isAlerting) 1.15f else 1f,
+        animationSpec = if (isAlerting) infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ) else tween(durationMillis = 300),
+        label = "alertPulse_${node.id}"
+    )
+    val alertColor = when (node.state) {
+        NodeState.WARN -> Color(0xFFFFA000) // amber
+        NodeState.ERROR -> Color(0xFFD32F2F) // red
+        else -> Color.Transparent
+    }
+
     // Node is visible unless it's being removed
     AnimatedVisibility(
         visible = !isRemoving, enter = enterAnimation, exit = exitAnimation
     ) {
 
+        // Apply pulsing scale and glow for alerting nodes
+        val alertModifier = if (isAlerting) {
+            Modifier.graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+        } else Modifier
 
         if (node.type == KrillApp.Server ||
             node.type == KrillApp.Server.Peer ||
@@ -273,8 +299,17 @@ private fun AnimatedNodeVisibility(isNewNode: Boolean, node: Node, isRemoving: B
             // Use Box with wrapContentSize(unbounded=true) to allow NamePill to overflow
             // without affecting the icon's centered position
             Box(
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
+                modifier = alertModifier
             ) {
+                // Alert glow ring behind the icon
+                if (isAlerting) {
+                    Box(
+                        modifier = Modifier
+                            .size(CommonLayout.ICON_SIZE_LARGE + 8.dp)
+                            .background(alertColor.copy(alpha = 0.3f * pulseScale), shape = androidx.compose.foundation.shape.CircleShape)
+                    )
+                }
                 // Icon stays at the center (the anchor point for node positioning)
                 node.icon()
                 // NamePill positioned above the icon using offset, doesn't affect layout
@@ -290,7 +325,17 @@ private fun AnimatedNodeVisibility(isNewNode: Boolean, node: Node, isRemoving: B
 
             }
         } else {
-            node.icon()
+            Box(modifier = alertModifier) {
+                if (isAlerting) {
+                    Box(
+                        modifier = Modifier
+                            .size(CommonLayout.ICON_SIZE_LARGE + 8.dp)
+                            .align(Alignment.Center)
+                            .background(alertColor.copy(alpha = 0.3f * pulseScale), shape = androidx.compose.foundation.shape.CircleShape)
+                    )
+                }
+                node.icon()
+            }
         }
     }
 }

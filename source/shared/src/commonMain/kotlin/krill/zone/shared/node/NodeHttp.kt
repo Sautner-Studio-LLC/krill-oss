@@ -351,6 +351,12 @@ class NodeHttp(private val trustHost: TrustHost, private val bearerTokenProvider
      * Uploads an SVG diagram file to a project.
      */
     @OptIn(ExperimentalUuidApi::class)
+    fun getDataExportUrl(host: Node, nodeId: String, startTime: Long? = null, endTime: Long? = null): String {
+        val meta = host.meta as ServerMetaData
+        val base = "${baseUrl(meta)}/node/$nodeId/data/export"
+        return if (startTime != null && endTime != null) "$base?st=$startTime&et=$endTime" else base
+    }
+
     suspend fun getQrCode(host: Node, nodeId: String): ByteArray? {
         try {
             val meta = host.meta as ServerMetaData

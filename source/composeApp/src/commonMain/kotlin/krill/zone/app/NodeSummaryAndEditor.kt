@@ -194,12 +194,10 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
 
                     KrillApp.DataPoint.Graph -> {
                         if (viewMode == ViewMode.ROW) {
-                            ProjectRow(n.id)
+                            GraphRow(n.id)
                         } else {
                             EditGraph(n)
                         }
-                        // Graph combines view and edit in one component
-
                     }
 
                     KrillApp.Project -> {
@@ -252,6 +250,8 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
                         }
                     }
 
+                    // Button is a tap-to-execute trigger; long-press opens edit for name/targeting config
+                    KrillApp.Trigger.Button,
                     KrillApp.Trigger.HighThreshold, KrillApp.Trigger.LowThreshold, KrillApp.Trigger.SilentAlarmMs -> {
                         when (viewMode) {
                             ViewMode.EDIT -> {
