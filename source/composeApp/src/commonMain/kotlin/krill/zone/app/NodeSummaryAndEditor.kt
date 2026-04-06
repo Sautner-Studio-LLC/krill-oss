@@ -30,6 +30,7 @@ import krill.zone.app.krillapp.server.peer.*
 import krill.zone.app.krillapp.server.pin.*
 import krill.zone.app.krillapp.server.serialdevice.*
 import krill.zone.app.krillapp.trigger.*
+import krill.zone.app.krillapp.trigger.color.*
 import krill.zone.app.krillapp.trigger.incomingwebhook.*
 import krill.zone.app.ui.*
 import krill.zone.shared.*
@@ -267,6 +268,14 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
                             }
                         }
 
+                    }
+
+                    KrillApp.Trigger.Color -> {
+                        when (viewMode) {
+                            ViewMode.EDIT -> EditColorTrigger(n, false)
+                            ViewMode.VIEW -> EditColorTrigger(n, false)
+                            ViewMode.ROW -> EditColorTrigger(n, true)
+                        }
                     }
 
                     KrillApp.Server.Backup -> {

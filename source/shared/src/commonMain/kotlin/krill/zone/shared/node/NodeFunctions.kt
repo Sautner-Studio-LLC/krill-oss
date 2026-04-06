@@ -112,6 +112,21 @@ fun Node.name() : String {
     }
 
 }
+/**
+ * Returns the snapshot color for a COLOR DataPoint as a packed ARGB Long (0xFFRRGGBB).
+ * Returns 0xFF000000 (black) if the node is not a COLOR DataPoint or parsing fails.
+ */
+fun Node.snapshotColorArgb(): Long {
+    val meta = this.meta as? DataPointMetaData ?: return 0xFF000000L
+    if (meta.dataType != DataType.COLOR) return 0xFF000000L
+    return try {
+        val colorInt = meta.snapshot.value.toLong() and 0xFFFFFFL
+        0xFF000000L or colorInt
+    } catch (_: Exception) {
+        0xFF000000L
+    }
+}
+
 fun Node.isMine(): Boolean {
     return  this.host == installId()
 }

@@ -27,6 +27,7 @@ import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.krillapp.spacer.*
 import krill.zone.shared.krillapp.trigger.*
+import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.krillapp.trigger.button.*
 import krill.zone.shared.krillapp.trigger.cron.*
 import krill.zone.shared.krillapp.trigger.webhook.*
@@ -65,6 +66,7 @@ val platformSerializerModule = SerializersModule {
         subclass(SMTPMetaData::class)
         subclass(CameraMetaData::class)
         subclass(BackupMetaData::class)
+        subclass(ColorTriggerMetaData::class)
 
     }
     polymorphic(baseClass = KrillApp::class) {
@@ -103,6 +105,7 @@ val platformSerializerModule = SerializersModule {
         subclass(KrillApp.Trigger.HighThreshold::class)
         subclass(KrillApp.Trigger.LowThreshold::class)
         subclass(KrillApp.Trigger.IncomingWebHook::class)
+        subclass(KrillApp.Trigger.Color::class)
         subclass(MenuCommand.Update::class)
         subclass(MenuCommand.Delete::class)
         subclass(MenuCommand.Expand::class)

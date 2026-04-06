@@ -156,6 +156,12 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                     distinct.addAll(dataExecutors())
                     distinct.add(KrillApp.DataPoint.Graph)
                 }
+
+                if (meta.dataType == DataType.COLOR) {
+                    distinct.add(KrillApp.Trigger)
+                    distinct.addAll(dataExecutors())
+                    distinct.add(KrillApp.DataPoint.Graph)
+                }
             }
 
             KrillApp.DataPoint.Graph -> {
@@ -190,7 +196,9 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
 
             KrillApp.Trigger.HighThreshold,
 
-            KrillApp.Trigger.LowThreshold -> {
+            KrillApp.Trigger.LowThreshold,
+
+            KrillApp.Trigger.Color -> {
 
                 val hostmeta = host.meta as ServerMetaData
 
@@ -228,7 +236,8 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                         MenuCommand.Delete,
                         KrillApp.Trigger.HighThreshold,
                         KrillApp.Trigger.LowThreshold,
-                        KrillApp.Trigger.SilentAlarmMs
+                        KrillApp.Trigger.SilentAlarmMs,
+                        KrillApp.Trigger.Color
                     ).plus(dataExecutors())
                 )
             }

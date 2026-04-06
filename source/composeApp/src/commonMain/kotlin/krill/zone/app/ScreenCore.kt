@@ -97,8 +97,15 @@ class DefaultScreenCore(private val nodeManager: ClientNodeManager) : ScreenCore
                                 .host(n.host)
                                 .create()
                         )
+                        // If the parent is a full-screen node (Project, Diagram, Camera),
+                        // stay on that screen so the user sees the new child appear.
+                        // Otherwise reset to swarm view (original behavior for ClientScreen menus).
+                        if (n.type is KrillApp.Project || n.type is KrillApp.Project.Diagram || n.type is KrillApp.Project.Camera) {
+                            // Keep selection on the parent — ProjectScreen will recompose with the new child
+                        } else {
+                            reset()
+                        }
                     }
-                    reset()
                 }
             }
         }

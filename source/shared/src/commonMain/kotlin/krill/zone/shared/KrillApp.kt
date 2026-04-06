@@ -28,6 +28,7 @@ import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.krillapp.trigger.*
 import krill.zone.shared.krillapp.trigger.button.*
+import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.krillapp.trigger.cron.*
 import krill.zone.shared.krillapp.trigger.webhook.*
 import krill.zone.shared.node.*
@@ -102,7 +103,8 @@ val krillAppChildren: Map<KrillApp?, List<KrillApp>> = mapOf(
         KrillApp.Trigger.SilentAlarmMs,
         KrillApp.Trigger.HighThreshold,
         KrillApp.Trigger.LowThreshold,
-        KrillApp.Trigger.IncomingWebHook
+        KrillApp.Trigger.IncomingWebHook,
+        KrillApp.Trigger.Color
     ),
 )
 
@@ -416,6 +418,13 @@ sealed class KrillApp(
         data object IncomingWebHook : KrillApp(meta = { IncomingWebHookMetaData() }, emit = { node ->
             object : KoinComponent {
                 val processor: WebHookInboundProcessorInterface by inject(mode = LazyThreadSafetyMode.SYNCHRONIZED)
+            }.processor.post(node)
+        })
+
+        @Serializable
+        data object Color : KrillApp(meta = { ColorTriggerMetaData() }, emit = { node ->
+            object : KoinComponent {
+                val processor: TriggerProcessor by inject(mode = LazyThreadSafetyMode.SYNCHRONIZED)
             }.processor.post(node)
         })
     }

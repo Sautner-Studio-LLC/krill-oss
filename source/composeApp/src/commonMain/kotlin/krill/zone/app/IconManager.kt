@@ -28,6 +28,7 @@ import krill.zone.app.krillapp.server.pin.*
 import krill.zone.shared.*
 import krill.zone.shared.feature.*
 import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.node.*
@@ -97,6 +98,7 @@ object IconManager {
                     }
 
                     DataType.DOUBLE -> painterResource(Res.drawable.empty_duotone_regular_full)
+                    DataType.COLOR -> painterResource(Res.drawable.circles_overlap_3_duotone_regular)
                 }
 
             }
@@ -135,6 +137,7 @@ object IconManager {
             KrillApp.Trigger.SilentAlarmMs -> painterResource(Res.drawable.alarm_snooze_duotone_regular)
             KrillApp.Trigger.LowThreshold -> painterResource(Res.drawable.gauge_low_duotone_regular_full)
             KrillApp.Trigger.HighThreshold -> painterResource(Res.drawable.gauge_high_duotone_regular_full)
+            KrillApp.Trigger.Color -> painterResource(Res.drawable.circles_overlap_3_duotone_regular)
 
 
             KrillApp.Executor -> painterResource(Res.drawable.bolt_duotone_regular_full)
@@ -281,6 +284,20 @@ object IconManager {
                     val meta = (node.meta as DataPointMetaData)
                     if (meta.dataType == DataType.DOUBLE) {
                         Text(meta.snapshot.value.take(4), style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (meta.dataType == DataType.COLOR) {
+                        val argb = node.snapshotColorArgb()
+                        Canvas(modifier = Modifier.size(iconEnclosureSize * 0.6f)) {
+                            drawCircle(color = Color(argb.toInt()), radius = size.minDimension / 2f)
+                        }
+                    }
+                }
+
+                is KrillApp.Trigger.Color -> {
+                    val meta = (node.meta as ColorTriggerMetaData)
+                    val argb = meta.midpointArgb()
+                    Canvas(modifier = Modifier.size(iconEnclosureSize * 0.6f)) {
+                        drawCircle(color = Color(argb.toInt()), radius = size.minDimension / 2f)
                     }
                 }
 
