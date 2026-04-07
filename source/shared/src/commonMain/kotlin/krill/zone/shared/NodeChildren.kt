@@ -263,6 +263,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                 distinct.add(KrillApp.Project.Journal)
                 distinct.add(KrillApp.DataPoint.Graph)
                 distinct.add(KrillApp.Executor.LogicGate)
+                distinct.add(KrillApp.Executor.Lambda)
                 val meta = host.meta as ServerMetaData
                 if (meta.platform == Platform.RASPBERRY_PI) {
                     distinct.add(KrillApp.Server.Pin)
@@ -272,6 +273,10 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
 
             KrillApp.Project.Diagram -> {
 
+            }
+
+            KrillApp.Executor.Lambda -> {
+                distinct.add(MenuCommand.Update)
             }
 
             else -> {}

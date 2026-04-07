@@ -19,8 +19,8 @@ import krill.zone.app.krillapp.executor.smtp.*
 import krill.zone.app.krillapp.executor.webhook.*
 import krill.zone.app.krillapp.mqtt.*
 import krill.zone.app.krillapp.project.*
-import krill.zone.app.krillapp.project.diagram.*
 import krill.zone.app.krillapp.project.camera.*
+import krill.zone.app.krillapp.project.diagram.*
 import krill.zone.app.krillapp.project.journal.*
 import krill.zone.app.krillapp.project.tasklist.*
 import krill.zone.app.krillapp.server.*
@@ -251,8 +251,7 @@ fun NodeSummaryAndEditor(node: Node, viewMode: ViewMode) {
                         }
                     }
 
-                    // Button is a tap-to-execute trigger; long-press opens edit for name/targeting config
-                    KrillApp.Trigger.Button,
+
                     KrillApp.Trigger.HighThreshold, KrillApp.Trigger.LowThreshold, KrillApp.Trigger.SilentAlarmMs -> {
                         when (viewMode) {
                             ViewMode.EDIT -> {
