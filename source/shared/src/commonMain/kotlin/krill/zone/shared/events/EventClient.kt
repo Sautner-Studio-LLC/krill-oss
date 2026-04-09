@@ -5,6 +5,7 @@ import io.ktor.client.plugins.sse.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import krill.zone.shared.*
 import krill.zone.shared.io.*
 import krill.zone.shared.krillapp.server.*
@@ -21,6 +22,10 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
 
     private val logger = Logger.withTag(this::class.getFullName())
     private val jobs = mutableMapOf<String, Job>()
+
+    /** Server IDs with active SSE connections that have received at least one event. */
+    private val _connectedServers = MutableStateFlow<Set<String>>(emptySet())
+    val connectedServers: StateFlow<Set<String>> = _connectedServers.asStateFlow()
 
     fun isConnected(id: String): Boolean {
         return jobs.containsKey(id)
@@ -54,6 +59,7 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
                         }
                     ) {
                         attempt = 0
+                        _connectedServers.update { it + node.id }
                         incoming.collect { incoming ->
                             deserialize<Event>(incoming.data)?.let { event ->
                                 logger.i { "Event Received: $event" }
@@ -115,6 +121,7 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
                     throw e
                 } catch (e: Exception) {
                     logger.e(e) { "${node.details()}: SSE failed (attempt $attempt)" }
+                    _connectedServers.update { it - node.id }
                     nodeManager.alarm(node)
                     if (isActive) {
                         val backoff = minOf(2000L shl minOf(attempt, 5), 60_000L).milliseconds
@@ -128,6 +135,7 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
 
         job.invokeOnCompletion {
             logger.i { "${node.details()}: SSE job completed" }
+            _connectedServers.update { it - node.id }
             jobs.remove(node.id)
         }
         jobs[node.id] = job

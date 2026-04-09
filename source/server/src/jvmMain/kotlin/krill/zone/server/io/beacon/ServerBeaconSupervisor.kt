@@ -2,6 +2,7 @@ package krill.zone.server.io.beacon
 
 import co.touchlab.kermit.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import krill.zone.shared.io.beacon.*
 import krill.zone.shared.io.http.*
 import org.koin.ext.*
@@ -21,6 +22,9 @@ class ServerBeaconSupervisor(
     ) : BeaconSupervisor {
     private val logger = Logger.withTag(this::class.getFullName())
     private var beaconListenerJob: Job? = null
+
+    // Server doesn't need discovery tracking — always complete
+    override val discoveryComplete: StateFlow<Boolean> = MutableStateFlow(true)
 
     override fun startBeaconProcess() {
         if (beaconListenerJob != null) return
