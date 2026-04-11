@@ -18,6 +18,7 @@ class CronLogicTest {
         // Given: a cron expression for every 5 seconds
         val node = createCronNode("*/5 * * * * *")
 
+        
         // When: getting wait time
         val waitMillis = cronLogic.getWaitMillis(node)
 
