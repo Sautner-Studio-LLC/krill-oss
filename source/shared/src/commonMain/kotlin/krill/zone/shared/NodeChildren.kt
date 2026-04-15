@@ -52,12 +52,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
             else -> {}
         }
 
-        if (node.meta is ServerMetaData && node.meta.platform == Platform.RASPBERRY_PI) {
 
-        }
-        if (node.meta is ServerMetaData) {
-
-        }
         set.remove(MenuCommand.Delete)
         return set
     }
