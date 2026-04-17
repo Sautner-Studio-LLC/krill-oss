@@ -96,6 +96,40 @@ class CronLogicTest {
         assertTrue(waitMillis <= 31 * 24 * 60 * 60 * 1000L)
     }
 
+    @Test
+    fun testNextExecutionInstantWeekly() {
+        // Given: weekly Monday 09:00 and a reference instant of some Monday 10:00
+        // (Mon 2026-04-13 10:00 UTC = 1776060000000 ms)
+        val mondayAt10 = 1776060000000L
+        val next = cronLogic.nextExecutionInstant("0 0 9 * * MON", mondayAt10)
+        // Then: should be strictly in the future and ≤ 8 days out
+        assertTrue(next != null, "weekly expression should return a next instant")
+        assertTrue(next!! > mondayAt10, "next must be strictly after from")
+        assertTrue(next - mondayAt10 <= 8L * 24 * 60 * 60 * 1000, "next should be within a week")
+    }
+
+    @Test
+    fun testNextExecutionInstantInvalidReturnsNull() {
+        val next = cronLogic.nextExecutionInstant("this is not cron", 0L)
+        assertEquals(null, next)
+    }
+
+    @Test
+    fun testNextExecutionInstantUnsatisfiableReturnsNull() {
+        // Feb 30 never occurs
+        val next = cronLogic.nextExecutionInstant("0 0 0 30 2 *", 0L)
+        assertEquals(null, next)
+    }
+
+    @Test
+    fun testNextExecutionInstantFromPastReturnsFuture() {
+        // "every 5 seconds" with fromEpochMillis = 0 should land very close to 0 + up to 5s
+        val next = cronLogic.nextExecutionInstant("*/5 * * * * *", 0L)
+        assertTrue(next != null, "every-5-seconds should return a next instant")
+        assertTrue(next!! >= 0L, "next must be non-negative")
+        assertTrue(next <= 5000L, "next must be within 5 seconds of from")
+    }
+
     private fun createCronNode(expression: String): Node {
         return Node(
             id = "test-cron",

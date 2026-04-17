@@ -265,6 +265,10 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
                     distinct.add(KrillApp.Project.Camera)
                 }
             }
+            KrillApp.Project.TaskList -> {
+                distinct.add(MenuCommand.Update)
+                distinct.addAll(dataExecutors())
+            }
 
             KrillApp.Project.Diagram -> {
 

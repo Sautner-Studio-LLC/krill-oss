@@ -77,6 +77,7 @@ UniversalAppNodeProcessor(
                 NodeState.PAUSED -> {}
                 NodeState.INFO -> {}
                 NodeState.WARN -> {}
+                NodeState.SEVERE -> {}
                 NodeState.ERROR -> {}
                 NodeState.PAIRING -> {}
                 NodeState.NONE -> { }

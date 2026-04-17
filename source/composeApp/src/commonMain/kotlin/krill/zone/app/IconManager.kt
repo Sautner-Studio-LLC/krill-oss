@@ -28,9 +28,9 @@ import krill.zone.app.krillapp.server.pin.*
 import krill.zone.shared.*
 import krill.zone.shared.feature.*
 import krill.zone.shared.krillapp.datapoint.*
-import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.krillapp.executor.logicgate.*
 import krill.zone.shared.krillapp.server.pin.*
+import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.node.*
 import krill.zone.shared.node.manager.*
 import org.jetbrains.compose.resources.*
@@ -369,6 +369,7 @@ fun getNodeStateColor(node: Node): Color {
                 NodeState.USER_SUBMIT -> colorScheme.primaryContainer
                 NodeState.UNAUTHORISED -> Color(0xFF58575A)
                 NodeState.EDITING ->  Color(0xFF435DEA)
+                NodeState.SEVERE -> Color(0xFFFF0048)
             }
         }
     }
