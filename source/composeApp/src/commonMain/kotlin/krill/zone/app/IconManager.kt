@@ -29,12 +29,14 @@ import krill.zone.shared.*
 import krill.zone.shared.feature.*
 import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.executor.logicgate.*
+import krill.zone.shared.krillapp.project.tasklist.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.node.*
 import krill.zone.shared.node.manager.*
 import org.jetbrains.compose.resources.*
 import org.koin.compose.*
+import kotlin.time.*
 
 private val logger = Logger.withTag("IconManager")
 
@@ -330,6 +332,24 @@ fun getNodeStateColor(node: Node): Color {
 
     when (node.type) {
 
+        is KrillApp.Project.TaskList -> {
+            // Derive locally so the icon reflects the escalation tier on cold launch, before
+            // any SSE update arrives. When server state and local derivation disagree, show
+            // the more severe of the two (spec: TaskList cold-launch scenario).
+            val meta = node.meta as? TaskListMetaData
+            val derived = if (meta != null) {
+                computeTaskListState(meta.tasks, meta.priority, Clock.System.now().toEpochMilliseconds())
+            } else NodeState.NONE
+            val effective = moreSevere(node.state, derived)
+            return when (effective) {
+                NodeState.SEVERE -> Color(0xFFFF0048)
+                NodeState.ERROR -> colorScheme.error
+                NodeState.WARN -> Color(0xFFFF9800)
+                NodeState.INFO -> Color(0xFF2196F3)
+                else -> colorScheme.primaryContainer
+            }
+        }
+
         is KrillApp.Project -> {
             // Projects get a slightly brighter, warmer tint to stand out as organizational hubs
             return when (node.state) {
@@ -375,6 +395,19 @@ fun getNodeStateColor(node: Node): Color {
     }
 }
 
+
+private fun moreSevere(a: NodeState, b: NodeState): NodeState {
+    val rank: (NodeState) -> Int = { s ->
+        when (s) {
+            NodeState.SEVERE -> 4
+            NodeState.ERROR -> 3
+            NodeState.WARN -> 2
+            NodeState.INFO -> 1
+            else -> 0
+        }
+    }
+    return if (rank(a) >= rank(b)) a else b
+}
 
 @Composable
 fun NodeLabel(name: String) {

@@ -14,6 +14,7 @@ import krill.zone.server.krillapp.executor.cron.*
 import krill.zone.server.krillapp.executor.lambda.*
 import krill.zone.server.krillapp.executor.logicgate.*
 import krill.zone.server.krillapp.mqtt.*
+import krill.zone.server.krillapp.project.tasklist.*
 import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
 import krill.zone.server.krillapp.trigger.*
@@ -52,6 +53,7 @@ val serverModule = module {
     }
 
     single<CronTask> { CronTask(get(), get()) }
+    single<TaskListExpiryTask> { TaskListExpiryTask(get(), get()) }
     single<PinReconciliationTask> { PinReconciliationTask(get(), get(), get(), get()) }
     // Provide NodePersistence for NodeManager
     single<NodePersistence> { get<NodeRepository>() }
@@ -74,6 +76,7 @@ val serverModule = module {
 
     single<ServerLifecycleManager> {
         ServerLifecycleManager(
+            get(),
             get(),
             get(),
             get(),

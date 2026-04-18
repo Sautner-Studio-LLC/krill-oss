@@ -7,6 +7,7 @@ import io.ktor.server.application.*
 import kotlinx.coroutines.*
 import krill.zone.server.events.*
 import krill.zone.server.krillapp.executor.cron.*
+import krill.zone.server.krillapp.project.tasklist.*
 import krill.zone.server.krillapp.server.backup.*
 import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
@@ -36,6 +37,7 @@ internal class ServerLifecycleManager(
     private val serialDeviceManager: SerialDeviceManager,
     private val eventMonitor: EventMonitor,
     private val cronTask: CronTask,
+    private val taskListExpiryTask: TaskListExpiryTask,
     private val mqttManager: MqttManager,
     private val pinReconciliationTask: PinReconciliationTask,
     private val pinProvider: PinProvider,
@@ -94,6 +96,7 @@ internal class ServerLifecycleManager(
                         serverBoss.addTask(serial)
                         serverBoss.addTask(eventMonitor)
                         serverBoss.addTask(cronTask)
+                        serverBoss.addTask(taskListExpiryTask)
                         if (platform == Platform.RASPBERRY_PI) {
                             serverBoss.addTask(pinReconciliationTask)
                         }
