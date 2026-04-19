@@ -99,9 +99,36 @@ EOF
     echo "🦐 Wrote default $CONFIG_FILE — edit it to list each Krill server on your LAN."
 fi
 
+# ── Locate a working Java ─────────────────────────────────────────────────────
+# Never trust /usr/bin/java blindly — update-alternatives symlinks can dangle
+# if a JDK was removed without cleaning its alternatives registration, which
+# leaves /usr/bin/java pointing at a non-existent path even though a valid JRE
+# is installed. Probe each candidate, pick the first that actually runs.
+
+JAVA_BIN=""
+for candidate in /usr/bin/java /usr/lib/jvm/default-java/bin/java; do
+    if [ -x "$candidate" ] && "$candidate" -version >/dev/null 2>&1; then
+        JAVA_BIN="$candidate"
+        break
+    fi
+done
+if [ -z "$JAVA_BIN" ]; then
+    for dir in /usr/lib/jvm/java-*-openjdk-*/bin /usr/lib/jvm/*/bin; do
+        if [ -x "$dir/java" ] && "$dir/java" -version >/dev/null 2>&1; then
+            JAVA_BIN="$dir/java"
+            break
+        fi
+    done
+fi
+if [ -z "$JAVA_BIN" ]; then
+    echo "❌ krill-mcp: could not find a working 'java' binary. Install openjdk-21-jre-headless." >&2
+    exit 1
+fi
+echo "🦐 Using Java at $JAVA_BIN"
+
 # ── systemd service ───────────────────────────────────────────────────────────
 
-cat > /etc/systemd/system/krill-mcp.service << 'EOF'
+cat > /etc/systemd/system/krill-mcp.service << EOF
 [Unit]
 Description=Krill MCP Server (Model Context Protocol)
 Documentation=https://krillswarm.com
@@ -110,7 +137,7 @@ Wants=krill.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/java -jar /usr/local/bin/krill-mcp.jar
+ExecStart=$JAVA_BIN -jar /usr/local/bin/krill-mcp.jar
 User=krill
 Group=krill
 Restart=on-failure
@@ -141,7 +168,8 @@ echo "🦐 krill-mcp is running!"
 echo "=============================================="
 echo ""
 echo "Add a Custom Connector in Claude with:"
-echo "   URL:    http://$HOSTNAME:$LISTEN_PORT/mcp"
+echo "   URL:    http://$HOSTNAME.local:$LISTEN_PORT/mcp"
+echo "   (or)    http://$HOSTNAME:$LISTEN_PORT/mcp"
 if [ -n "$HOST_IP" ]; then
     echo "   (or)    http://$HOST_IP:$LISTEN_PORT/mcp"
 fi

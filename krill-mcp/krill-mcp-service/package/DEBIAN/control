@@ -1,5 +1,5 @@
 Package: krill-mcp
-Version: 0.0.1
+Version: 0.0.2
 Section: utils
 Priority: optional
 Architecture: all
