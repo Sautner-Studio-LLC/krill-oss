@@ -1,7 +1,7 @@
 
 
 [![Learn More](https://img.shields.io/badge/Learn%20More-krillswarm.com-blue)](https://krillswarm.com/)
-[![Download](https://img.shields.io/badge/Download-Get%20Krill-green)](https://krillswarm.com/download/)
+[![Download](https://img.shields.io/badge/Download-Get%20Krill-green)](https://krillswarm.com/categories/download/)
 [![GitHub Issues](https://img.shields.io/badge/GitHub-Issues-orange)](https://github.com/bsautner/krill-oss/issues) 
 
 ---
@@ -24,7 +24,7 @@ Krill is a flexible, privacy-first automation system designed for home automatio
 
 ## Getting Started
 
-Visit the [Download page](https://krillswarm.com/download/) to get started with Krill on your devices.
+Visit the [Download page](https://krillswarm.com/categories/download/) to get started with Krill on your devices.
 
 Krill Server runs on Debian-based Linux distributions including Ubuntu and Raspberry Pi OS.
 
