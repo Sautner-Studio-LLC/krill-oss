@@ -1,0 +1,19 @@
+Package: krill-mcp
+Version: 0.0.1
+Section: utils
+Priority: optional
+Architecture: all
+Depends: openjdk-21-jre-headless | openjdk-21-jre | openjdk-25-jre-headless | openjdk-25-jre, openssl
+Maintainer: Benjamin Sautner <ben@krill.zone>
+Description: Krill Model Context Protocol (MCP) server
+ Exposes a Krill swarm to Claude Desktop and Claude Code as a remote MCP
+ server. Install once on any Debian host on your LAN — the Claude client
+ connects as a Custom Connector and can query every Krill server listed
+ in /etc/krill-mcp/config.json using the same 4-digit cluster PIN.
+ .
+ Authentication uses Krill's PIN-derived Bearer token. When installed
+ alongside the krill server package, /etc/krill-mcp/credentials/pin_derived_key
+ is symlinked to the existing /etc/krill/credentials/pin_derived_key, so
+ no re-entry of the PIN is required.
+ .
+ Listens on port 50052 by default. Learn more at https://krillswarm.com

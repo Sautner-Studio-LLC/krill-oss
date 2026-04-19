@@ -1,0 +1,154 @@
+#!/bin/sh
+
+set -e
+
+export DEBIAN_FRONTEND=noninteractive
+
+# ── System user / group (shared with krill server if co-installed) ────────────
+# Idempotent — safe to run after `krill` or `krill-pi4j` has already created these.
+
+if ! getent group krill >/dev/null; then
+    addgroup --system krill
+fi
+
+if ! id -u krill >/dev/null 2>&1; then
+    adduser --system --ingroup krill --no-create-home --disabled-login krill
+fi
+
+# ── Runtime directories ───────────────────────────────────────────────────────
+
+install -d -o krill -g krill -m 0750 /var/log/krill-mcp
+install -d -o krill -g krill -m 0750 /etc/krill-mcp
+install -d -o krill -g krill -m 0750 /etc/krill-mcp/credentials
+
+# ── Version tracking ──────────────────────────────────────────────────────────
+
+PKG_VERSION=$(dpkg-query -W -f='${Version}' krill-mcp 2>/dev/null || echo "unknown")
+echo "$PKG_VERSION" > /etc/krill-mcp/version
+chown krill:krill /etc/krill-mcp/version
+chmod 0640 /etc/krill-mcp/version
+
+# ── PIN-derived credential ────────────────────────────────────────────────────
+# Three paths:
+#   1. /etc/krill-mcp/credentials/pin_derived_key already exists → keep it.
+#   2. /etc/krill/credentials/pin_derived_key exists (co-located with krill server)
+#      → symlink to share credentials, no prompt needed.
+#   3. Otherwise prompt interactively for a 4-digit PIN and derive locally.
+
+KRILL_MCP_KEY_FILE="/etc/krill-mcp/credentials/pin_derived_key"
+KRILL_KEY_FILE="/etc/krill/credentials/pin_derived_key"
+
+if [ -f "$KRILL_MCP_KEY_FILE" ] || [ -L "$KRILL_MCP_KEY_FILE" ]; then
+    echo "🦐 ✔ krill-mcp PIN-derived key already configured."
+elif [ -f "$KRILL_KEY_FILE" ]; then
+    echo ""
+    echo "🦐 Detected Krill server install — sharing its PIN-derived key."
+    ln -sf "$KRILL_KEY_FILE" "$KRILL_MCP_KEY_FILE"
+    echo "   Symlinked $KRILL_MCP_KEY_FILE → $KRILL_KEY_FILE"
+else
+    echo ""
+    echo "🦐 Cluster PIN Setup"
+    echo "   Enter the same 4-digit PIN you use on your Krill servers and apps."
+    echo "   The PIN is never stored or transmitted — only its HMAC-derived token is."
+    echo ""
+
+    while true; do
+        printf "   Enter 4-digit cluster PIN: "
+        read -r KRILL_PIN
+
+        if echo "$KRILL_PIN" | grep -qE '^[0-9]{4}$'; then
+            break
+        else
+            echo "   ❌ PIN must be exactly 4 digits (0-9). Try again."
+        fi
+    done
+
+    # Must match PinDerivation.deriveBearerToken() in the Kotlin code and the
+    # matching line in the krill server's postinst.
+    PIN_DERIVED_KEY=$(printf '%s' "$KRILL_PIN" | openssl dgst -sha256 -hmac "krill-api-pbkdf2-v1" -hex 2>/dev/null | awk '{print $NF}')
+
+    if [ -z "$PIN_DERIVED_KEY" ] || [ ${#PIN_DERIVED_KEY} -ne 64 ]; then
+        echo "❌ Failed to derive PIN bearer token (check that openssl is installed)."
+        exit 1
+    fi
+
+    umask 077
+    echo "$PIN_DERIVED_KEY" > "$KRILL_MCP_KEY_FILE"
+    chmod 0400 "$KRILL_MCP_KEY_FILE"
+    chown krill:krill "$KRILL_MCP_KEY_FILE"
+    unset KRILL_PIN
+    echo "🦐 ✅ PIN-derived bearer token stored in $KRILL_MCP_KEY_FILE"
+fi
+
+# ── Default config (only if absent) ───────────────────────────────────────────
+
+CONFIG_FILE="/etc/krill-mcp/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+    cat > "$CONFIG_FILE" << 'EOF'
+{
+  "listenPort": 50052,
+  "pinDerivedKeyPath": "/etc/krill-mcp/credentials/pin_derived_key",
+  "seeds": [
+    { "host": "localhost", "port": 8442 }
+  ],
+  "discoveryRefreshSeconds": 300
+}
+EOF
+    chown krill:krill "$CONFIG_FILE"
+    chmod 0640 "$CONFIG_FILE"
+    echo "🦐 Wrote default $CONFIG_FILE — edit it to list each Krill server on your LAN."
+fi
+
+# ── systemd service ───────────────────────────────────────────────────────────
+
+cat > /etc/systemd/system/krill-mcp.service << 'EOF'
+[Unit]
+Description=Krill MCP Server (Model Context Protocol)
+Documentation=https://krillswarm.com
+After=network.target
+Wants=krill.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/java -jar /usr/local/bin/krill-mcp.jar
+User=krill
+Group=krill
+Restart=on-failure
+RestartSec=5
+Environment=JAVA_OPTS=
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=krill-mcp
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable krill-mcp.service
+systemctl restart krill-mcp.service
+
+# ── Final banner ──────────────────────────────────────────────────────────────
+
+BEARER=$(cat "$KRILL_MCP_KEY_FILE" 2>/dev/null || echo "<key not readable>")
+LISTEN_PORT=$(awk -F'[ ,:]+' '/listenPort/{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+$/){print $i; exit}}' "$CONFIG_FILE" 2>/dev/null || echo "50052")
+HOSTNAME=$(hostname)
+HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+
+echo ""
+echo "=============================================="
+echo "🦐 krill-mcp is running!"
+echo "=============================================="
+echo ""
+echo "Add a Custom Connector in Claude with:"
+echo "   URL:    http://$HOSTNAME:$LISTEN_PORT/mcp"
+if [ -n "$HOST_IP" ]; then
+    echo "   (or)    http://$HOST_IP:$LISTEN_PORT/mcp"
+fi
+echo "   Header: Authorization: Bearer $BEARER"
+echo ""
+echo "Tail logs with:  journalctl -u krill-mcp -f"
+echo "Reprint token:   sudo krill-mcp-token"
+echo ""
+echo "⚠ Edit /etc/krill-mcp/config.json to list every Krill server the MCP should reach."
+echo ""

@@ -1,0 +1,26 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    remove)
+        ;;
+    purge)
+        if [ -f "/etc/systemd/system/krill-mcp.service" ]; then
+            rm -f /etc/systemd/system/krill-mcp.service
+            systemctl daemon-reload || true
+        fi
+        if [ -d "/etc/krill-mcp" ]; then
+            rm -rf /etc/krill-mcp
+        fi
+        if [ -d "/var/log/krill-mcp" ]; then
+            rm -rf /var/log/krill-mcp
+        fi
+        ;;
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+    *)
+        ;;
+esac
+
+exit 0
