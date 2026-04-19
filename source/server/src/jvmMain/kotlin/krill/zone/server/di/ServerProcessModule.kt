@@ -13,6 +13,7 @@ import krill.zone.server.krillapp.executor.smtp.*
 import krill.zone.server.krillapp.executor.webhook.*
 import krill.zone.server.krillapp.project.*
 import krill.zone.server.krillapp.project.camera.*
+import krill.zone.server.krillapp.project.tasklist.*
 import krill.zone.server.krillapp.server.backup.*
 import krill.zone.server.krillapp.server.llm.*
 import krill.zone.server.krillapp.server.pin.*
@@ -202,7 +203,7 @@ val serverProcessModule = module {
 
     single<TaskListProcessor> {
 
-        ServerTaskListProcessor()
+        ServerTaskListProcessor(get(), get(named(IO_SCOPE)))
 
     }
 
