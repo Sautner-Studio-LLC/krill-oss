@@ -27,15 +27,15 @@ class KrillRegistry(
     private val byHost = ConcurrentHashMap<String, KrillClient>()
 
     suspend fun bootstrap() {
+        if (config.seeds.isEmpty()) {
+            log.warn("No seeds configured in /etc/krill-mcp/config.json — MCP tools will have no Krill server to call.")
+            return
+        }
         for (seed in config.seeds) {
-            try {
-                val client = probe(seed) ?: continue
-                byId[client.serverId] = client
-                byHost["${seed.host}:${seed.port}"] = client
-                log.info("Registered Krill server: id={} host={}:{}", client.serverId, seed.host, seed.port)
-            } catch (e: Exception) {
-                log.warn("Failed to register seed ${seed.host}:${seed.port}: ${e.message}")
-            }
+            val client = probe(seed) ?: continue
+            byId[client.serverId] = client
+            byHost["${seed.host}:${seed.port}"] = client
+            log.info("Registered Krill server: id={} host={}:{}", client.serverId, seed.host, seed.port)
         }
         if (byId.isEmpty()) {
             log.warn("No Krill servers reachable. MCP tools will return no results until a seed comes online.")
@@ -43,17 +43,37 @@ class KrillRegistry(
     }
 
     private suspend fun probe(seed: KrillSeed): KrillClient? = coroutineScope {
+        val label = "${seed.host}:${seed.port}"
         val tokenSupplier: () -> String? = { seed.bearerToken ?: pin.bearerToken() }
+        if (tokenSupplier() == null) {
+            log.warn("Seed {} skipped: no PIN-derived bearer token available (check {}).",
+                label, "/etc/krill-mcp/credentials/pin_derived_key")
+            return@coroutineScope null
+        }
         val candidate = KrillClient(
             serverId = "pending",
             baseUrl = seed.baseUrl(),
             bearerToken = tokenSupplier,
         )
         val health = withTimeoutOrNull(10_000) {
-            runCatching { candidate.health() }.getOrNull()
-        } ?: return@coroutineScope null
+            runCatching { candidate.health() }.fold(
+                onSuccess = { it },
+                onFailure = {
+                    log.warn("Seed {} /health failed: {}", label, it.message)
+                    null
+                },
+            )
+        } ?: run {
+            // withTimeoutOrNull returns null when the block itself returned null (see fold above)
+            // OR on actual timeout; either way we logged above unless this was the timeout branch.
+            return@coroutineScope null
+        }
         val serverId = (health as? JsonObject)?.get("id")?.jsonPrimitive?.contentOrNull
-            ?: return@coroutineScope null
+        if (serverId == null) {
+            log.warn("Seed {} responded but /health lacks a top-level \"id\" field; cannot register. Payload: {}",
+                label, health.toString().take(200))
+            return@coroutineScope null
+        }
         KrillClient(serverId = serverId, baseUrl = seed.baseUrl(), bearerToken = tokenSupplier)
     }
 
