@@ -12,7 +12,6 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.unit.*
 import co.touchlab.kermit.*
@@ -20,7 +19,6 @@ import kotlinx.coroutines.*
 import krill.zone.app.ui.*
 import krill.zone.shared.*
 import krill.zone.shared.krillapp.datapoint.*
-import krill.zone.shared.krillapp.server.*
 import krill.zone.shared.krillapp.server.llm.*
 import krill.zone.shared.krillapp.server.pin.*
 import krill.zone.shared.node.*
@@ -289,8 +287,8 @@ private fun AnimatedNodeVisibility(isNewNode: Boolean, node: Node, isRemoving: B
             node.type == KrillApp.Project.TaskList ||
             node.type == KrillApp.Project.Journal ||
             node.type == KrillApp.Project.Diagram ||
-            node.type == KrillApp.Server.Pin
-
+            node.type == KrillApp.Server.Pin ||
+            node.type == KrillApp.Executor.Lambda
         ) {
 
             val text = node.name()

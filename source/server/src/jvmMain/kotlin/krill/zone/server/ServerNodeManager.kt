@@ -118,9 +118,9 @@ class ServerNodeManager(
     fun update(node: Node) {
 
         readNodeStateOrNull(node.id).value?.let { origin ->
-
+            logger.i { "Updating node ${node.details()}" }
             if (node.state != NodeState.NONE && origin.state != node.state && node.timestamp - origin.timestamp > 1000) {
-                logger.d("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")
+                logger.i("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")
                 scope.launch {
                     EventFlowContainer.postEvent(
                         Event(

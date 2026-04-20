@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.*
 import krill.zone.shared.*
 import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.datapoint.graph.*
+import krill.zone.shared.krillapp.executor.lambda.*
 import krill.zone.shared.krillapp.project.*
 import krill.zone.shared.krillapp.project.camera.*
 import krill.zone.shared.krillapp.project.diagram.*
@@ -103,6 +104,18 @@ fun Node.name() : String {
 
        KrillApp.Project.Diagram -> {
            (this.meta as DiagramMetaData).name
+       }
+
+       KrillApp.Executor.Lambda -> {
+
+           val meta = this.meta as LambdaSourceMetaData
+           if (meta.filename.isNotEmpty()) {
+               meta.filename.removeSuffix(".py")
+           } else {
+               ""
+           }
+
+
        }
 
        else -> {

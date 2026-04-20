@@ -137,7 +137,7 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
             KrillApp.DataPoint -> {
                 val meta = state.meta as DataPointMetaData
                 distinct.add(MenuCommand.Update)
-
+                distinct.add(KrillApp.DataPoint)
 
                 if (meta.dataType == DataType.DIGITAL) {
                     distinct.addAll(triggerCapabilities())
