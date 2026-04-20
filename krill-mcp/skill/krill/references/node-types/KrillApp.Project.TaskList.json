@@ -1,0 +1,79 @@
+{
+    "name": "KrillApp.Project.TaskList",
+    "title": "Task List",
+    "description": "Stores a list of tasks with checkboxes, priority levels, optional due dates, and optional cron recurrence. Acts as a stateful scheduled trigger: when any task's due date passes without being completed, fires executeChildren on the TaskList exactly once per expiry (dedup via per-task expiredExecuted flag). Recurring tasks advance their due date to the next cron occurrence automatically. The TaskList's NodeState escalates (INFO / WARN / SEVERE) with overdue duration; a HIGH-priority list short-circuits to SEVERE the moment any task is overdue. Tasks can be used to document processes, track project progress, or drive maintenance workflows with automated consequences.",
+    "shortDescription": "Stateful checklist that fires child executors when tasks become overdue; supports recurring tasks via cron.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "SHOW_EDITOR",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Projects",
+    "subcategory": "Task Management",
+    "llmPurpose": "Stores tasks with priorities, due dates, and optional cron recurrence, and executes child nodes when a task's due date passes without being completed.",
+    "llmRole": "trigger",
+    "llmBehavior": [
+        "stores list of tasks with completion checkboxes, priorities, optional due dates, and optional cron recurrence",
+        "fires executeChildren on the TaskList when any task becomes overdue",
+        "dedups expiry firings per task via the expiredExecuted flag",
+        "advances recurring tasks to the next cron occurrence on expiry and re-arms",
+        "escalates NodeState (NONE → INFO ≤24h → WARN 1–7d → SEVERE >7d); any overdue task on a HIGH-priority list short-circuits to SEVERE",
+        "tracks creation and update timestamps"
+    ],
+    "llmInputs": [
+        "task descriptions",
+        "priority level (NONE, LOW, MEDIUM, HIGH)",
+        "completion status",
+        "optional due date (epoch millis)",
+        "optional cron recurrence expression"
+    ],
+    "llmOutputs": [
+        "persisted task list with completion state",
+        "executes all child nodes when a task expires"
+    ],
+    "llmTypicalUseCases": [
+        "recurring maintenance checklist that emails on miss (e.g. weekly aquarium water test firing an SMTP executor)",
+        "operational to-do list that triggers a Lambda when a deadline passes",
+        "overdue reminders that toggle a GPIO pin (LED, buzzer) until acknowledged",
+        "document a process with completion tracking",
+        "scheduled equipment checks with automated escalation"
+    ],
+    "llmPromptHints": [
+        "create a task list",
+        "add tasks",
+        "to-do list",
+        "checklist",
+        "remind me when this is overdue",
+        "run something when I miss a deadline",
+        "recurring checklist with alerts",
+        "weekly maintenance task that emails me"
+    ],
+    "llmCreationHints": "Create a TaskList when the user wants to track tasks, steps, or to-do items — especially when they also want downstream automation to fire on missed deadlines. Wire child executors (SMTP, Lambda, Pin, etc.) under the TaskList to be the consequence of expiry. For repeating tasks, enable the per-task Recurring toggle and provide a cron expression.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Project"],
+        "childTypes": [
+            "KrillApp.Executor.LogicGate",
+            "KrillApp.Executor.OutgoingWebHook",
+            "KrillApp.Executor.Lambda",
+            "KrillApp.Executor.Calculation",
+            "KrillApp.Executor.Compute",
+            "KrillApp.Executor.SMTP",
+            "KrillApp.MQTT",
+            "KrillApp.Project.Camera",
+            "KrillApp.Server.Backup"
+        ],
+        "role": "stateful trigger that executes child nodes when a task's due date passes"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Create a task list for this project.",
+        "Add a maintenance checklist.",
+        "Track setup steps for this sensor deployment.",
+        "Create a weekly water-test checklist that emails me if I miss one.",
+        "Make a recurring task that runs every Sunday at 9am and triggers a Lambda if I don't check it off.",
+        "Overdue tasks on this list should turn on the red LED."
+    ]
+}

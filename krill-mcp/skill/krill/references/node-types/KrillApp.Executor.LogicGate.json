@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.Executor.LogicGate",
+    "title": "Logic Gates",
+    "description": "Reads boolean values from one or two source nodes (Pins or DataPoints), applies a logic gate operation (AND, OR, NOT, NAND, NOR, XOR, XNOR, BUFFER, IMPLY, NIMPLY), and writes the boolean result to a target node (Pin or DataPoint). Pin values are read as ON=true/OFF=false. DataPoint values are read as 1.0=true/0.0=false.",
+    "shortDescription": "Applies boolean logic operations on source node values and writes the result to a target.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Executors",
+    "llmPurpose": "Evaluates a boolean logic gate on one or two source node values and writes the result to a target Pin or DataPoint.",
+    "llmRole": "logic",
+    "llmBehavior": ["reads boolean values from source nodes", "evaluates logic gate operation", "writes result to target node", "supports re-entrancy protection to prevent circular triggers"],
+    "llmInputs": ["1-2 source nodes (Pin state or DataPoint snapshot)", "gate type selection"],
+    "llmOutputs": ["boolean result written to target Pin (ON/OFF) or DataPoint (1.0/0.0)"],
+    "llmTypicalUseCases": ["combine two sensor states with AND logic", "invert a pin state with NOT gate", "create conditional logic between pins and data points"],
+    "llmPromptHints": ["AND these two values", "invert this pin", "combine these inputs with OR", "XOR these sensors", "logic gate"],
+    "llmCreationHints": "Create a LogicGate when the user needs boolean logic between nodes. Requires selecting a gate type, one or two sources, and one target. Sources and targets can be Pins or DataPoints.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Executor", "KrillApp.Trigger"],
+        "sourceTypes": ["KrillApp.Server.Pin", "KrillApp.DataPoint", "KrillApp.Executor.LogicGate"],
+        "targetTypes": ["KrillApp.Server.Pin", "KrillApp.DataPoint", "KrillApp.Executor.LogicGate"],
+        "role": "computation node that reads sources and writes to a target"
+    },
+    "llmSideEffectLevel": "medium",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "gpio_pin_or_data_point",
+    "llmExamples": [
+        "If both sensors are ON, turn on this pin.",
+        "Invert the state of this GPIO pin.",
+        "AND these two temperature readings and write to a data point.",
+        "Create an XOR gate between these two inputs."
+    ]
+}

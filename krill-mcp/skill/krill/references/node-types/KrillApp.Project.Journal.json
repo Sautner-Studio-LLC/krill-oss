@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Project.Journal",
+    "title": "Journal",
+    "description": "Stores chronological journal entries within a project. Entries can include text and photos to document progress, milestones, decisions, and observations over time. Useful for keeping a running log of project activity.",
+    "shortDescription": "Chronological journal for documenting project progress and observations.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "SHOW_EDITOR",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Projects",
+    "subcategory": "Journals",
+    "llmPurpose": "Stores chronological journal entries with text and photos to document project progress and observations over time.",
+    "llmRole": "state",
+    "llmBehavior": ["stores journal entries chronologically", "supports text and photo content", "records creation and update timestamps"],
+    "llmInputs": ["journal entry text", "optional photos"],
+    "llmOutputs": ["persisted journal entries"],
+    "llmTypicalUseCases": ["document project progress", "record observations and decisions", "keep a maintenance log", "photo documentation over time"],
+    "llmPromptHints": ["create a journal", "add a journal entry", "log this observation", "document progress"],
+    "llmCreationHints": "Create a Journal when the user wants to maintain a chronological record of project events, observations, or decisions.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Project"],
+        "childTypes": [],
+        "role": "leaf state node that stores journal entries"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Start a journal for this project.",
+        "Add a journal entry about today's sensor readings.",
+        "Document the setup process in a journal."
+    ]
+}

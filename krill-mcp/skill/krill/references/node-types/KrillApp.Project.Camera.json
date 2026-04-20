@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.Project.Camera",
+    "title": "Camera",
+    "description": "Connects to a camera device on the Raspberry Pi and streams live video. Configure resolution, framerate, and rotation. Snapshots are served via the camera endpoint.",
+    "shortDescription": "Live camera feed from a Raspberry Pi camera module or USB camera.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "EXPAND",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Project",
+    "llmPurpose": "Provides live camera feed and snapshot capture from Raspberry Pi cameras.",
+    "llmRole": "sensor",
+    "llmBehavior": ["captures snapshots from connected camera hardware", "streams JPEG frames at configured framerate", "supports resolution and rotation configuration", "serves snapshots via authenticated HTTP endpoint"],
+    "llmInputs": ["camera device", "resolution setting", "framerate", "rotation"],
+    "llmOutputs": ["JPEG snapshot bytes", "live camera feed"],
+    "llmTypicalUseCases": ["monitor a physical location with a Pi camera", "capture snapshots on demand", "add a security camera to a project"],
+    "llmPromptHints": ["camera feed", "live video", "security camera", "snapshot", "Pi camera"],
+    "llmCreationHints": "Create a Camera node under a Project when the user wants live video or snapshot capture from a Raspberry Pi camera. Requires a camera module or USB camera connected to the Pi.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Project"],
+        "sourceTypes": [],
+        "targetTypes": [],
+        "role": "sensor node that captures video frames from camera hardware"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": "camera_device",
+    "llmExamples": [
+        "Add a camera to my project so I can see a live feed.",
+        "Set up a security camera on the Raspberry Pi.",
+        "Show me what the Pi camera sees.",
+        "Capture a snapshot from the connected camera."
+    ]
+}

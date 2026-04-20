@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Trigger.HighThreshold",
+    "title": "High Threshold",
+    "description": "Triggers an alarm and executes child nodes when the parent DataPoint's value reaches or exceeds a configured threshold. Compares the DataPoint snapshot value against the threshold: fires when value >= threshold. Sets node state to WARN on breach.",
+    "shortDescription": "Triggers when a DataPoint value reaches or exceeds a configured upper limit.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Triggers",
+    "llmPurpose": "Evaluates whether a DataPoint value is at or above a threshold and triggers child execution and alarm state when breached.",
+    "llmRole": "trigger",
+    "llmBehavior": ["reads upstream DataPoint snapshot value", "compares value >= threshold", "sets node state to WARN on breach", "executes child nodes on breach"],
+    "llmInputs": ["upstream DataPoint snapshot value", "configured threshold value (Double)"],
+    "llmOutputs": ["alarm state (WARN)", "executes child nodes when threshold is breached"],
+    "llmTypicalUseCases": ["high temperature alert", "pressure warning", "resource usage notification", "overvoltage detection"],
+    "llmPromptHints": ["alert when above", "warn if value exceeds", "notify when greater than", "high level alarm"],
+    "llmCreationHints": "Create a HighThreshold when the user wants to be alerted or trigger actions when a value exceeds a maximum. Requires a numeric threshold value.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Trigger", "KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Executor", "KrillApp.Executor.LogicGate", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda"],
+        "role": "conditional trigger that fires when DataPoint value is at or above threshold"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Alert me when the temperature exceeds 100 degrees.",
+        "Trigger a webhook when pressure goes above 50 PSI.",
+        "Warn me when CPU usage reaches 90%."
+    ]
+}

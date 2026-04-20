@@ -1,0 +1,31 @@
+{
+    "name": "KrillApp",
+    "title": "Krill App",
+    "description": "Root type for all Krill node types. This is the base sealed class from which all node types are derived. It has no runtime behavior of its own.",
+    "shortDescription": "Root type for all Krill node types.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "NONE",
+    "category": "Krill",
+    "subcategory": "About",
+    "llmPurpose": "Root sealed class for the KrillApp type hierarchy. All node types are subtypes of KrillApp.",
+    "llmRole": "structural",
+    "llmBehavior": ["defines the root of the node type hierarchy", "no runtime behavior"],
+    "llmInputs": [],
+    "llmOutputs": [],
+    "llmTypicalUseCases": [],
+    "llmPromptHints": [],
+    "llmCreationHints": "This is the root type and is not directly instantiated. Use specific subtypes (Server, Client, DataPoint, Trigger, Executor, etc.) instead.",
+    "llmConnectionHints": {
+        "parentTypes": [],
+        "childTypes": ["KrillApp.Client", "KrillApp.Server", "KrillApp.Project", "KrillApp.DataPoint", "KrillApp.Trigger", "KrillApp.Executor", "KrillApp.MQTT"],
+        "role": "root of the node type hierarchy"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": []
+}

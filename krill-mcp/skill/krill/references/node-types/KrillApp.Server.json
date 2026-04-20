@@ -1,0 +1,36 @@
+{
+    "name": "KrillApp.Server",
+    "title": "Krill Server",
+    "description": "Represents a Krill server instance running on a Raspberry Pi or Debian-based Linux system. Manages data points, executes automation, and handles device communication. When local, starts a network beacon to advertise itself. When remote, connects to the server via HTTPS. Contains child nodes for GPIO pins, peer connections, LLM integration, and serial devices.",
+    "shortDescription": "A Krill server instance that manages devices, automation, and data on a Raspberry Pi or Linux host.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "CHANGE_SCREEN",
+    "nodeCommandBehavior": "CHANGE_SCREEN",
+    "category": "Krill Server",
+    "subcategory": "Krill Server",
+    "order": 1,
+    "llmPurpose": "Represents a Krill server instance that manages GPIO pins, serial devices, peer connections, LLM integration, and automation execution.",
+    "llmRole": "structural",
+    "llmBehavior": ["advertises server on network via beacon (if local)", "connects to remote server via HTTPS (if remote)", "contains and manages child hardware and service nodes", "stores server identity and configuration"],
+    "llmInputs": ["server hostname, port, API key, platform type"],
+    "llmOutputs": ["network beacon for server discovery", "child node management"],
+    "llmTypicalUseCases": ["represent a Raspberry Pi running Krill", "connect to a remote Krill server", "organize GPIO pins and serial devices under a server"],
+    "llmPromptHints": ["add a server", "connect to this Raspberry Pi", "show me the server", "which server"],
+    "llmCreationHints": "A Server node is typically auto-discovered via beacon or manually added by the user. It is the root container for all hardware and service nodes on that host.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Client"],
+        "childTypes": ["KrillApp.Server.Pin", "KrillApp.Server.Peer", "KrillApp.Server.LLM", "KrillApp.Server.SerialDevice", "KrillApp.DataPoint"],
+        "role": "root structural node for a physical or remote server"
+    },
+    "llmSideEffectLevel": "medium",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Connect to the Raspberry Pi on my network.",
+        "Show the GPIO pins on this server.",
+        "Add a new Krill server at 192.168.1.10."
+    ]
+}

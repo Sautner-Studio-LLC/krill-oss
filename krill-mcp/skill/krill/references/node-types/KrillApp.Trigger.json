@@ -1,0 +1,34 @@
+{
+    "name": "KrillApp.Trigger",
+    "title": "Trigger",
+    "description": "A container node that organizes trigger child nodes under a DataPoint. When executed, it retrieves the upstream DataPoint value and executes all child trigger nodes. Specific trigger behavior is implemented by child nodes such as HighThreshold, LowThreshold, CronTimer, Button, SilentAlarm, or IncomingWebHook.",
+    "shortDescription": "Container for trigger nodes that evaluate conditions or events on a parent DataPoint.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Triggers",
+    "llmPurpose": "Organizes trigger child nodes under a DataPoint and propagates execution to them.",
+    "llmRole": "container",
+    "llmBehavior": ["contains child trigger nodes", "propagates execution to children", "retrieves upstream DataPoint value"],
+    "llmInputs": ["upstream DataPoint value via parent traversal"],
+    "llmOutputs": ["executes child trigger nodes"],
+    "llmTypicalUseCases": ["group multiple triggers under a single DataPoint", "organize threshold and alarm triggers"],
+    "llmPromptHints": ["add triggers to this data point", "set up alerts on this value", "monitor this sensor"],
+    "llmCreationHints": "Create a Trigger node as a child of a DataPoint when the user wants to add conditional or scheduled logic to that data stream.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Trigger.HighThreshold", "KrillApp.Trigger.LowThreshold", "KrillApp.Trigger.CronTimer", "KrillApp.Trigger.Button", "KrillApp.Trigger.SilentAlarmMs", "KrillApp.Trigger.IncomingWebHook"],
+        "role": "intermediary container between DataPoint and specific trigger implementations"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Add a trigger to this temperature sensor.",
+        "I want to be alerted when this value changes.",
+        "Set up monitoring on this data point."
+    ]
+}

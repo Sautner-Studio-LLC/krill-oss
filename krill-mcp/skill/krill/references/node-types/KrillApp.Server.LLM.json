@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Server.LLM",
+    "title": "LLM",
+    "description": "Connects to a local Ollama LLM service running on the server. Sends chat messages via HTTP POST to the Ollama API endpoint and receives AI-generated responses. Supports conversation history and can include selected node context in prompts. Responses are delivered via the event stream.",
+    "shortDescription": "Connects to a local Ollama LLM service for AI-assisted server automation.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "NONE",
+    "category": "Krill Server",
+    "subcategory": "LLM",
+    "llmPurpose": "Sends chat messages to a local Ollama LLM service and receives AI-generated responses for server automation assistance.",
+    "llmRole": "action",
+    "llmBehavior": ["sends HTTP POST to Ollama API at localhost:{port}/api/chat", "maintains conversation history", "includes selected node context in prompts", "receives and posts LLM responses via event stream"],
+    "llmInputs": ["chat messages", "selected node context", "Ollama port and model configuration"],
+    "llmOutputs": ["LLM response text via event stream"],
+    "llmTypicalUseCases": ["ask AI to explain server configuration", "get automation suggestions", "natural language interaction with server"],
+    "llmPromptHints": ["talk to the AI", "ask the LLM", "chat with the server", "AI assistant"],
+    "llmCreationHints": "Create an LLM node under a Server when the user wants AI-assisted interaction with that server. Requires Ollama to be running on the server. Configure the port (default 11434) and model name.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Server"],
+        "childTypes": [],
+        "role": "leaf action node that communicates with external LLM service"
+    },
+    "llmSideEffectLevel": "medium",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "llm_service",
+    "llmExamples": [
+        "Set up AI chat on this server.",
+        "Connect to the Ollama model on this Raspberry Pi.",
+        "Ask the LLM to explain my automation setup."
+    ]
+}

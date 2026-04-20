@@ -1,0 +1,36 @@
+{
+    "name": "KrillApp.Server.Backup",
+    "title": "Backup",
+    "description": "Creates compressed ZIP backup archives of all node data, snapshot history, project files, and camera thumbnails. Archives include the server hostname and an embedded expiry timestamp for automatic cleanup.",
+    "shortDescription": "Automated server backup with configurable retention and one-click restore.",
+    "state": "STABLE",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "System",
+    "llmPurpose": "Creates and manages server backup archives for disaster recovery.",
+    "llmRole": "action",
+    "llmBehavior": ["exports all nodes to JSON", "copies selected data directories into archive", "creates timestamped ZIP with hostname and expiry", "daily cleanup deletes expired archives"],
+    "llmInputs": ["backup path", "include flags", "max age days"],
+    "llmOutputs": ["ZIP archive in backup directory"],
+    "llmTypicalUseCases": ["nightly automated backup via Cron", "manual backup before maintenance", "backup before firmware update"],
+    "llmPromptHints": ["backup the server", "create a backup", "schedule nightly backups", "restore from backup"],
+    "llmCreationHints": "Create a Backup node under a Server. Wire it to a Cron timer for scheduled backups or a Button for manual backups. Configure retention with maxAgeDays.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Server"],
+        "sourceTypes": [],
+        "targetTypes": [],
+        "role": "system node that creates backup archives when triggered by executors"
+    },
+    "llmSideEffectLevel": "high",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "filesystem",
+    "llmExamples": [
+        "Back up this server every night at 2am.",
+        "Create a backup before I update the firmware.",
+        "Set up automated backups with 30-day retention."
+    ]
+}

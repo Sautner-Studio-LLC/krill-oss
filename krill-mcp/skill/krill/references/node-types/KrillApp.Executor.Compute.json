@@ -1,0 +1,38 @@
+{
+    "name": "KrillApp.Executor.Compute",
+    "title": "Compute",
+    "description": "Performs statistical analysis on historical data from a source DataPoint over a configured time range. Fetches data series for the selected period (hour, day, week, month, or year) and applies a statistical operation (average, median, high, low, sum, count, range, first, last, or standard deviation). The computed result is written to a target DataPoint.",
+    "shortDescription": "Computes a statistical summary of a DataPoint's historical values over a time range and writes the result to a target.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Executors",
+    "order": 10,
+    "llmPurpose": "Computes a statistical summary (average, min, max, sum, count, etc.) of a source DataPoint's historical data over a time range and writes the result to a target DataPoint.",
+    "llmRole": "transform",
+    "llmBehavior": ["fetches historical data series from source DataPoint", "applies statistical operation over time range", "writes result to target DataPoint"],
+    "llmInputs": ["source DataPoint", "time range (hour/day/week/month/year)", "statistical operation"],
+    "llmOutputs": ["computed statistic written to target DataPoint"],
+    "llmTypicalUseCases": ["daily average temperature", "weekly maximum pressure reading", "monthly data count", "trend analysis over time", "data summarization for archival"],
+    "llmPromptHints": ["average this over a day", "what was the max this week", "summarize this data", "compute the daily average", "statistical summary"],
+    "llmCreationHints": "Create a Compute node when the user needs statistical analysis of historical data. Requires a source DataPoint, a target DataPoint, a time range, and a statistical operation.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Executor", "KrillApp.Trigger"],
+        "sourceTypes": ["KrillApp.DataPoint"],
+        "targetTypes": ["KrillApp.DataPoint"],
+        "role": "analysis node that reads historical data and writes summary statistics to a target"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": "data_point",
+    "llmExamples": [
+        "Compute the daily average of this temperature sensor.",
+        "What was the maximum pressure reading this week?",
+        "Summarize the last month of data for this sensor.",
+        "Count how many readings were recorded today."
+    ]
+}

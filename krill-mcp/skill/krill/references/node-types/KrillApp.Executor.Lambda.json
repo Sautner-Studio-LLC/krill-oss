@@ -1,0 +1,36 @@
+{
+    "name": "KrillApp.Executor.Lambda",
+    "title": "Lambda",
+    "description": "Executes a Python script in a sandboxed environment when triggered. The script can read values from source DataPoints and write results to target DataPoints. Supports Firejail and Docker sandboxing with configurable memory limits (default 256MB). Scripts are stored at /opt/krill/lambdas on the server.",
+    "shortDescription": "Runs a sandboxed Python script that reads from source nodes and writes to target nodes.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Executors",
+    "llmPurpose": "Executes a user-defined Python script in a sandboxed environment, reading from source DataPoints and writing results to target DataPoints.",
+    "llmRole": "action",
+    "llmBehavior": ["executes Python script asynchronously", "reads source DataPoint values as script input", "writes script output to target DataPoints", "runs in sandboxed environment (Firejail or Docker)", "enforces memory limits"],
+    "llmInputs": ["Python script filename", "source DataPoint values"],
+    "llmOutputs": ["computed values written to target DataPoints"],
+    "llmTypicalUseCases": ["custom data processing logic", "complex calculations beyond built-in operators", "integration with Python libraries", "custom automation scripts"],
+    "llmPromptHints": ["run a Python script", "custom script", "execute code when triggered", "process data with Python"],
+    "llmCreationHints": "Create a Lambda when the user needs custom logic that cannot be expressed with built-in Calculation or LogicGate nodes. Requires a Python script file and at least one source or target DataPoint.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Executor", "KrillApp.Trigger"],
+        "sourceTypes": ["KrillApp.DataPoint"],
+        "targetTypes": ["KrillApp.DataPoint"],
+        "role": "action node that executes custom Python scripts with DataPoint I/O"
+    },
+    "llmSideEffectLevel": "high",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "data_point",
+    "llmExamples": [
+        "Run a Python script to convert temperature from Celsius to Fahrenheit.",
+        "Process this sensor data with a custom algorithm.",
+        "Execute a script that filters and transforms readings."
+    ]
+}

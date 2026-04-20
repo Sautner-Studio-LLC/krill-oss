@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.MQTT",
+    "title": "MQTT",
+    "description": "Publishes to or subscribes from an MQTT broker. In publish mode, reads the source DataPoint's snapshot value, converts it to an ON/OFF JSON payload, and publishes to the configured broker topic. In subscribe mode, listens for messages on the topic. Supports integration with Zigbee MQTT and other IoT messaging systems.",
+    "shortDescription": "Publishes data to or subscribes from an MQTT broker topic.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Triggers",
+    "llmPurpose": "Publishes DataPoint values to or subscribes from an MQTT broker topic for IoT device communication.",
+    "llmRole": "action",
+    "llmBehavior": ["connects to MQTT broker at configured address", "publishes source DataPoint value as ON/OFF JSON payload (PUB mode)", "subscribes to topic and receives messages (SUB mode)", "reads from source nodes and can write to target nodes"],
+    "llmInputs": ["broker address", "topic string", "action mode (PUB/SUB)", "source DataPoint value (for publish)"],
+    "llmOutputs": ["MQTT message published to broker (PUB)", "received messages from broker (SUB)"],
+    "llmTypicalUseCases": ["control Zigbee devices via MQTT", "publish sensor data to broker", "subscribe to IoT device messages", "integrate with Home Assistant or other MQTT systems"],
+    "llmPromptHints": ["publish to MQTT", "subscribe to topic", "Zigbee control", "MQTT broker", "IoT messaging"],
+    "llmCreationHints": "Create an MQTT node when the user wants to communicate with an MQTT broker. Configure the broker address, topic, and action mode (PUB or SUB). For publishing, connect a source DataPoint.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Executor", "KrillApp.Trigger"],
+        "sourceTypes": ["KrillApp.DataPoint"],
+        "targetTypes": ["KrillApp.DataPoint"],
+        "role": "action node that communicates with external MQTT broker"
+    },
+    "llmSideEffectLevel": "high",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "mqtt_broker",
+    "llmExamples": [
+        "Publish this sensor value to the MQTT broker.",
+        "Subscribe to the Zigbee temperature topic.",
+        "Send ON/OFF commands to this IoT device via MQTT.",
+        "Connect to the MQTT broker at 192.168.1.5."
+    ]
+}

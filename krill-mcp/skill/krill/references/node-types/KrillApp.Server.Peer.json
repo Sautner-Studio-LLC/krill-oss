@@ -1,0 +1,36 @@
+{
+    "name": "KrillApp.Server.Peer",
+    "title": "Server Peer",
+    "description": "Represents a connection from the local Krill server to another Krill server in the mesh network. Enables distributed deployments where servers share data and coordinate automation. Servers communicate over HTTPS using API key-based bearer token authentication.",
+    "shortDescription": "Represents a peer-to-peer connection between two Krill servers in the mesh network.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "NONE",
+    "category": "Krill Server",
+    "subcategory": "Peers",
+    "order": 11,
+    "llmPurpose": "Represents a peer connection to another Krill server in the mesh network, enabling server-to-server communication and data sharing.",
+    "llmRole": "structural",
+    "llmBehavior": ["represents a remote server in the mesh network", "communicates over HTTPS with API key authentication", "enables cross-server data and automation coordination"],
+    "llmInputs": ["remote server hostname, port, API key"],
+    "llmOutputs": ["peer-to-peer network connection"],
+    "llmTypicalUseCases": ["connect two Krill servers", "share data between Raspberry Pi nodes", "distributed automation across servers"],
+    "llmPromptHints": ["connect to another server", "add a peer", "link these two servers", "mesh network"],
+    "llmCreationHints": "Create a Peer node when the user wants to connect two Krill servers for cross-server data sharing or automation. Requires the remote server's hostname, port, and API key.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Server"],
+        "childTypes": [],
+        "role": "leaf structural node representing a remote server connection"
+    },
+    "llmSideEffectLevel": "medium",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "remote_server_node",
+    "llmExamples": [
+        "Connect this server to the one in the garage.",
+        "Add a peer connection to 192.168.1.20.",
+        "Link these two Raspberry Pi servers together."
+    ]
+}

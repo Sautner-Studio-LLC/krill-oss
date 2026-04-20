@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.Executor.SMTP",
+    "title": "SMTP",
+    "description": "Sends an email via SMTP when executed. Uses the source node name as the email subject. If the source is a DataPoint, the latest snapshot value is included in the email body. Configure SMTP server, port, credentials, and recipient address.",
+    "shortDescription": "Sends an email via SMTP when triggered by a source change or parent execution.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Executors",
+    "llmPurpose": "Sends an email notification via SMTP with source node data when triggered.",
+    "llmRole": "action",
+    "llmBehavior": ["connects to configured SMTP server with credentials", "builds email subject from source node name", "includes DataPoint snapshot value in email body if source is a DataPoint", "sends plain text email to configured recipient"],
+    "llmInputs": ["SMTP host", "port", "username", "token/password", "from address", "to address", "source node data"],
+    "llmOutputs": ["email sent to recipient"],
+    "llmTypicalUseCases": ["send email alert when sensor value changes", "notify via email when a threshold is crossed", "email notification on device state change"],
+    "llmPromptHints": ["send an email when", "email me when", "notify by email", "SMTP alert", "email notification"],
+    "llmCreationHints": "Create an SMTP executor when the user wants email notifications. Requires SMTP server host, port, credentials, and recipient address. Optionally configure a source DataPoint to include its value in the email.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Executor", "KrillApp.Trigger"],
+        "sourceTypes": ["KrillApp.DataPoint", "KrillApp.Server.Pin"],
+        "targetTypes": [],
+        "role": "action node that sends email notifications via SMTP"
+    },
+    "llmSideEffectLevel": "high",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "smtp_server",
+    "llmExamples": [
+        "Send me an email when the temperature sensor goes above the threshold.",
+        "Email an alert when the device goes offline.",
+        "Notify admin@example.com when humidity changes.",
+        "Send an SMTP notification with the latest reading."
+    ]
+}

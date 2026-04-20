@@ -1,0 +1,33 @@
+{
+    "name": "KrillApp.Client",
+    "title": "Krill Client",
+    "description": "Root client node that manages connections to Krill servers. On startup, loads stored server nodes from persistence, connects to each via HTTPS, and starts a network beacon to discover new servers automatically. Handles both web (WASM) and native platform environments.",
+    "shortDescription": "Root client node that discovers and connects to Krill servers on the network.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "CHANGE_SCREEN",
+    "nodeCommandBehavior": "CHANGE_SCREEN",
+    "llmPurpose": "Root client-side node that discovers Krill servers on the network, loads persisted server connections, and manages the client application state.",
+    "llmRole": "structural",
+    "llmBehavior": ["loads stored server nodes from file persistence", "connects to known servers via HTTPS", "starts network beacon for automatic server discovery", "manages client-side application state"],
+    "llmInputs": ["stored server node data", "network beacon responses"],
+    "llmOutputs": ["server node connections", "client application state"],
+    "llmTypicalUseCases": ["launch the Krill app and discover servers", "connect to a known Krill server", "manage client settings"],
+    "llmPromptHints": ["connect to servers", "find servers on the network", "client settings"],
+    "llmCreationHints": "The Client node is automatically created as the root of the client application. Users do not typically create this node manually.",
+    "llmConnectionHints": {
+        "parentTypes": [],
+        "childTypes": ["KrillApp.Server", "KrillApp.Project"],
+        "role": "root structural node for the client application"
+    },
+    "llmSideEffectLevel": "medium",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Show all servers on my network.",
+        "Connect to the Krill server at 192.168.1.10.",
+        "Discover new servers automatically."
+    ]
+}

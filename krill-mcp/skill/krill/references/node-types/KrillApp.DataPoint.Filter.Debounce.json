@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.DataPoint.Filter.Debounce",
+    "title": "Debounce",
+    "description": "Rejects DataPoint snapshots that arrive too quickly after the previous one. Compares the time delta between the new and previous snapshot timestamps against a configured minimum interval in milliseconds. Discards the snapshot if it arrives before the interval has elapsed. Rate-limits data updates to reduce storage and processing load.",
+    "shortDescription": "Discards snapshots that arrive faster than a configured minimum time interval.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Filters",
+    "llmPurpose": "Rate-limits incoming DataPoint snapshots by rejecting updates that arrive before a configured minimum time interval has elapsed since the previous snapshot.",
+    "llmRole": "logic",
+    "llmBehavior": ["compares timestamp delta against minimum interval", "discards snapshot if time since previous is too short", "posts STATE_CHANGE event when triggered"],
+    "llmInputs": ["incoming snapshot timestamp", "previous snapshot timestamp", "configured minimum interval in milliseconds (Double)"],
+    "llmOutputs": ["accept or reject snapshot (boolean gate)"],
+    "llmTypicalUseCases": ["rate-limit sensor updates", "prevent switch bounce", "reduce data volume from fast sensors", "throttle data logging"],
+    "llmPromptHints": ["only accept one reading per second", "debounce", "rate limit", "minimum interval between updates", "throttle"],
+    "llmCreationHints": "Create a Debounce filter when the user wants to limit how frequently data is recorded. Requires a time interval value in milliseconds (e.g., 1000 for one reading per second).",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.DataPoint.Filter"],
+        "childTypes": [],
+        "role": "leaf filter node that gates incoming snapshot values based on timing"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Only accept one reading per second (1000ms debounce).",
+        "Limit this sensor to one update every 5 seconds.",
+        "Debounce this switch to prevent rapid toggling."
+    ]
+}

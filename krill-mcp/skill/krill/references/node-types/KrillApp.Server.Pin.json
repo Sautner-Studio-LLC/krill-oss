@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.Server.Pin",
+    "title": "GPIO Pin",
+    "description": "Controls a GPIO pin on a Raspberry Pi via Pi4J. Supports output mode (set HIGH/LOW), input mode (read), and PWM mode. When executed in output mode, sets the pin state and triggers downstream nodes. Registers and configures the pin with Pi4J on creation or edit. Allows configuring startup and shutdown states.",
+    "shortDescription": "Controls a Raspberry Pi GPIO pin with configurable mode, state, and startup/shutdown behavior.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Raspberry Pi",
+    "order": 11,
+    "llmPurpose": "Controls a physical GPIO pin on a Raspberry Pi, setting it HIGH or LOW, reading its state, or configuring PWM output.",
+    "llmRole": "target",
+    "llmBehavior": ["registers pin with Pi4J on creation", "sets pin HIGH or LOW in output mode", "reads pin state in input mode", "triggers downstream nodes on state change", "configures startup and shutdown pin states", "unregisters pin on deletion"],
+    "llmInputs": ["pin number (BCM address)", "mode (OUT/IN/PWM)", "desired state (ON/OFF)", "initial and shutdown states"],
+    "llmOutputs": ["physical GPIO state change", "downstream node execution on state change"],
+    "llmTypicalUseCases": ["turn on an LED", "control a relay", "read a digital sensor", "toggle a physical switch", "set pin HIGH at startup"],
+    "llmPromptHints": ["turn on this pin", "set GPIO 17 HIGH", "toggle this relay", "read this pin", "control this LED"],
+    "llmCreationHints": "Create a Pin node to control a specific GPIO pin on a Raspberry Pi. Requires a pin number (BCM address) and mode (OUT for output, IN for input). Configure initial and shutdown states as needed.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Server"],
+        "childTypes": [],
+        "role": "leaf target node that directly controls physical hardware"
+    },
+    "llmSideEffectLevel": "high",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "gpio_pin",
+    "llmExamples": [
+        "Turn on GPIO pin 17.",
+        "Set this relay pin to HIGH at startup and LOW at shutdown.",
+        "Toggle this LED on and off.",
+        "Read the state of this digital input pin."
+    ]
+}

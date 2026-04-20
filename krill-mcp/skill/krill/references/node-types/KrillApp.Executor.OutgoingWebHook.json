@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.Executor.OutgoingWebHook",
+    "title": "Outgoing WebHook",
+    "description": "Sends an HTTP request to an external URL when executed. Supports GET, POST, PUT, PATCH, and DELETE methods. For POST/PUT/PATCH, the source node is serialized as JSON for the request body. Custom headers and query parameters can be configured. The HTTP response body is stored in a target DataPoint's snapshot.",
+    "shortDescription": "Sends an HTTP request to an external URL and stores the response in a target DataPoint.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Executors",
+    "llmPurpose": "Sends an HTTP request to a configured URL with optional body, headers, and parameters, and stores the response in a target DataPoint.",
+    "llmRole": "action",
+    "llmBehavior": ["constructs HTTP request with URL, method, headers, query params", "serializes source node as JSON body for POST/PUT/PATCH", "sends HTTP request to external endpoint", "stores response body in target DataPoint snapshot"],
+    "llmInputs": ["URL", "HTTP method", "query parameters", "custom headers", "source node data (for request body)"],
+    "llmOutputs": ["HTTP response stored in target DataPoint"],
+    "llmTypicalUseCases": ["send sensor data to an external API", "notify a Slack or Teams channel", "trigger a third-party service", "post data to a cloud platform"],
+    "llmPromptHints": ["send this data to an API", "call this URL when triggered", "POST to a webhook", "notify an external service", "send an HTTP request"],
+    "llmCreationHints": "Create an OutgoingWebHook when the user wants to send data to an external HTTP endpoint. Requires a URL and method. Optionally configure source node for body, target DataPoint for response, headers, and query params.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Executor", "KrillApp.Trigger"],
+        "sourceTypes": ["KrillApp.DataPoint", "KrillApp.Server.Pin"],
+        "targetTypes": ["KrillApp.DataPoint"],
+        "role": "action node that sends HTTP requests and optionally stores responses"
+    },
+    "llmSideEffectLevel": "high",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "webhook_endpoint",
+    "llmExamples": [
+        "Send this sensor reading to my cloud API.",
+        "POST a notification to Slack when the temperature is high.",
+        "Call this REST endpoint with the latest data.",
+        "Send a GET request to check a remote service status."
+    ]
+}

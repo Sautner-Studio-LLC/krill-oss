@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Trigger.SilentAlarmMs",
+    "title": "Silent Alarm",
+    "description": "Monitors for lack of data updates by starting a background delay timer. If no new execution occurs within the configured delay (in milliseconds), the node enters WARN state and executes all child nodes. Each new trigger resets the timer. Use this to detect disconnected sensors, failed devices, or stale data.",
+    "shortDescription": "Triggers an alarm when no data updates are received within a configured time period.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Triggers",
+    "llmPurpose": "Detects absence of data updates by running a delay timer and triggering an alarm if the timer expires without being reset.",
+    "llmRole": "trigger",
+    "llmBehavior": ["starts background delay timer on execution", "resets timer on each new execution", "sets node state to PAUSED while waiting", "sets node state to WARN if timer expires", "executes child nodes when timer expires"],
+    "llmInputs": ["configured delay value in milliseconds", "execution events that reset the timer"],
+    "llmOutputs": ["alarm state (WARN) on timeout", "executes child nodes on timeout"],
+    "llmTypicalUseCases": ["detect disconnected sensor", "monitor for stale data", "alert on failed device communication", "watchdog timer for data feeds"],
+    "llmPromptHints": ["alert if no data for 5 minutes", "watchdog timer", "notify if sensor goes silent", "detect stale data"],
+    "llmCreationHints": "Create a SilentAlarm when the user wants to detect absence of data or communication failures. Requires a delay value in milliseconds.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Trigger", "KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Executor", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda"],
+        "role": "watchdog trigger that fires when upstream data stops arriving"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Alert me if this sensor stops reporting for 5 minutes.",
+        "Set up a watchdog that fires if no data arrives in 60 seconds.",
+        "Notify me when this device goes offline."
+    ]
+}

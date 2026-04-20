@@ -1,0 +1,36 @@
+{
+    "name": "KrillApp.DataPoint.Filter",
+    "title": "Filters",
+    "description": "A container node that organizes data filtering rules under a DataPoint. Does not filter data itself — actual filtering is performed by child filter nodes (DiscardAbove, DiscardBelow, Deadband, Debounce) during snapshot validation. All child filters must pass for a snapshot to be stored.",
+    "shortDescription": "Container for filter nodes that validate incoming DataPoint snapshots.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Filters",
+    "order": 6,
+    "llmPurpose": "Organizes data filter child nodes under a DataPoint. Filters are evaluated during snapshot validation.",
+    "llmRole": "container",
+    "llmBehavior": ["contains filter child nodes", "child filters are evaluated during snapshot validation", "all child filters must pass for data to be stored"],
+    "llmInputs": ["none directly — children receive snapshots during validation"],
+    "llmOutputs": ["none directly — children accept or reject snapshots"],
+    "llmTypicalUseCases": ["add data quality filters to a data point", "organize noise reduction rules", "group range and timing filters"],
+    "llmPromptHints": ["add a filter to this data point", "filter out bad readings", "set up data quality rules"],
+    "llmCreationHints": "Create a Filter node as a child of a DataPoint when the user wants to apply data quality or noise reduction rules. Then add specific filter types as children.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.DataPoint.Filter.DiscardAbove", "KrillApp.DataPoint.Filter.DiscardBelow", "KrillApp.DataPoint.Filter.Deadband", "KrillApp.DataPoint.Filter.Debounce"],
+        "role": "intermediary container between DataPoint and specific filter implementations"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Add filters to this data point to clean up noisy data.",
+        "Set up data quality rules for this sensor.",
+        "I want to filter out bad readings from this data point."
+    ]
+}

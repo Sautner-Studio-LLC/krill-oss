@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Trigger.Button",
+    "title": "Button Triggers",
+    "description": "A manual trigger that executes all child nodes when clicked by the user. Has no conditions or thresholds — simply passes execution to its children on each click. Use this for on-demand actions like toggling a pin, running a script, or sending a webhook manually.",
+    "shortDescription": "Executes child nodes on user click with no conditions.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "EXECUTE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Triggers",
+    "llmPurpose": "Executes all child nodes immediately when clicked by the user, with no conditions or scheduling.",
+    "llmRole": "trigger",
+    "llmBehavior": ["executes child nodes on click", "no conditions or thresholds", "manual user-initiated trigger"],
+    "llmInputs": ["user click event"],
+    "llmOutputs": ["executes all child nodes"],
+    "llmTypicalUseCases": ["manually trigger an automation", "toggle a GPIO pin on demand", "test an executor chain", "run a webhook manually"],
+    "llmPromptHints": ["add a button to run this", "let me click to trigger this", "manual trigger", "run this on demand"],
+    "llmCreationHints": "Create a Button when the user wants a manual, on-demand trigger with no schedule or condition. Ideal for testing or one-off actions.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Trigger", "KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Executor", "KrillApp.Executor.LogicGate", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda", "KrillApp.Executor.Calculation", "KrillApp.Executor.Compute"],
+        "role": "root trigger node that initiates child execution on user click"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Add a button so I can manually run this webhook.",
+        "I want to click to toggle this pin.",
+        "Create a manual trigger for testing."
+    ]
+}

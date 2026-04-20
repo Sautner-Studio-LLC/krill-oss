@@ -1,0 +1,33 @@
+{
+    "name": "KrillApp.Client.About",
+    "title": "About Krill",
+    "description": "Informational screen that describes the Krill platform. Displays version information and platform overview. No runtime processing — serves as a static information display.",
+    "shortDescription": "Informational screen about the Krill platform.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "CHANGE_SCREEN",
+    "nodeCommandBehavior": "CHANGE_SCREEN",
+    "order": 0,
+    "llmPurpose": "Displays informational content about the Krill platform. No runtime behavior.",
+    "llmRole": "display",
+    "llmBehavior": ["displays static platform information", "no runtime processing"],
+    "llmInputs": [],
+    "llmOutputs": ["informational display in UI"],
+    "llmTypicalUseCases": ["view platform information", "learn about Krill"],
+    "llmPromptHints": ["about Krill", "what is Krill", "platform info"],
+    "llmCreationHints": "This node is part of the client application structure and is not typically created by users.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Client"],
+        "childTypes": [],
+        "role": "leaf display node for platform information"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Tell me about Krill.",
+        "Show platform information."
+    ]
+}

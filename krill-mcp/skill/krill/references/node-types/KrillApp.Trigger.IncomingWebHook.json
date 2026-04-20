@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Trigger.IncomingWebHook",
+    "title": "Incoming WebHook",
+    "description": "Registers an HTTP endpoint at /incoming/{path} on the Krill server. When an HTTP request matching the configured path and method is received, all child nodes are executed. This enables external systems to trigger Krill automations via HTTP calls.",
+    "shortDescription": "Triggers child node execution when an HTTP request is received at a configured endpoint.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Triggers",
+    "llmPurpose": "Triggers execution of child nodes when an HTTP request is received at the configured /incoming/{path} endpoint.",
+    "llmRole": "trigger",
+    "llmBehavior": ["listens for incoming HTTP requests", "matches request path and method", "executes child nodes on match", "exposes an API endpoint on the server"],
+    "llmInputs": ["HTTP request to /incoming/{path} with configured method"],
+    "llmOutputs": ["executes all child nodes"],
+    "llmTypicalUseCases": ["receive webhook from external service", "enable remote triggering of automation", "integrate third-party notifications", "API-driven automation"],
+    "llmPromptHints": ["trigger this from an external API", "listen for a webhook", "run this when I send an HTTP request", "create an endpoint for this automation"],
+    "llmCreationHints": "Create an IncomingWebHook when the user wants to trigger automation from an external HTTP call. Requires a path string and HTTP method.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Trigger", "KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Executor", "KrillApp.Executor.LogicGate", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda", "KrillApp.Executor.Calculation", "KrillApp.Executor.Compute"],
+        "role": "root trigger node that initiates child execution on incoming HTTP request"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Create a webhook endpoint that triggers a data collection.",
+        "Set up an API endpoint so I can trigger this from my CI pipeline.",
+        "Listen for incoming POST requests to run this automation."
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Project.Diagram",
+    "title": "Diagram",
+    "description": "Visualizes Krill nodes overlaid on an SVG background image. Load an SVG file (typically authored in Inkscape), detect anchor regions by scanning for elements whose id starts with k_, and bind those anchors to DataPoint nodes. In view mode, bound node icons update automatically by observing node state changes.",
+    "shortDescription": "Visual SVG diagram with anchored nodes that update in real time based on node state.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "SHOW_EDITOR",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Projects",
+    "subcategory": "Diagrams",
+    "llmPurpose": "Displays an SVG diagram with anchor points bound to DataPoint nodes, updating icons in real time based on node state.",
+    "llmRole": "display",
+    "llmBehavior": ["renders SVG background image", "detects anchor elements with k_* prefix in SVG", "binds anchors to DataPoint nodes", "updates bound node icons in real time from state flows"],
+    "llmInputs": ["SVG source content", "anchor-to-node bindings"],
+    "llmOutputs": ["visual diagram with live node state indicators"],
+    "llmTypicalUseCases": ["create a visual dashboard of sensor locations", "overlay node status on a floor plan", "visualize equipment layout with live data"],
+    "llmPromptHints": ["create a diagram", "show nodes on a floor plan", "visual dashboard", "SVG overlay"],
+    "llmCreationHints": "Create a Diagram when the user wants to visualize nodes on a custom SVG layout. Requires an SVG file with anchor elements (id starting with k_) and binding those anchors to DataPoint nodes.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Project"],
+        "childTypes": [],
+        "role": "leaf display node that visualizes bound DataPoint states on an SVG background"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Create a diagram showing sensor locations on my floor plan.",
+        "Overlay node status on this SVG layout.",
+        "Build a visual dashboard for my greenhouse sensors."
+    ]
+}

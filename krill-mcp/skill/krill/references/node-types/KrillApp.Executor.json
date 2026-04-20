@@ -1,0 +1,36 @@
+{
+    "name": "KrillApp.Executor",
+    "title": "Executors",
+    "description": "A container node that organizes executor child nodes. When triggered, it propagates execution to child executors such as LogicGate, OutgoingWebHook, Lambda, Calculation, or Compute. Executors perform actions, calculations, or side effects in response to triggers or data changes.",
+    "shortDescription": "Container for executor nodes that perform actions when triggered.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Executors",
+    "order": 8,
+    "llmPurpose": "Organizes executor child nodes and propagates execution from triggers to action nodes.",
+    "llmRole": "container",
+    "llmBehavior": ["contains executor child nodes", "propagates execution to children"],
+    "llmInputs": ["execution signal from parent trigger or data point"],
+    "llmOutputs": ["executes child executor nodes"],
+    "llmTypicalUseCases": ["group actions under a trigger", "organize automation logic", "chain multiple executors together"],
+    "llmPromptHints": ["add an action to this trigger", "do something when this fires", "execute actions"],
+    "llmCreationHints": "Create an Executor node as a container when grouping multiple action types under a trigger or data point.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Trigger", "KrillApp.Trigger.CronTimer", "KrillApp.Trigger.Button", "KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Executor.LogicGate", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda", "KrillApp.Executor.Calculation", "KrillApp.Executor.Compute", "KrillApp.MQTT"],
+        "role": "intermediary container between triggers and specific executor implementations"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Add actions to run when this trigger fires.",
+        "Create an executor group for this data point.",
+        "Organize my automation actions under this trigger."
+    ]
+}

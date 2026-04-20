@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.DataPoint.Filter.Deadband",
+    "title": "Deadband",
+    "description": "Rejects DataPoint snapshots where the change from the previous value is smaller than a configured threshold. Computes |new_value - previous_value| and discards the snapshot if the change is below the deadband value. Suppresses noise from sensors by requiring a minimum change magnitude between consecutive readings.",
+    "shortDescription": "Discards snapshots where the value change from previous is smaller than a threshold.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Filters",
+    "llmPurpose": "Suppresses sensor noise by rejecting snapshots where the value change from the previous reading is below a configured minimum magnitude.",
+    "llmRole": "logic",
+    "llmBehavior": ["compares |new_value - previous_value| against threshold", "discards snapshot if change is too small", "posts STATE_CHANGE event when triggered"],
+    "llmInputs": ["incoming snapshot value", "previous snapshot value", "configured deadband threshold (Double)"],
+    "llmOutputs": ["accept or reject snapshot (boolean gate)"],
+    "llmTypicalUseCases": ["reduce noisy sensor data", "suppress jitter in analog readings", "only log meaningful value changes"],
+    "llmPromptHints": ["ignore small changes", "only record if value changes by at least", "deadband", "suppress noise", "minimum change"],
+    "llmCreationHints": "Create a Deadband filter when the user wants to suppress small fluctuations in sensor data. Requires a numeric threshold representing the minimum change magnitude.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.DataPoint.Filter"],
+        "childTypes": [],
+        "role": "leaf filter node that gates incoming snapshot values based on change magnitude"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Only record temperature changes of at least 0.5 degrees.",
+        "Ignore pressure changes smaller than 1 PSI.",
+        "Suppress sensor noise — only log if value changes by 2 or more."
+    ]
+}

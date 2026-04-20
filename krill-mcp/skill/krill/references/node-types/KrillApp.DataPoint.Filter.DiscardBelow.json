@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.DataPoint.Filter.DiscardBelow",
+    "title": "Discard Below",
+    "description": "Rejects DataPoint snapshots where the value falls below a configured minimum threshold. When a snapshot value is less than the threshold, it is discarded and not stored. Prevents outliers, sensor errors, or invalid low readings from entering the data store.",
+    "shortDescription": "Discards snapshots with values below a configured minimum threshold.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Filters",
+    "llmPurpose": "Rejects incoming DataPoint snapshots where the value falls below a configured minimum threshold.",
+    "llmRole": "logic",
+    "llmBehavior": ["evaluates snapshot value < threshold", "discards snapshot if condition is true", "posts STATE_CHANGE event when triggered"],
+    "llmInputs": ["incoming snapshot value", "configured minimum threshold (Double)"],
+    "llmOutputs": ["accept or reject snapshot (boolean gate)"],
+    "llmTypicalUseCases": ["remove negative error readings", "enforce minimum valid range", "filter out zero or below-zero values"],
+    "llmPromptHints": ["discard values below", "ignore readings under", "min value filter", "floor at"],
+    "llmCreationHints": "Create a DiscardBelow filter when the user wants to reject values below a minimum. Requires a numeric threshold value.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.DataPoint.Filter"],
+        "childTypes": [],
+        "role": "leaf filter node that gates incoming snapshot values"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Discard any temperature readings below 0.",
+        "Filter out negative values.",
+        "Ignore sensor readings under 10."
+    ]
+}

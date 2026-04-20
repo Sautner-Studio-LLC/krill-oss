@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.DataPoint.Graph",
+    "title": "Data Graph",
+    "description": "Displays historical data from a source DataPoint as a visual graph over a configured time range (hour, day, week, month, or year). Automatically links to the parent DataPoint as its source if none is specified. Read-only visualization node with no side effects.",
+    "shortDescription": "Visualizes historical DataPoint values as a graph over a configurable time range.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Data Points",
+    "order": 4,
+    "llmPurpose": "Visualizes historical time-series data from a source DataPoint as a graph over a configurable time range.",
+    "llmRole": "display",
+    "llmBehavior": ["reads historical data from source DataPoint", "auto-links to parent DataPoint if no source specified", "renders time-series graph in UI", "supports configurable time range"],
+    "llmInputs": ["source DataPoint historical data", "time range selection (hour/day/week/month/year)"],
+    "llmOutputs": ["visual graph display in UI"],
+    "llmTypicalUseCases": ["visualize sensor trends", "view temperature history", "chart data over time", "monitor value changes"],
+    "llmPromptHints": ["show a graph of this data", "chart this sensor", "visualize the history", "plot this data point"],
+    "llmCreationHints": "Create a Graph node as a child of a DataPoint to visualize its historical data. Optionally configure a different source DataPoint and time range.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.DataPoint"],
+        "sourceTypes": ["KrillApp.DataPoint"],
+        "childTypes": [],
+        "role": "leaf display node that reads from a source DataPoint"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Show a graph of this temperature sensor over the last day.",
+        "Add a chart for this data point.",
+        "Visualize the pressure readings for the past week."
+    ]
+}

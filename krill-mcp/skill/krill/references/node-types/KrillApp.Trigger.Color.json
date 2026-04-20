@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.Trigger.Color",
+    "title": "Color Trigger",
+    "description": "Triggers an alarm and executes child nodes when the parent DataPoint's color value falls within a configured RGB range. Decomposes the color integer into R, G, B channels and checks each against min/max bounds. Fires when all three channels are within their respective ranges. Sets node state to WARN on match.",
+    "shortDescription": "Triggers when a DataPoint color falls within a configured RGB range.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Triggers",
+    "llmPurpose": "Evaluates whether a DataPoint color value falls within per-channel RGB min/max ranges and triggers child execution and alarm state when matched.",
+    "llmRole": "trigger",
+    "llmBehavior": ["reads upstream DataPoint snapshot color value", "decomposes integer to R/G/B channels", "compares each channel against min/max range", "sets node state to WARN on match", "executes child nodes on match"],
+    "llmInputs": ["upstream DataPoint snapshot value (color integer)", "configured rMin/rMax/gMin/gMax/bMin/bMax ranges (0-255)"],
+    "llmOutputs": ["alarm state (WARN)", "executes child nodes when color is within range"],
+    "llmTypicalUseCases": ["pH indicator color detection", "water quality color monitoring", "chemical test strip reading", "color sensor alerting"],
+    "llmPromptHints": ["alert when color is", "trigger if color matches", "notify when color shifts to", "color range alarm"],
+    "llmCreationHints": "Create a Color trigger when the user wants to detect a specific color range from a COLOR DataPoint. Configure per-channel RGB min/max bounds. Useful for pH indicator monitoring, water quality sensors, and colorimetric test analysis.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Trigger", "KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Executor", "KrillApp.Executor.LogicGate", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda"],
+        "role": "conditional trigger that fires when DataPoint color value falls within configured RGB range"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Alert me when the pH indicator turns red (R > 180, G < 80, B < 60).",
+        "Trigger a webhook when the water color shifts to green.",
+        "Warn me when the test strip color matches the target range."
+    ]
+}

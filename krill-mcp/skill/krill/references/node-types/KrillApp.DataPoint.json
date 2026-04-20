@@ -1,0 +1,37 @@
+{
+    "name": "KrillApp.DataPoint",
+    "title": "Data Points",
+    "description": "Represents a single measurable value that stores time-series data. Receives snapshot updates containing a value and timestamp, validates them against child filter nodes, stores validated snapshots in the data store, and triggers downstream execution. Supports configurable data types (text, JSON, digital, double), precision, units, and manual entry. Child nodes can include filters, graphs, triggers, and executors.",
+    "shortDescription": "Stores time-series snapshot values and triggers downstream nodes on data updates.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Data Points",
+    "order": 4,
+    "llmPurpose": "Stores time-series snapshot data and propagates updates to child filters, triggers, executors, and graphs.",
+    "llmRole": "state",
+    "llmBehavior": ["receives snapshot updates (value + timestamp)", "validates snapshots against child filters", "stores validated snapshots in persistent data store", "posts SNAPSHOT_UPDATE events", "executes child nodes on data update", "triggers source-related downstream nodes"],
+    "llmInputs": ["snapshot data (value, timestamp)", "configuration: data type, precision, unit, maxAge"],
+    "llmOutputs": ["stored time-series data", "SNAPSHOT_UPDATE events", "child node execution"],
+    "llmTypicalUseCases": ["store sensor readings", "track temperature over time", "log serial device output", "record manual measurements", "feed data to triggers and calculations"],
+    "llmPromptHints": ["create a data point for this sensor", "store this value over time", "log this reading", "track this measurement", "data point"],
+    "llmCreationHints": "Create a DataPoint when the user needs to store and track a measurable value over time. Configure data type, precision, and unit. Add child filters, triggers, or graphs as needed.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Server", "KrillApp.Server.SerialDevice"],
+        "childTypes": ["KrillApp.DataPoint.Filter", "KrillApp.DataPoint.Graph", "KrillApp.Trigger", "KrillApp.Trigger.HighThreshold", "KrillApp.Trigger.LowThreshold", "KrillApp.Trigger.CronTimer", "KrillApp.Trigger.Button", "KrillApp.Trigger.SilentAlarmMs", "KrillApp.Executor"],
+        "role": "central data node that feeds triggers, filters, graphs, and executors"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Create a data point to store temperature readings.",
+        "Add a data point for this serial sensor with 2 decimal precision.",
+        "Track humidity values over time with a unit of '%'.",
+        "Set up a data point that I can manually enter values into."
+    ]
+}

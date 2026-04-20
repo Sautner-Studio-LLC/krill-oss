@@ -1,0 +1,38 @@
+{
+    "name": "KrillApp.Server.SerialDevice",
+    "title": "Serial Device",
+    "description": "Communicates with hardware devices connected via serial ports (USB, UART). Supports read and write operations with configurable baud rate, data bits, parity, stop bits, flow control, encoding, and line terminator. Can send commands to devices and receive data. Integrates with Zigbee networks, Adafruit QTPY, Atlas Scientific, and other serial-based sensors and microcontrollers.",
+    "shortDescription": "Communicates with hardware devices via serial ports with configurable protocol settings.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "NONE",
+    "category": "Krill Server",
+    "subcategory": "Serial Devices",
+    "order": 2,
+    "llmPurpose": "Reads from and writes to hardware devices connected via serial ports (USB, UART) with configurable communication protocol settings.",
+    "llmRole": "target",
+    "llmBehavior": ["reads data from serial port", "writes commands to serial port", "configurable baud rate, data bits, parity, stop bits, flow control", "polls at configurable interval", "can feed data to DataPoints and receive commands from executors"],
+    "llmInputs": ["serial port identifier (e.g. /dev/ttyUSB0)", "protocol settings (baud rate, encoding, etc.)", "send command string for read operations"],
+    "llmOutputs": ["serial data to downstream nodes", "commands written to serial device"],
+    "llmTypicalUseCases": ["read sensor data from USB device", "communicate with Zigbee coordinator", "send commands to a microcontroller", "interface with Atlas Scientific sensors"],
+    "llmPromptHints": ["connect to this USB device", "read from serial port", "set up Zigbee", "serial sensor", "UART device"],
+    "llmCreationHints": "Create a SerialDevice when the user has hardware connected via USB or UART serial port. Configure the port path, baud rate, and operation mode. Typically auto-detected by the server.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Server"],
+        "sourceTypes": ["KrillApp.DataPoint"],
+        "targetTypes": ["KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.DataPoint"],
+        "role": "hardware interface node that reads from and writes to serial devices"
+    },
+    "llmSideEffectLevel": "high",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": true,
+    "llmActsOnExternalWorld": true,
+    "llmTargetType": "serial_device",
+    "llmExamples": [
+        "Connect to the Zigbee coordinator on USB.",
+        "Read data from /dev/ttyUSB0 at 9600 baud.",
+        "Set up a serial sensor on this server."
+    ]
+}

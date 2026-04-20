@@ -1,0 +1,36 @@
+{
+    "name": "KrillApp.Trigger.CronTimer",
+    "title": "Cron Timer",
+    "description": "Triggers execution of child nodes on a recurring schedule defined by a cron expression. Supports 6-field format (SEC MIN HOUR DOM MON DOW) and 5-field legacy format. A background task polls every second and executes children when the schedule fires. Supports wildcards (*), ranges (1-5), steps (*/5), and lists (1,3,5).",
+    "shortDescription": "Executes child nodes on a schedule defined by a cron expression.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Triggers",
+    "llmPurpose": "Triggers execution of child nodes on a recurring schedule defined by a cron expression.",
+    "llmRole": "trigger",
+    "llmBehavior": ["evaluates cron expression every second", "executes child nodes when schedule fires", "stores last execution timestamp", "runs as persistent background task"],
+    "llmInputs": ["cron expression string (e.g. '0 0 20 * * *' for daily at 8pm)"],
+    "llmOutputs": ["executes all child nodes on schedule"],
+    "llmTypicalUseCases": ["run automation at a specific time daily", "periodic data collection", "scheduled maintenance tasks", "recurring reports"],
+    "llmPromptHints": ["every day at 8pm", "run this every 15 minutes", "schedule this nightly", "every weekday at 6am", "once a week on Sunday"],
+    "llmCreationHints": "Create a CronTimer when the user wants time-based recurring execution. Requires a valid cron expression. Use 6-field format: SEC MIN HOUR DOM MON DOW.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Trigger", "KrillApp.DataPoint"],
+        "childTypes": ["KrillApp.Executor", "KrillApp.Executor.LogicGate", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda", "KrillApp.Executor.Calculation", "KrillApp.Executor.Compute"],
+        "role": "root trigger node that initiates child execution on a time schedule"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": true,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Create a cron timer that runs every day at 8pm.",
+        "Schedule this maintenance task for Sunday at midnight.",
+        "Trigger this polling sequence every 15 minutes.",
+        "Run this every weekday at 6am."
+    ]
+}

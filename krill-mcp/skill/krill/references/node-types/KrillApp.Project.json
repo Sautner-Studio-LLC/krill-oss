@@ -1,0 +1,34 @@
+{
+    "name": "KrillApp.Project",
+    "title": "Project",
+    "description": "A container node that organizes project-related artifacts such as diagrams, task lists, and journals. Provides a logical grouping for documentation, visualization, and task management within Krill. Does not perform any runtime processing — serves purely as an organizational container.",
+    "shortDescription": "Container for organizing project diagrams, task lists, and journals.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Projects",
+    "llmPurpose": "Organizes project-related artifacts (diagrams, task lists, journals) as a structural container.",
+    "llmRole": "container",
+    "llmBehavior": ["contains project artifacts as children", "provides organizational grouping", "no runtime processing"],
+    "llmInputs": ["project name and description"],
+    "llmOutputs": ["none — organizational container only"],
+    "llmTypicalUseCases": ["group related documentation and visualizations", "organize a monitoring project", "create a project workspace"],
+    "llmPromptHints": ["create a project", "organize this into a project", "new project"],
+    "llmCreationHints": "Create a Project when the user wants to organize diagrams, task lists, or journals under a named group.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Client"],
+        "childTypes": ["KrillApp.Project.Diagram", "KrillApp.Project.TaskList", "KrillApp.Project.Journal"],
+        "role": "top-level organizational container for project artifacts"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": true,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Create a new project for my greenhouse monitoring.",
+        "Organize these nodes into a project.",
+        "Add a project to hold my diagrams and task lists."
+    ]
+}

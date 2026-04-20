@@ -1,0 +1,38 @@
+{
+    "name": "KrillApp.Executor.Calculation",
+    "title": "Calculation",
+    "description": "Evaluates a mathematical formula that references source DataPoint values. Node IDs in the formula are enclosed in brackets (e.g., [node-id]) and replaced with current snapshot values at execution time. Supports arithmetic operators (+, -, *, /, %, ^), mathematical functions (sin, cos, tan, sqrt, abs, ln), and parenthesized expressions. The computed result is written to a target DataPoint.",
+    "shortDescription": "Computes a mathematical formula from source DataPoint values and writes the result to a target DataPoint.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Krill Server",
+    "subcategory": "Executors",
+    "order": 9,
+    "llmPurpose": "Evaluates a mathematical formula referencing source DataPoint values and writes the computed result to a target DataPoint.",
+    "llmRole": "transform",
+    "llmBehavior": ["resolves node ID references in formula to current values", "evaluates mathematical expression", "writes result to target DataPoint"],
+    "llmInputs": ["formula string with [node-id] references", "source DataPoint snapshot values"],
+    "llmOutputs": ["computed numeric result written to target DataPoint"],
+    "llmTypicalUseCases": ["derive a calculated value from multiple sensors", "unit conversion", "aggregate sensor readings", "weighted average computation"],
+    "llmPromptHints": ["calculate from these values", "add these data points together", "convert this reading", "compute the average of these sensors", "formula"],
+    "llmCreationHints": "Create a Calculation when the user needs a derived value from one or more DataPoints using a mathematical formula. Requires a formula string, source DataPoints, and a target DataPoint.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.Executor", "KrillApp.Trigger"],
+        "sourceTypes": ["KrillApp.DataPoint"],
+        "targetTypes": ["KrillApp.DataPoint"],
+        "role": "transform node that computes a formula and writes the result to a target"
+    },
+    "llmSideEffectLevel": "low",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": "data_point",
+    "llmExamples": [
+        "Calculate the sum of these two sensor readings.",
+        "Convert this temperature from Celsius to Fahrenheit with [sensor1] * 9/5 + 32.",
+        "Compute the difference between these two data points.",
+        "Create a weighted average of three sensors."
+    ]
+}

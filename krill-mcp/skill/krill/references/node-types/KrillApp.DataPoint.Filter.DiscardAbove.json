@@ -1,0 +1,35 @@
+{
+    "name": "KrillApp.DataPoint.Filter.DiscardAbove",
+    "title": "Discard Above",
+    "description": "Rejects DataPoint snapshots where the value exceeds a configured maximum threshold. When a snapshot value is greater than the threshold, it is discarded and not stored. Prevents outliers, sensor errors, or invalid high readings from entering the data store.",
+    "shortDescription": "Discards snapshots with values above a configured maximum threshold.",
+    "state": "ROADMAP",
+    "nodeClickBehavior": "NONE",
+    "nodeCommandBehavior": "CREATE_NODE",
+    "category": "Data Points",
+    "subcategory": "Filters",
+    "llmPurpose": "Rejects incoming DataPoint snapshots where the value exceeds a configured maximum threshold.",
+    "llmRole": "logic",
+    "llmBehavior": ["evaluates snapshot value > threshold", "discards snapshot if condition is true", "posts STATE_CHANGE event when triggered"],
+    "llmInputs": ["incoming snapshot value", "configured maximum threshold (Double)"],
+    "llmOutputs": ["accept or reject snapshot (boolean gate)"],
+    "llmTypicalUseCases": ["remove sensor error spikes", "cap valid reading range", "filter out impossible values"],
+    "llmPromptHints": ["discard values above", "ignore readings over", "max value filter", "cap at"],
+    "llmCreationHints": "Create a DiscardAbove filter when the user wants to reject values exceeding a maximum. Requires a numeric threshold value.",
+    "llmConnectionHints": {
+        "parentTypes": ["KrillApp.DataPoint.Filter"],
+        "childTypes": [],
+        "role": "leaf filter node that gates incoming snapshot values"
+    },
+    "llmSideEffectLevel": "none",
+    "llmCanCreateChildren": false,
+    "llmExecutesChildren": false,
+    "llmRepresentsPersistentState": false,
+    "llmActsOnExternalWorld": false,
+    "llmTargetType": null,
+    "llmExamples": [
+        "Discard any temperature readings above 150 degrees.",
+        "Filter out values over 1000.",
+        "Ignore sensor spikes above 100."
+    ]
+}
