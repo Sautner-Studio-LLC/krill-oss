@@ -293,20 +293,23 @@ class ClientNodeManager(
     /**
      * Update snapshot - posts to server and updates local state.
      * Called when user initiates a snapshot update (e.g., manual data entry).
+     *
+     * Applies an optimistic local update so the UI reflects the new value
+     * immediately; the server's SNAPSHOT_UPDATE event later reconciles with
+     * the canonical value (which may differ if a filter clamps / rounds).
      */
     fun postSnapshot(node: Node, snapshot: Snapshot) {
 
         readNodeStateOrNull(node.host).value?.let { host ->
             val meta = node.meta as DataPointMetaData
-            val update = node.copy(
+            val optimistic = node.copy(
                 state = NodeState.EXECUTED,
-
                 meta = meta.copy(snapshot = snapshot),
                 timestamp = Clock.System.now().toEpochMilliseconds()
-
             )
+            update(optimistic)
             scope.launch {
-                nodeHttp.postNode(host, update)
+                nodeHttp.postNode(host, optimistic)
             }
         }
 

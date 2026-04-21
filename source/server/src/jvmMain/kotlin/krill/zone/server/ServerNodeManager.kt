@@ -2,6 +2,7 @@ package krill.zone.server
 
 import co.touchlab.kermit.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.*
 import krill.zone.shared.*
@@ -44,10 +45,17 @@ class ServerNodeManager(
     /**
      * SharedFlow for broadcasting node updates to SSE clients.
      * Emits after every database mutation - the /sse route collects from this.
+     *
+     * Buffer sized for high-frequency ingest bursts (e.g. 10 Hz sensors with
+     * several filter/trigger children). [BufferOverflow.DROP_OLDEST] keeps
+     * the pipeline unblocked under overload; the DB is the source of truth,
+     * so reconnecting clients reconcile correctly even if intermediate
+     * full-node updates drop.
      */
     private val _nodeUpdates = MutableSharedFlow<Node>(
         replay = 0,
-        extraBufferCapacity = 64
+        extraBufferCapacity = NODE_UPDATES_BUFFER,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val nodeUpdates: SharedFlow<Node> = _nodeUpdates.asSharedFlow()
 
@@ -276,7 +284,14 @@ class ServerNodeManager(
         val parent = nodePersistence.read(node.parent)
             ?: throw Exception("Parent not found: ${node.parent}")
         return when (parent.type) {
-            is KrillApp.DataPoint -> parent
+            // Return the DataPoint via readNode so its meta.snapshot is overlaid
+            // from dataStore. nodePersistence only has the snapshot that was
+            // last explicitly saved, which for DataPoints is typically the
+            // creation default (0.0) because DataProcessor.updateSnapshot writes
+            // values to the file-based dataStore, not the node store. Without
+            // the overlay, every trigger would evaluate against 0.0 regardless
+            // of the actual current value.
+            is KrillApp.DataPoint -> readNode(parent.id) ?: parent
             is KrillApp.Server -> throw Exception("Hit server while searching for upstream datapoint")
             else -> getUpstreamDataPoint(parent)
         }
@@ -317,7 +332,7 @@ class ServerNodeManager(
 
     fun executeChildren(node: Node) {
         children(node).forEach { child ->
-            logger.d("${node.details()}: Triggering child ${child.name()} ${child.type}")
+            logger.i("${node.details()}: Triggering child ${child.name()} ${child.type}")
 
 
             scope.launch {
@@ -329,6 +344,23 @@ class ServerNodeManager(
             }
 
         }
+    }
+
+    /**
+     * Fire every non-deleting direct child of [node] regardless of its
+     * [TargetingNodeMetaData.executionSource] opt-in. Used by the trigger
+     * alarm paths (HighThreshold, LowThreshold, Color, SilentAlarmMs) so a
+     * user can drop an executor child under a trigger and have it run when
+     * the trigger fires without having to also configure the child's
+     * `executionSource` list.
+     */
+    fun forceExecuteChildren(node: Node) {
+        children(node)
+            .filter { it.state != NodeState.DELETING }
+            .forEach { child ->
+                logger.i("${node.details()}: force-executing child ${child.name()} ${child.type}")
+                scope.launch { execute(child) }
+            }
     }
 
     fun reset(node: Node) {
@@ -371,5 +403,7 @@ class ServerNodeManager(
         update(node.copy(state = NodeState.NONE, meta = meta, timestamp = Clock.System.now().toEpochMilliseconds()))
     }
 
-
+    companion object {
+        const val NODE_UPDATES_BUFFER = 256
+    }
 }

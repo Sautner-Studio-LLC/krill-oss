@@ -44,8 +44,7 @@ val serverModule = module {
         }
         CoroutineScope(SupervisorJob() + Dispatchers.IO + handler)
     }
-    single<DataProcessor> { DataProcessor(get(), get(), get())  }
-    single<SilentAlarmMonitor> { SilentAlarmMonitor(get(), get()) }
+    single<DataProcessor> { DataProcessor(get(), get(), get(), get()) }
     // Database initialization
     single<NodeRepository> {
         DatabaseConfig.init()
@@ -54,6 +53,7 @@ val serverModule = module {
 
     single<CronTask> { CronTask(get(), get()) }
     single<TaskListExpiryTask> { TaskListExpiryTask(get(), get()) }
+    single<SilentAlarmWatchdogTask> { SilentAlarmWatchdogTask(get(), get()) }
     single<PinReconciliationTask> { PinReconciliationTask(get(), get(), get(), get()) }
     // Provide NodePersistence for NodeManager
     single<NodePersistence> { get<NodeRepository>() }
@@ -76,6 +76,7 @@ val serverModule = module {
 
     single<ServerLifecycleManager> {
         ServerLifecycleManager(
+            get(),
             get(),
             get(),
             get(),
@@ -125,7 +126,6 @@ val serverModule = module {
     single<ServerConnector> { ServerServerConnector(get(), get(), get(named(IO_SCOPE))) }
     single<ServerNodeManager> { ServerNodeManager(get(), get(), get(), get(), get(named(IO_SCOPE)) ) }
     single<ServerBoss> { ServerBoss(get(named(IO_SCOPE))) }
-    single<SilentAlarmMonitor> { SilentAlarmMonitor(get(), get()) }
     single<LogicGateCompute> { LogicGateCompute(get())  }
     single<EventMonitor> { EventMonitor(get(), get(), get()) }
     // Multicast (platform-specific)

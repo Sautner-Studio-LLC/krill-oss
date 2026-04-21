@@ -379,6 +379,7 @@ fun getNodeStateColor(node: Node): Color {
                 NodeState.WARN -> Color(0xFFFF9800) // Orange - warning
                 NodeState.ERROR -> colorScheme.error // Red - error
                 NodeState.PAIRING -> Color(0xFF435DEA)
+                NodeState.PROCESSING -> Color(0xFF435DEA)
                 NodeState.NONE -> colorScheme.primaryContainer // Default color
 
                 NodeState.EXECUTED -> Color(0xFF664CAF)

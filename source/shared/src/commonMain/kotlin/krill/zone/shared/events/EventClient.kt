@@ -60,6 +60,18 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
                     ) {
                         attempt = 0
                         _connectedServers.update { it + node.id }
+
+                        // On reconnect, clear the local WARN we set on the prior
+                        // disconnect in the catch block below. Without this the
+                        // server node stays pulsing WARN forever after a server
+                        // reboot even though SSE is healthy again.
+                        nodeManager.readNodeStateOrNull(node.id).value?.let { current ->
+                            if (current.state == NodeState.WARN) {
+                                logger.i { "${current.details()}: SSE reconnected, clearing stale WARN" }
+                                nodeManager.reset(current)
+                            }
+                        }
+
                         incoming.collect { incoming ->
                             deserialize<Event>(incoming.data)?.let { event ->
                                 logger.i { "Event Received: $event" }

@@ -12,6 +12,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import kotlinx.coroutines.*
+import krill.zone.server.events.*
 import krill.zone.server.krillapp.datapoint.*
 import krill.zone.server.krillapp.server.serial.*
 import krill.zone.shared.*
@@ -751,7 +752,7 @@ private fun Routing.configureSystemRoutes(
 
             // Collect from the nodeUpdates SharedFlow for real-time updates
             nodeManager.nodeUpdates.collect { node ->
-                if (node.state != NodeState.NONE) {
+                if (SseStateForwarding.shouldForward(node.state)) {
                     logger.d { "${node.details()}: SSE sending update" }
                     when (node.type) {
                         is KrillApp.Server -> {

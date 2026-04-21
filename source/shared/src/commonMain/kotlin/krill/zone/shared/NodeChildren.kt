@@ -282,7 +282,9 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
         }
 
 
-        return distinct.distinct()
+        return distinct.distinct().sortedWith(compareBy<KrillApp> {
+            if (it == MenuCommand.Update) 0 else 1
+        }.thenBy { it::class.simpleName ?: "" })
 
 
     }

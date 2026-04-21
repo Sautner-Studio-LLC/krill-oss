@@ -105,6 +105,10 @@ UniversalAppNodeProcessor(
                     showActivity(node)
                 }
 
+                NodeState.PROCESSING -> {
+                    showActivity(node)
+                }
+
                 NodeState.EDITING -> {}
             }
 
@@ -164,7 +168,11 @@ UniversalAppNodeProcessor(
                 delay(1500)
                 try {
                     val update = nodeManager.readNodeState(node.id)
-                    if (update.value.state != NodeState.ERROR && update.value.state != NodeState.DELETING) {
+                    // Only clear the pulse if the node is still in the pulse state.
+                    // If a WARN / EXECUTED / ERROR arrived inside the 1500 ms window
+                    // it must win over the reset.
+                    val current = update.value.state
+                    if (current == NodeState.PAIRING || current == NodeState.PROCESSING) {
                         nodeManager.reset(node)
                     }
                 } catch (e: Exception) {

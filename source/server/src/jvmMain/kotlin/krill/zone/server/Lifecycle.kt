@@ -11,6 +11,7 @@ import krill.zone.server.krillapp.project.tasklist.*
 import krill.zone.server.krillapp.server.backup.*
 import krill.zone.server.krillapp.server.pin.*
 import krill.zone.server.krillapp.server.serial.*
+import krill.zone.server.krillapp.trigger.*
 import krill.zone.server.logging.*
 import krill.zone.shared.*
 import krill.zone.shared.krillapp.datapoint.*
@@ -38,6 +39,7 @@ internal class ServerLifecycleManager(
     private val eventMonitor: EventMonitor,
     private val cronTask: CronTask,
     private val taskListExpiryTask: TaskListExpiryTask,
+    private val silentAlarmWatchdogTask: SilentAlarmWatchdogTask,
     private val mqttManager: MqttManager,
     private val pinReconciliationTask: PinReconciliationTask,
     private val pinProvider: PinProvider,
@@ -97,6 +99,7 @@ internal class ServerLifecycleManager(
                         serverBoss.addTask(eventMonitor)
                         serverBoss.addTask(cronTask)
                         serverBoss.addTask(taskListExpiryTask)
+                        serverBoss.addTask(silentAlarmWatchdogTask)
                         if (platform == Platform.RASPBERRY_PI) {
                             serverBoss.addTask(pinReconciliationTask)
                         }

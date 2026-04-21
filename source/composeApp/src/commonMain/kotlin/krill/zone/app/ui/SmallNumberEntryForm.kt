@@ -27,7 +27,10 @@ fun ManualEntry(node: Node, value: Double, showSaveButton: Boolean , callback: (
 
     val screenCore: ScreenCore = koinInject()
     val nodeManager: ClientNodeManager = koinInject()
-    val entry = remember { mutableStateOf(value) }
+    // Rekey on [value] so the form picks up the current snapshot when the
+    // menu opens instead of freezing at whatever `value` happened to be on
+    // first composition (usually 0.0).
+    val entry = remember(value) { mutableStateOf(value) }
     LaunchedEffect(entry.value) {
         callback(entry.value)
     }
