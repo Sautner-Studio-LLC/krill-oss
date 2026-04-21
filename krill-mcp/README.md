@@ -36,7 +36,9 @@ Claude clients authenticate *to* the MCP server using the same token. `postinst`
 # → krill-mcp-service/build/libs/krill-mcp-all.jar
 ```
 
-## MCP tool surface (v1)
+## MCP tool surface
+
+### Read (discovery + inspection)
 
 | Tool             | Description                                                      |
 |------------------|------------------------------------------------------------------|
@@ -45,6 +47,20 @@ Claude clients authenticate *to* the MCP server using the same token. `postinst`
 | `get_node`       | Single node with its current meta/state                          |
 | `read_series`    | Time-series data for a DataPoint node over a time range          |
 | `server_health`  | Health check for a given Krill server                            |
+
+### Write (Projects + Diagrams)
+
+| Tool                      | Description                                                                      |
+|---------------------------|----------------------------------------------------------------------------------|
+| `list_projects`           | List `KrillApp.Project` containers on a server                                   |
+| `create_project`          | Create a new Project node — parent for diagrams, task lists, journals, cameras   |
+| `create_diagram`          | Create a `KrillApp.Project.Diagram` with inline SVG source + anchorBindings      |
+| `update_diagram`          | Edit an existing Diagram's source / bindings — for "improve this diagram" flows  |
+| `get_diagram`             | Fetch a Diagram's SVG + bindings for review or refinement                        |
+| `upload_diagram_file`     | Raw SVG PUT to `/project/{id}/diagram/{file}` static path (no node)              |
+| `download_diagram_file`   | Raw SVG GET from the same static path                                            |
+
+Other node types (DataPoints, Triggers, Executors, Filters, Pins, TaskLists, Journals, Cameras) remain read-only.
 
 ## Companion Claude skill
 

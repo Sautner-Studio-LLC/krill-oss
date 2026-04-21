@@ -38,10 +38,17 @@ Krill renders an interactive dashboard from a static SVG file plus a binding map
 ## Workflow when generating a dashboard for a user
 
 1. Call `list_nodes` (filtered by `type=DataPoint`) to know what live values exist.
-2. Ask the user what physical/conceptual layout they want, or generate a sensible default (grid of tiles, floor-plan rectangles, equipment diagram).
-3. Emit the SVG with descriptive `k_*` anchor ids — one anchor per DataPoint the dashboard should show.
-4. Emit the matching `anchorBindings` JSON, mapping each anchor id to the DataPoint UUID from step 1.
-5. Tell the user to: create a `KrillApp.Project.Diagram` node under one of their `KrillApp.Project` containers, paste the SVG into the `source` field, and paste the binding map into `anchorBindings`. (Or, once write tools land in krill-mcp, do all of this via `tools/call`.)
+2. Call `list_projects` to find a parent project. If none exist, offer to create one with `create_project` — diagrams **must** be children of a project, so this is never optional. If exactly one project exists, use it; if several, ask which.
+3. Ask the user what physical/conceptual layout they want, or generate a sensible default (grid of tiles, floor-plan rectangles, equipment diagram).
+4. Build the SVG with descriptive `k_*` anchor ids — one anchor per DataPoint the dashboard should show — and the matching `anchorBindings` map (anchor id → DataPoint UUID from step 1).
+5. Call `create_diagram` with `{projectId, name, source, anchorBindings}`. Pass `uploadFileName: "<name>.svg"` to also stage the SVG at `/project/{id}/diagram/{file}` for URL-based embeds.
+
+## Workflow for improving an existing dashboard
+
+1. Call `get_diagram` with the diagram id to fetch the current `source` + `anchorBindings`.
+2. Reason about what to change — layout tweaks, new anchors for newly-created DataPoints, visual polish, restructuring, svg optimization.
+3. Call `update_diagram` with the replacement `source` and/or `anchorBindings`. Omit fields you don't want to change.
+4. **Preserve anchor ids that are still in use.** Renaming an anchor (e.g. `k_temp_1` → `k_temperature`) without also updating its binding breaks the live-state overlay. If you must rename, rewrite `anchorBindings` in the same call.
 
 ## Don't
 

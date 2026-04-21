@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("krill-mcp")
 
-private const val SERVER_VERSION = "0.0.3"
+private const val SERVER_VERSION = "0.0.4"
 
 fun main() {
     log.info("Starting krill-mcp version={}", SERVER_VERSION)
@@ -29,20 +29,29 @@ fun main() {
     val registry = KrillRegistry(config, pin)
     runBlocking { registry.bootstrap() }
 
+    val tools = listOf(
+        ListServersTool(registry),
+        ListNodesTool(registry),
+        GetNodeTool(registry),
+        ReadSeriesTool(registry),
+        ServerHealthTool(registry),
+        ListProjectsTool(registry),
+        CreateProjectTool(registry),
+        CreateDiagramTool(registry),
+        UpdateDiagramTool(registry),
+        GetDiagramTool(registry),
+        UploadDiagramFileTool(registry),
+        DownloadDiagramFileTool(registry),
+    )
+
     val mcp = McpServer(
         serverName = "krill-mcp",
         serverVersion = SERVER_VERSION,
-        tools = listOf(
-            ListServersTool(registry),
-            ListNodesTool(registry),
-            GetNodeTool(registry),
-            ReadSeriesTool(registry),
-            ServerHealthTool(registry),
-        ),
+        tools = tools,
     )
 
     val httpServer = startMcpServer(config.listenPort, mcp, pin)
-    log.info("krill-mcp listening on :{} (tools={})", config.listenPort, 5)
+    log.info("krill-mcp listening on :{} (tools={})", config.listenPort, tools.size)
 
     Runtime.getRuntime().addShutdownHook(Thread {
         log.info("Shutting down krill-mcp")

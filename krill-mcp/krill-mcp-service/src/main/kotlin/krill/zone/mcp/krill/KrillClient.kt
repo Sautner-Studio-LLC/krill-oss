@@ -40,18 +40,64 @@ class KrillClient(
     suspend fun series(id: String, startMs: Long, endMs: Long): JsonArray =
         get("/node/$id/data/series?st=$startMs&et=$endMs").jsonArray
 
-    private suspend fun get(path: String): JsonElement {
+    /**
+     * Post a node JSON body to /node/{id}. The server treats this as an upsert:
+     * a new id with `state="CREATED"` creates the node, an existing id updates it.
+     * Server responds 202 Accepted with empty body.
+     */
+    suspend fun postNode(node: JsonObject) {
+        val id = node["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Node JSON missing required 'id' field")
+        postJson("/node/$id", node)
+    }
+
+    /** PUT raw SVG bytes to /project/{id}/diagram/{file}. */
+    suspend fun uploadDiagramFile(projectId: String, fileName: String, svgContent: String) {
         val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
-        val response: HttpResponse = http.get("$baseUrl$path") {
+        val bytes = svgContent.toByteArray(Charsets.UTF_8)
+        val response: HttpResponse = http.put("$baseUrl/project/$projectId/diagram/$fileName") {
             header(HttpHeaders.Authorization, "Bearer $token")
-            accept(ContentType.Application.Json)
+            contentType(ContentType.Image.SVG)
+            setBody(bytes)
         }
         if (!response.status.isSuccess()) {
             val body = runCatching { response.bodyAsText() }.getOrDefault("")
-            error("Krill $baseUrl$path returned ${response.status}: $body")
+            error("PUT $baseUrl/project/$projectId/diagram/$fileName returned ${response.status}: $body")
         }
-        val text = response.bodyAsText()
+    }
+
+    /** GET /project/{id}/diagram/{file} — returns the SVG as a UTF-8 string. */
+    suspend fun downloadDiagramFile(projectId: String, fileName: String): String =
+        getText("/project/$projectId/diagram/$fileName")
+
+    private suspend fun get(path: String): JsonElement {
+        val text = getText(path)
         return if (text.isBlank()) JsonNull else Json.parseToJsonElement(text)
+    }
+
+    private suspend fun getText(path: String): String {
+        val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
+        val response: HttpResponse = http.get("$baseUrl$path") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val body = runCatching { response.bodyAsText() }.getOrDefault("")
+            error("GET $baseUrl$path returned ${response.status}: $body")
+        }
+        return response.bodyAsText()
+    }
+
+    private suspend fun postJson(path: String, body: JsonElement) {
+        val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
+        val response: HttpResponse = http.post("$baseUrl$path") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(body.toString())
+        }
+        if (!response.status.isSuccess()) {
+            val errBody = runCatching { response.bodyAsText() }.getOrDefault("")
+            error("POST $baseUrl$path returned ${response.status}: $errBody")
+        }
     }
 
     companion object {
@@ -68,9 +114,9 @@ class KrillClient(
                     }
                 }
                 install(HttpTimeout) {
-                    requestTimeoutMillis = 15_000
+                    requestTimeoutMillis = 30_000
                     connectTimeoutMillis = 5_000
-                    socketTimeoutMillis = 15_000
+                    socketTimeoutMillis = 30_000
                 }
                 expectSuccess = false
             }
