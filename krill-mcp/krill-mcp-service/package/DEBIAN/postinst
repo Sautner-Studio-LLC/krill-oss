@@ -132,7 +132,7 @@ cat > /etc/systemd/system/krill-mcp.service << EOF
 [Unit]
 Description=Krill MCP Server (Model Context Protocol)
 Documentation=https://krillswarm.com
-After=network.target
+After=network.target krill.service
 Wants=krill.service
 
 [Service]

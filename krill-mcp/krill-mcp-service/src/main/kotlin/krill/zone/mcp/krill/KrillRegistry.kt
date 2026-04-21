@@ -31,14 +31,55 @@ class KrillRegistry(
             log.warn("No seeds configured in /etc/krill-mcp/config.json — MCP tools will have no Krill server to call.")
             return
         }
-        for (seed in config.seeds) {
-            val client = probe(seed) ?: continue
-            byId[client.serverId] = client
-            byHost["${seed.host}:${seed.port}"] = client
-            log.info("Registered Krill server: id={} host={}:{}", client.serverId, seed.host, seed.port)
-        }
+        probeAllSeeds(attempts = 5, backoffMs = 2_000)
         if (byId.isEmpty()) {
-            log.warn("No Krill servers reachable. MCP tools will return no results until a seed comes online.")
+            log.warn("No Krill servers reachable after bootstrap retries. Call `reseed_servers` (MCP tool) or `sudo systemctl restart krill-mcp` when Krill is healthy.")
+        }
+    }
+
+    /**
+     * Force a re-probe of every configured seed. Replaces registry contents
+     * atomically: entries for seeds that newly succeed are (re)registered;
+     * entries for seeds that still fail stay as they were (we don't evict a
+     * working client on a transient failure).
+     *
+     * Exposed as the `reseed_servers` MCP tool so agents can recover from the
+     * startup seed race without shell access.
+     */
+    suspend fun reseed(): List<KrillClient> {
+        if (config.seeds.isEmpty()) return emptyList()
+        probeAllSeeds(attempts = 1, backoffMs = 0)
+        return all()
+    }
+
+    /**
+     * Probe every configured seed with a bounded retry loop. [attempts] is per
+     * seed; between failed attempts we wait [backoffMs] ms. Seeds that succeed
+     * at any attempt get registered; seeds that exhaust all attempts stay
+     * unregistered (bootstrap logs a warning).
+     *
+     * The retry fixes the common startup race: systemd brings krill-mcp up
+     * before the krill server it targets is listening, and a single probe on
+     * cold boot finds a socket error or a "server prematurely closed the
+     * connection" and gives up.
+     */
+    private suspend fun probeAllSeeds(attempts: Int, backoffMs: Long) = coroutineScope {
+        config.seeds.forEach { seed ->
+            val label = "${seed.host}:${seed.port}"
+            var client: KrillClient? = null
+            for (attempt in 1..attempts) {
+                client = probe(seed)
+                if (client != null) break
+                if (attempt < attempts) {
+                    log.info("Seed {} probe attempt {}/{} failed; retrying in {}ms", label, attempt, attempts, backoffMs)
+                    delay(backoffMs)
+                }
+            }
+            if (client != null) {
+                byId[client.serverId] = client
+                byHost[label] = client
+                log.info("Registered Krill server: id={} host={}", client.serverId, label)
+            }
         }
     }
 
@@ -112,6 +153,19 @@ class KrillRegistry(
 
     /** Resolve "server" tool param — accepts server id, "host", or "host:port". */
     fun resolve(selector: String?): KrillClient? {
+        lookup(selector)?.let { return it }
+        // Registry empty or the selector doesn't match — the startup probe
+        // likely lost its race. Try once more synchronously before giving up
+        // so a just-in-time retry can recover the seed without shell access.
+        if (byId.isEmpty() && config.seeds.isNotEmpty()) {
+            log.info("Registry empty on resolve('{}'); re-probing seeds now.", selector)
+            runBlocking { probeAllSeeds(attempts = 1, backoffMs = 0) }
+            lookup(selector)?.let { return it }
+        }
+        return null
+    }
+
+    private fun lookup(selector: String?): KrillClient? {
         if (selector == null) return byId.values.firstOrNull()
         byId[selector]?.let { return it }
         byHost[selector]?.let { return it }

@@ -21,6 +21,17 @@ private const val META_PROJECT = "krill.zone.shared.krillapp.project.ProjectMeta
 private const val META_DIAGRAM = "krill.zone.shared.krillapp.project.diagram.DiagramMetaData"
 
 /**
+ * Authoring contract the agent has to follow for anchors to actually bind.
+ * Embedded in every create/update tool description so cold LLM sessions don't
+ * have to infer it from elsewhere.
+ */
+private const val ANCHOR_CONTRACT =
+    "Anchor contract: each anchor is a bare <rect id=\"k_<node-uuid>\" fill=\"none\"/> with NO child elements, " +
+        "no <text>, no strokes — the Krill client overlays the live UI inside that rect at runtime. " +
+        "anchorBindings maps anchor_id → node_uuid (same uuid as inside the id), e.g. " +
+        "{\"k_1c9dce76-ba65-48b5-b842-32ad97a96f80\": \"1c9dce76-ba65-48b5-b842-32ad97a96f80\"}."
+
+/**
  * Create a new `KrillApp.Project` node. Projects sit under the server node and
  * act as organizational containers for diagrams, task lists, journals, cameras.
  */
@@ -79,9 +90,7 @@ class CreateProjectTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
-/**
- * Convenience: list existing Project nodes on a server.
- */
+/** List existing Project nodes on a server. */
 class ListProjectsTool(private val registry: KrillRegistry) : Tool {
     override val name = "list_projects"
     override val description = "List all Project nodes on a Krill server (id, name, description)."
@@ -116,23 +125,23 @@ class ListProjectsTool(private val registry: KrillRegistry) : Tool {
 /**
  * Create a new `KrillApp.Project.Diagram` node.
  *
- * Krill stores the SVG as a file, not inline: `DiagramMetaData.source` is a
- * URL that client apps fetch to render the dashboard. This tool does the full
+ * Krill stores the SVG as a file, not inline: `DiagramMetaData.source` is a URL
+ * that client apps fetch to render the dashboard. This tool does the full
  * round-trip:
  *
- *   1. Slugify `name` (lowercase_snake_case) + ".svg" to pick a filename unless
- *      the caller overrides with `fileName`.
+ *   1. Pick a filename: [uploadFileName] if given, else slugify(name)+".svg".
  *   2. PUT the SVG bytes to `/project/{projectId}/diagram/{fileName}` — the
  *      server writes the file with the right owner and permissions.
- *   3. POST the Diagram node with `meta.source = ${client.publicBaseUrl}/project/{projectId}/diagram/{fileName}`.
+ *   3. POST the Diagram node with `meta.source` = the public URL of that file.
  *
- * Callers pass the SVG content in `svg`. Any tmp-file staging the agent does
- * (for review, iteration, diffing) happens outside this tool.
+ * Upload always happens. `uploadFileName` is an override, not a gate.
  */
 class CreateDiagramTool(private val registry: KrillRegistry) : Tool {
     override val name = "create_diagram"
     override val description =
-        "Create a Diagram node: upload the SVG to the project's static path and post a KrillApp.Project.Diagram node whose `source` is the public URL of that file."
+        "Create a Diagram node end-to-end: always uploads the SVG to /project/{projectId}/diagram/{fileName} " +
+            "(filename defaults to slug(name)+.svg unless `uploadFileName` is given), then posts a KrillApp.Project.Diagram " +
+            "node whose `meta.source` is the resulting public URL. $ANCHOR_CONTRACT"
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -143,30 +152,30 @@ class CreateDiagramTool(private val registry: KrillRegistry) : Tool {
             }
             putJsonObject("name") {
                 put("type", "string")
-                put("description", "Display name. Also drives the default filename (lowercase_snake_case + .svg) unless `fileName` is given.")
+                put("description", "Display name. Also drives the default filename (lowercase_snake_case + .svg) unless `uploadFileName` is given.")
             }
             putJsonObject("description") {
                 put("type", "string")
                 put("description", "Optional description.")
             }
-            putJsonObject("svg") {
+            putJsonObject("source") {
                 put("type", "string")
-                put("description", "SVG content. Elements with id starting with 'k_' become anchors bound to nodes. Must contain a <svg> tag.")
+                put("description", "SVG content (the bytes, not a URL). The server stores this as a file at /project/{projectId}/diagram/{fileName} and sets meta.source to the resulting URL. Must contain a <svg> tag. 2 MB cap.")
             }
-            putJsonObject("fileName") {
+            putJsonObject("uploadFileName") {
                 put("type", "string")
-                put("description", "Optional override. Must match ^[a-zA-Z0-9_.-]+$ and end with .svg. Defaults to slug(name)+.svg.")
+                put("description", "Optional filename override. Must match ^[a-zA-Z0-9_.-]+$ and end with .svg. Defaults to slug(name)+.svg. Upload happens either way — this only controls where.")
             }
             putJsonObject("anchorBindings") {
                 put("type", "object")
-                put("description", "Map from SVG anchor id (e.g. 'k_temp_sensor') to the target node UUID.")
+                put("description", "Map from SVG anchor id (e.g. 'k_<node-uuid>') to the target node UUID. Direction is anchor_id → node_uuid. For the anchor_id=k_<uuid> convention, both sides are the same uuid.")
                 putJsonObject("additionalProperties") { put("type", "string") }
             }
         }
         putJsonArray("required") {
             add("projectId")
             add("name")
-            add("svg")
+            add("source")
         }
     }
 
@@ -177,14 +186,14 @@ class CreateDiagramTool(private val registry: KrillRegistry) : Tool {
         val name = arguments["name"]?.jsonPrimitive?.contentOrNull
             ?: error("Missing required argument: name")
         val description = arguments["description"]?.jsonPrimitive?.contentOrNull ?: ""
-        val svg = arguments["svg"]?.jsonPrimitive?.contentOrNull
-            ?: error("Missing required argument: svg")
+        val svg = arguments["source"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: source (SVG content, not a URL).")
         val bindings = arguments["anchorBindings"] as? JsonObject ?: JsonObject(emptyMap())
-        val fileName = arguments["fileName"]?.jsonPrimitive?.contentOrNull?.also { validateSvgFileName(it) }
+        val fileName = arguments["uploadFileName"]?.jsonPrimitive?.contentOrNull?.also { validateSvgFileName(it) }
             ?: defaultFileName(name)
 
         if (!svg.contains("<svg", ignoreCase = true)) {
-            error("svg does not look like SVG (missing <svg> tag).")
+            error("source does not look like SVG (missing <svg> tag). Pass the SVG markup as the `source` argument, not a URL.")
         }
 
         // 1. Upload the file — server writes to /srv/krill/project/{projectId}/diagram/{fileName}
@@ -221,24 +230,34 @@ class CreateDiagramTool(private val registry: KrillRegistry) : Tool {
             put("fileName", fileName)
             put("source", sourceUrl)
             put("anchorCount", bindings.size)
+            put("anchorBindings", bindings)
+            put("sourceBytes", svg.toByteArray(Charsets.UTF_8).size)
         }
     }
 }
 
 /**
- * Update an existing Diagram node. Any subset of `name`, `description`, `svg`,
- * `fileName`, `anchorBindings` may be provided — unspecified fields keep their
- * current values.
+ * Update an existing Diagram node.
  *
- * When `svg` is provided, the file is re-uploaded. The filename defaults to
- * whatever the existing `source` URL points at (so subsequent fetches of the
- * same URL see the updated content); pass `fileName` to change it, or rely on
- * the slug of a changed `name`.
+ * Implementation note: starts from the existing `meta` JsonObject and mutates
+ * fields in place, rather than rebuilding from scratch. This preserves the
+ * polymorphic `type` discriminator the server emits as well as any fields this
+ * MCP doesn't know about, so the server's kotlinx.serialization-based Node
+ * deserializer never sees a shape mismatch. (Rebuilding with a hard-coded
+ * discriminator caused a silent no-op in v0.0.5 — the server accepted the body
+ * but dropped the anchorBindings update.)
+ *
+ * Upload semantics: when `source` is provided, the file is always re-uploaded.
+ * Filename priority: [uploadFileName] → existing source URL's filename → slug
+ * of the (new or existing) name. Passing `source` alone with no `uploadFileName`
+ * re-uploads to the same path the current URL already references, which is
+ * what callers expect 99% of the time.
  */
 class UpdateDiagramTool(private val registry: KrillRegistry) : Tool {
     override val name = "update_diagram"
     override val description =
-        "Update a Diagram node. If `svg` is given, re-uploads the file and updates `source` accordingly; any other fields passed are merged into the existing meta."
+        "Update a Diagram node. When `source` is given, the SVG file is always re-uploaded — by default to the same path the current meta.source URL references, so the URL stays stable. " +
+            "Pass `uploadFileName` only to rename the file. Any of name/description/source/anchorBindings can be updated independently; omitted fields keep their current value. $ANCHOR_CONTRACT"
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -249,17 +268,17 @@ class UpdateDiagramTool(private val registry: KrillRegistry) : Tool {
             }
             putJsonObject("name") { put("type", "string") }
             putJsonObject("description") { put("type", "string") }
-            putJsonObject("svg") {
+            putJsonObject("source") {
                 put("type", "string")
-                put("description", "Replacement SVG content. Omit to keep the current file untouched.")
+                put("description", "Replacement SVG content (the bytes, not a URL). When given, the file is re-uploaded; omit to leave the file untouched.")
             }
-            putJsonObject("fileName") {
+            putJsonObject("uploadFileName") {
                 put("type", "string")
-                put("description", "Optional new filename. Defaults to keeping the existing source URL's filename, or slug(new name) when `name` changed.")
+                put("description", "Optional rename. Defaults to the filename already referenced by the current meta.source URL (stable URL). Required pattern: ^[a-zA-Z0-9_.-]+$ ending in .svg.")
             }
             putJsonObject("anchorBindings") {
                 put("type", "object")
-                put("description", "Replacement anchor → node-id map. Omit to keep the current bindings.")
+                put("description", "Replacement anchor → node-id map (entire map is replaced, not merged). Omit to keep the current bindings. Direction: anchor_id → node_uuid.")
                 putJsonObject("additionalProperties") { put("type", "string") }
             }
         }
@@ -284,12 +303,12 @@ class UpdateDiagramTool(private val registry: KrillRegistry) : Tool {
 
         val newName = arguments["name"]?.jsonPrimitive?.contentOrNull
         val newDescription = arguments["description"]?.jsonPrimitive?.contentOrNull
-        val newSvg = arguments["svg"]?.jsonPrimitive?.contentOrNull
-        val newFileName = arguments["fileName"]?.jsonPrimitive?.contentOrNull?.also { validateSvgFileName(it) }
+        val newSvg = arguments["source"]?.jsonPrimitive?.contentOrNull
+        val newFileName = arguments["uploadFileName"]?.jsonPrimitive?.contentOrNull?.also { validateSvgFileName(it) }
         val newBindings = arguments["anchorBindings"] as? JsonObject
 
         if (newSvg != null && !newSvg.contains("<svg", ignoreCase = true)) {
-            error("svg does not look like SVG (missing <svg> tag).")
+            error("source does not look like SVG (missing <svg> tag). Pass the SVG markup, not a URL.")
         }
 
         val effectiveName = newName ?: existingMeta["name"]?.jsonPrimitive?.contentOrNull ?: "Diagram"
@@ -297,7 +316,7 @@ class UpdateDiagramTool(private val registry: KrillRegistry) : Tool {
         val existingFileName = existingSourceUrl.substringAfterLast('/').takeIf { it.isNotEmpty() && it.endsWith(".svg") }
 
         val fileUploaded: Boolean
-        val effectiveFileName: String
+        val effectiveFileName: String?
         val effectiveSourceUrl: String
         if (newSvg != null) {
             effectiveFileName = newFileName
@@ -312,25 +331,28 @@ class UpdateDiagramTool(private val registry: KrillRegistry) : Tool {
             effectiveSourceUrl = "${client.publicBaseUrl.trimEnd('/')}/project/$projectId/diagram/$newFileName"
             fileUploaded = false
         } else {
-            effectiveFileName = existingFileName ?: ""
+            effectiveFileName = existingFileName
             effectiveSourceUrl = existingSourceUrl
             fileUploaded = false
         }
 
-        val mergedMeta = buildJsonObject {
-            put("type", META_DIAGRAM)
-            put("name", effectiveName)
-            put("description", newDescription ?: existingMeta["description"]?.jsonPrimitive?.contentOrNull ?: "")
-            put("source", effectiveSourceUrl)
-            put("anchorBindings", newBindings ?: (existingMeta["anchorBindings"] as? JsonObject) ?: JsonObject(emptyMap()))
-            put("error", "")
-        }
+        // Mutate existing meta in place — preserves the server-emitted `type`
+        // discriminator and any fields this MCP doesn't know about. Rebuilding
+        // from scratch is what broke anchorBindings persistence in v0.0.5.
+        val mergedMeta = existingMeta.toMutableMap()
+        if (newName != null) mergedMeta["name"] = JsonPrimitive(newName)
+        if (newDescription != null) mergedMeta["description"] = JsonPrimitive(newDescription)
+        if (newBindings != null) mergedMeta["anchorBindings"] = newBindings
+        if (effectiveSourceUrl != existingSourceUrl) mergedMeta["source"] = JsonPrimitive(effectiveSourceUrl)
 
+        // Preserve the full existing Node, only overriding meta + state.
         val updated = JsonObject(existing.toMutableMap().apply {
-            put("meta", mergedMeta)
+            put("meta", JsonObject(mergedMeta))
             put("state", JsonPrimitive("NONE"))
         })
         client.postNode(updated)
+
+        val effectiveBindings = (mergedMeta["anchorBindings"] as? JsonObject) ?: JsonObject(emptyMap())
 
         return buildJsonObject {
             put("server", client.serverId)
@@ -339,11 +361,14 @@ class UpdateDiagramTool(private val registry: KrillRegistry) : Tool {
             put("fileName", effectiveFileName)
             put("source", effectiveSourceUrl)
             put("fileUploaded", fileUploaded)
+            if (fileUploaded && newSvg != null) put("sourceBytes", newSvg.toByteArray(Charsets.UTF_8).size)
+            put("anchorCount", effectiveBindings.size)
+            put("anchorBindings", effectiveBindings)
             put("updated", JsonArray(buildList {
                 if (newName != null) add(JsonPrimitive("name"))
                 if (newDescription != null) add(JsonPrimitive("description"))
-                if (newSvg != null) add(JsonPrimitive("svg"))
-                if (newFileName != null) add(JsonPrimitive("fileName"))
+                if (newSvg != null) add(JsonPrimitive("source"))
+                if (newFileName != null) add(JsonPrimitive("uploadFileName"))
                 if (newBindings != null) add(JsonPrimitive("anchorBindings"))
             }))
         }
@@ -387,7 +412,7 @@ class GetDiagramTool(private val registry: KrillRegistry) : Tool {
         val fileName = sourceUrl.substringAfterLast('/').takeIf { it.endsWith(".svg") }
 
         // Fetch the SVG if the source URL points at a /project/{id}/diagram/{file} on
-        // this server. Any other URL (external CDN, old inline fragment) comes back empty.
+        // this server. Any other URL (external CDN, old inline fragment) comes back null.
         val svg = if (projectId != null && fileName != null && sourceUrl.contains("/project/$projectId/diagram/$fileName")) {
             runCatching { client.downloadDiagramFile(projectId, fileName) }.getOrNull()
         } else null
@@ -395,12 +420,12 @@ class GetDiagramTool(private val registry: KrillRegistry) : Tool {
         return buildJsonObject {
             put("server", client.serverId)
             put("diagramId", diagramId)
-            put("projectId", projectId ?: JsonNull.content)
+            put("projectId", projectId)
             put("name", meta["name"] ?: JsonNull)
             put("description", meta["description"] ?: JsonNull)
             put("source", sourceUrl)
-            put("fileName", fileName ?: JsonNull.content)
-            put("svg", svg ?: JsonNull.content)
+            put("fileName", fileName)
+            put("svg", svg)
             put("anchorBindings", meta["anchorBindings"] ?: JsonObject(emptyMap()))
         }
     }
@@ -428,15 +453,15 @@ class UploadDiagramFileTool(private val registry: KrillRegistry) : Tool {
                 put("type", "string")
                 put("description", "SVG filename, e.g. 'aquarium.svg'. Must match ^[a-zA-Z0-9_.-]+$ and end with .svg.")
             }
-            putJsonObject("svg") {
+            putJsonObject("source") {
                 put("type", "string")
-                put("description", "Raw SVG content.")
+                put("description", "Raw SVG content (the bytes).")
             }
         }
         putJsonArray("required") {
             add("projectId")
             add("fileName")
-            add("svg")
+            add("source")
         }
     }
 
@@ -446,12 +471,12 @@ class UploadDiagramFileTool(private val registry: KrillRegistry) : Tool {
             ?: error("Missing required argument: projectId")
         val fileName = arguments["fileName"]?.jsonPrimitive?.contentOrNull
             ?: error("Missing required argument: fileName")
-        val svg = arguments["svg"]?.jsonPrimitive?.contentOrNull
-            ?: error("Missing required argument: svg")
+        val svg = arguments["source"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: source")
 
         validateSvgFileName(fileName)
         if (!svg.contains("<svg", ignoreCase = true)) {
-            error("svg does not look like SVG (missing <svg> tag).")
+            error("source does not look like SVG (missing <svg> tag).")
         }
 
         client.uploadDiagramFile(projectId, fileName, svg)
@@ -466,9 +491,7 @@ class UploadDiagramFileTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
-/**
- * Download the raw SVG file from a Project's static path.
- */
+/** Download the raw SVG file from a Project's static path. */
 class DownloadDiagramFileTool(private val registry: KrillRegistry) : Tool {
     override val name = "download_diagram_file"
     override val description =
@@ -504,10 +527,43 @@ class DownloadDiagramFileTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
+/**
+ * Force the MCP to re-probe every configured seed and rebuild the registry.
+ * Lets agents recover from the startup seed race without shell access.
+ */
+class ReseedServersTool(private val registry: KrillRegistry) : Tool {
+    override val name = "reseed_servers"
+    override val description =
+        "Force krill-mcp to re-probe every configured seed in /etc/krill-mcp/config.json. Use when list_servers is empty after startup (common when krill-mcp came up before the krill server)."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {}
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val before = registry.all().size
+        registry.reseed()
+        val after = registry.all()
+        return buildJsonObject {
+            put("before", before)
+            put("after", after.size)
+            putJsonArray("servers") {
+                after.forEach { c ->
+                    addJsonObject {
+                        put("id", c.serverId)
+                        put("baseUrl", c.baseUrl)
+                        put("publicBaseUrl", c.publicBaseUrl)
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun resolve(registry: KrillRegistry, arguments: JsonObject): KrillClient {
     val selector = arguments["server"]?.jsonPrimitive?.contentOrNull
     return registry.resolve(selector)
-        ?: error("No Krill server matches '$selector' (and no default is registered).")
+        ?: error("No Krill server matches '$selector' (and no default is registered). Try calling reseed_servers — the registry may have missed the initial probe.")
 }
 
 /** Slugify a human-readable name into `lowercase_snake_case.svg`. */

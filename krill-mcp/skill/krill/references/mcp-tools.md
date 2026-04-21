@@ -30,7 +30,7 @@ In order of convenience:
 
 If no MCP connector is registered in the current Claude session, fall back to raw `curl` against `http://<host>:50052/mcp` with the bearer — see the direct-to-krill fallback at the end of this file for a second-level workaround.
 
-## Read tools (v0.0.5)
+## Read tools (v0.0.6)
 
 ### `list_servers`
 Returns every Krill server the local krill-mcp instance has registered. Use first to discover swarm topology.
@@ -66,7 +66,14 @@ Returns the `/health` payload of a server: server node id, name, platform, peer 
 {"name": "server_health", "arguments": {"server": "<optional>"}}
 ```
 
-## Project + Diagram write tools (v0.0.5)
+### `reseed_servers`
+Force `krill-mcp` to re-probe every configured seed in `/etc/krill-mcp/config.json` and rebuild its registry. Use this when `list_servers` comes back empty after startup — on cold boot the MCP can race ahead of the `krill` server it targets, miss its probe, and sit with an empty registry until restarted. Calling `reseed_servers` recovers without shell access.
+```json
+{"name": "reseed_servers", "arguments": {}}
+```
+Response: `{"before": N, "after": M, "servers": [{"id": "...", "baseUrl": "...", "publicBaseUrl": "..."}, ...]}`
+
+## Project + Diagram write tools (v0.0.6)
 
 These are the only write tools today. All other node types (DataPoints, Triggers, Executors, Filters, Pins, etc.) are still read-only.
 
@@ -85,11 +92,17 @@ Create a new `KrillApp.Project` node — an organizational container for Diagram
 Response: `{"server": "<id>", "projectId": "<new-uuid>", "name": "...", "message": "..."}`
 
 ### `create_diagram`
-End-to-end: uploads the SVG to `/project/{projectId}/diagram/{fileName}`, then creates a `KrillApp.Project.Diagram` node whose `meta.source` is the public URL of that file. **`DiagramMetaData.source` is a URL, not inline markup** — passing SVG markup to the node directly would produce a broken diagram.
 
-- `svg` — the SVG content (required). Must contain a `<svg>` tag. The server enforces a 2 MB cap.
-- `fileName` — optional. Defaults to `lowercase_snake_case(name) + ".svg"`. Must match `^[a-zA-Z0-9_.-]+$`.
-- `anchorBindings` — optional `k_*` anchor → node-UUID map.
+End-to-end: **always** uploads the SVG to `/project/{projectId}/diagram/{fileName}` (filename defaults to `slug(name) + ".svg"` unless `uploadFileName` is given), then posts a `KrillApp.Project.Diagram` node whose `meta.source` is the resulting public URL. **`DiagramMetaData.source` is a URL**, not inline markup — this tool handles the file write + URL construction so you pass plain SVG bytes as `source`.
+
+**Anchor contract (embedded in the tool description too):**
+- Anchors are **bare** `<rect id="k_<node-uuid>" fill="none"/>` — no children, no text, no stroke. The Krill client overlays the live UI inside the rect at runtime.
+- `anchorBindings` maps `anchor_id → node_uuid`. With the `k_<uuid>` id convention, both sides are the same uuid.
+
+Parameters:
+- `source` — the SVG content (required). Must contain a `<svg>` tag. 2 MB cap server-side.
+- `uploadFileName` — optional filename override, e.g. `aquarium.svg`. Defaults to `slug(name)+.svg`. Must match `^[a-zA-Z0-9_.-]+$`. **Upload happens regardless** — this only controls where the file lands.
+- `anchorBindings` — optional `k_<uuid>` anchor id → bound node-UUID map.
 
 ```json
 {
@@ -99,34 +112,41 @@ End-to-end: uploads the SVG to `/project/{projectId}/diagram/{fileName}`, then c
     "projectId": "<project-uuid>",
     "name": "Tank 1 dashboard",
     "description": "Live level + pump state",
-    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" ...> ... </svg>",
+    "source": "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect id=\"k_1c9dce76-ba65-48b5-b842-32ad97a96f80\" x=\"30\" y=\"30\" width=\"280\" height=\"140\" fill=\"none\"/></svg>",
     "anchorBindings": {
-      "k_tank_level": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
-      "k_pump_relay": "65691be2-f712-4727-8125-c94b66b3820e"
+      "k_1c9dce76-ba65-48b5-b842-32ad97a96f80": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
+      "k_65691be2-f712-4727-8125-c94b66b3820e": "65691be2-f712-4727-8125-c94b66b3820e"
     }
   }
 }
 ```
-Response: `{"server": "<id>", "projectId": "<id>", "diagramId": "<new-uuid>", "name": "...", "fileName": "tank_1_dashboard.svg", "source": "https://.../project/<id>/diagram/tank_1_dashboard.svg", "anchorCount": N}`
+Response: `{"server": "<id>", "projectId": "<id>", "diagramId": "<new-uuid>", "name": "...", "fileName": "tank_1_dashboard.svg", "source": "https://.../project/<id>/diagram/tank_1_dashboard.svg", "anchorCount": N, "anchorBindings": {...}, "sourceBytes": N}`
 
 **Precondition:** the `projectId` must exist. Call `list_projects` first, or create a project with `create_project` and reuse the returned id.
 
-**Agent pattern:** write the generated SVG to `/tmp/<slug>.svg` first so you can iterate/diff/inspect it with ordinary file tools. Then read the tmp file back and pass its contents as `svg`. The tool handles upload + URL construction + node creation.
+**Agent pattern:** write the generated SVG to `/tmp/<slug>.svg` first so you can iterate/diff/inspect it with ordinary file tools. Then read the tmp file back and pass its contents as `source`. The tool handles upload + URL construction + node creation.
 
 ### `update_diagram`
-Update an existing diagram. All meta fields are optional — omitted fields keep their current value. When `svg` is provided, the file is re-uploaded to the same path referenced by the existing `source` URL (so the URL stays stable for any embeds). Use `fileName` to rename the underlying file.
+
+Update an existing diagram. All meta fields are optional; omitted fields keep their current value. When `source` is provided, the file is **always** re-uploaded — by default to the same path the current `meta.source` URL references, so the URL stays stable and any existing embeds keep working. Pass `uploadFileName` only to rename the file.
+
+The tool starts from the existing node's `meta` and mutates the requested fields in place, which preserves the polymorphic discriminator the server emits. (Rebuilding `meta` from scratch caused a silent `anchorBindings` no-op in v0.0.5 — v0.0.6 fixes that.)
 
 ```json
 {
   "name": "update_diagram",
   "arguments": {
     "diagramId": "<uuid>",
-    "svg": "<svg>...updated markup...</svg>",
-    "anchorBindings": {"k_tank_level": "...", "k_ammonia_ppm": "..."}
+    "source": "<svg>...updated markup...</svg>",
+    "anchorBindings": {
+      "k_1c9dce76-ba65-48b5-b842-32ad97a96f80": "1c9dce76-ba65-48b5-b842-32ad97a96f80"
+    }
   }
 }
 ```
-Response: `{"server": "<id>", "diagramId": "<id>", "projectId": "<id>", "fileName": "...", "source": "https://...", "fileUploaded": bool, "updated": ["svg","anchorBindings", ...]}`
+Response: `{"server": "<id>", "diagramId": "<id>", "projectId": "<id>", "fileName": "...", "source": "https://...", "fileUploaded": bool, "sourceBytes": N?, "anchorCount": N, "anchorBindings": {...}, "updated": ["source","anchorBindings", ...]}`
+
+The response echoes the full post-update `anchorBindings` map and `anchorCount` so you can verify the write took without a separate `get_diagram` round-trip.
 
 ### `get_diagram`
 Fetch a Diagram node's metadata AND the SVG content pointed to by its `source` URL — the full input you need to propose improvements.
@@ -136,14 +156,14 @@ Fetch a Diagram node's metadata AND the SVG content pointed to by its `source` U
 ```
 Response: `{"server": "<id>", "diagramId": "<id>", "projectId": "<id>", "name": "...", "description": "...", "source": "https://.../project/<id>/diagram/<file>.svg", "fileName": "<file>.svg", "svg": "<svg>...</svg>", "anchorBindings": {...}}`
 
-The `svg` field is the file content fetched from `source`; it's null if the URL points somewhere the MCP daemon can't reach (e.g. a stale URL from before a server rename, or an external CDN).
+The `svg` field is the file content fetched from `source` (the response field is still named `svg`, even though the input parameter on create/update is `source`); it's null if the URL points somewhere the MCP daemon can't reach (e.g. a stale URL from before a server rename, or an external CDN).
 
 ### `upload_diagram_file`
 Stash a raw SVG at `/project/{id}/diagram/{file}` without creating a node. Useful for staging assets before deciding whether to wire them into a Diagram node. Prefer `create_diagram` for the normal case.
 ```json
-{"name": "upload_diagram_file", "arguments": {"projectId": "<uuid>", "fileName": "floorplan.svg", "svg": "<svg>...</svg>"}}
+{"name": "upload_diagram_file", "arguments": {"projectId": "<uuid>", "fileName": "floorplan.svg", "source": "<svg>...</svg>"}}
 ```
-Response includes the resulting public `url`.
+Response includes the resulting public `url`. Note: on this tool the filename parameter is `fileName` (not `uploadFileName`), but the SVG body parameter is `source` — same as create/update.
 
 ### `download_diagram_file`
 Download a raw SVG previously uploaded to `/project/{id}/diagram/{file}`.
@@ -173,34 +193,76 @@ For most user requests, call in this order and stop as soon as you have enough:
 
 ### `list_servers` returns `{"servers": []}`
 
-**This is a known failure mode — a startup seed race.** `krill-mcp` seeds its server registry once at process start by probing each host in `/etc/krill-mcp/config.json`'s `seeds` list. If the Krill server it targets (typically `localhost:8442`) isn't yet listening when `krill-mcp` comes up, the probe fails with something like:
+Startup seed race: `krill-mcp` seeds its registry at process start by probing each host in `/etc/krill-mcp/config.json`'s `seeds` list. If the Krill server it targets (typically `localhost:8442`) isn't yet listening when `krill-mcp` comes up, the probe can miss.
 
-```
-WARN KrillRegistry - Seed localhost:8442 /health failed:
-  Failed to parse HTTP response: the server prematurely closed the connection
-```
+**v0.0.6 mitigations** (mostly self-healing):
+- The systemd unit declares `After=krill.service` so `krill-mcp` waits for Krill to start.
+- Bootstrap runs up to 5 probe attempts with 2s backoff per seed.
+- `resolve(selector)` lazy-reprobes seeds when the registry is empty.
+- An MCP tool (`reseed_servers`) forces a full re-probe without shell access.
 
-…and the registry stays empty until the process is restarted. The systemd unit declares `Wants=krill.service` but not `After=krill.service`, so a fresh boot routinely loses this race. There is no retry or re-probe loop in v0.0.5.
+**If `list_servers` is still empty, in order of preference:**
+1. Call `reseed_servers`. No shell needed. Watch the response `after` count.
+2. If reseed still returns 0 servers, the Krill server on `:8442` is likely down. Ask the user to check `systemctl status krill` on the box, or fall back to the direct-to-Krill workflow below.
+3. Last resort with shell access: `sudo systemctl restart krill-mcp`. Do **not** restart shared services without the user's explicit go-ahead.
 
-**Diagnose (on the krill-mcp host):**
+**Diagnose (on the krill-mcp host, shell only):**
 ```bash
 journalctl -u krill-mcp --since "1 hour ago" | grep -iE "Seed|Registered"
 ```
-If you see `Seed ... failed` without a matching `Registered Krill server`, the registry is empty — confirmed.
+If you see `Seed ... failed` N times without a matching `Registered Krill server`, the probe genuinely can't reach Krill — look at the Krill server side.
 
-**Fix (requires shell access to the krill-mcp host):**
-```bash
-sudo systemctl restart krill-mcp
-```
-After Krill is healthy on `:8442`, restarting the MCP daemon re-seeds the registry. Do **not** restart shared services without the user's explicit go-ahead — ask first.
+### Adding a new Krill server at runtime
 
-### No `add_server` / register tool exists
-
-The registry is seed-config-driven and bootstrap-only. There is no MCP tool to add, remove, or re-probe a server at runtime. Don't waste turns looking for one. To add a new Krill server to an MCP install, the user has to edit `/etc/krill-mcp/config.json`'s `seeds` array and `sudo systemctl restart krill-mcp`.
+There is no `add_server` MCP tool. Adding a new server means editing `/etc/krill-mcp/config.json`'s `seeds` array and running either `reseed_servers` (if the new seed is reachable now) or `sudo systemctl restart krill-mcp`. `reseed_servers` is the no-shell path.
 
 ### The `server` argument only resolves registered servers
 
 `server: "id | host | host:port"` works only for servers already in the registry (seeded at startup). Passing a brand-new hostname does not register it — you'll get `"No Krill server matches '<selector>' (and no default is registered)."` Fix the seed list + restart.
+
+### Recovery: write didn't land
+
+If `update_diagram` / `create_diagram` returns cleanly but a follow-up `get_diagram` shows the old state, the write silently didn't persist — a v0.0.5-class bug. v0.0.6 fixed the known occurrence, but the recovery path stays relevant because node metadata and file bytes are stored separately and can drift. **Always round-trip with `get_diagram` after a write** and diff against what you sent.
+
+If the round-trip shows a mismatch:
+
+**1. File bytes not refreshed (served SVG still the old one):**
+```bash
+TOKEN=$(cat ~/.krill/pin_token)
+curl -sk -X PUT \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: image/svg+xml" \
+  --data-binary @/tmp/<slug>.svg \
+  "https://<host>:8442/project/<projectId>/diagram/<filename>.svg"
+# → HTTP 201 "File uploaded successfully"
+```
+This writes to exactly the path `meta.source` already references, so no metadata has to change — Krill clients pick up the new bytes on their next load. Safe escape hatch whether `update_diagram` is healthy or not. Also the preferred route for SVGs over ~50 KB (avoids passing the whole payload through a tool call).
+
+**2. Node metadata (e.g. `anchorBindings`) not persisted:**
+```bash
+# Fetch current node
+curl -sk -H "Authorization: Bearer $TOKEN" "https://<host>:8442/node/<diagramId>" > /tmp/diag.json
+
+# Edit /tmp/diag.json — replace meta.anchorBindings with the map you want, bump timestamp
+python3 -c "
+import json, time
+d = json.load(open('/tmp/diag.json'))
+d['meta']['anchorBindings'] = {'k_<uuid>': '<uuid>'}  # your target map
+d['timestamp'] = int(time.time() * 1000)
+json.dump(d, open('/tmp/diag.json', 'w'))
+"
+
+# POST the full body back — Krill upserts; the server replaces what it has
+curl -sk -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  --data-binary @/tmp/diag.json \
+  "https://<host>:8442/node/<diagramId>"
+# → HTTP 202
+```
+Post the whole node body (not a partial/PATCH) — Krill's REST upserts on POST and replaces the record. This sidesteps any server-side merge logic.
+
+After either recovery, round-trip `get_diagram` once more to confirm the state is what you intended, then tell the user which path you took.
 
 ### User named a Krill server by hostname, but it's only registered as `localhost`
 
