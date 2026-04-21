@@ -53,6 +53,7 @@ class KrillRegistry(
         val candidate = KrillClient(
             serverId = "pending",
             baseUrl = seed.baseUrl(),
+            publicBaseUrl = seed.baseUrl(),
             bearerToken = tokenSupplier,
         )
         val health = withTimeoutOrNull(10_000) {
@@ -68,13 +69,43 @@ class KrillRegistry(
             // OR on actual timeout; either way we logged above unless this was the timeout branch.
             return@coroutineScope null
         }
-        val serverId = (health as? JsonObject)?.get("id")?.jsonPrimitive?.contentOrNull
-        if (serverId == null) {
-            log.warn("Seed {} responded but /health lacks a top-level \"id\" field; cannot register. Payload: {}",
-                label, health.toString().take(200))
+        val healthObj = health as? JsonObject ?: run {
+            log.warn("Seed {} /health returned non-object payload: {}", label, health.toString().take(200))
             return@coroutineScope null
         }
-        KrillClient(serverId = serverId, baseUrl = seed.baseUrl(), bearerToken = tokenSupplier)
+        val serverId = healthObj["id"]?.jsonPrimitive?.contentOrNull
+        if (serverId == null) {
+            log.warn("Seed {} responded but /health lacks a top-level \"id\" field; cannot register. Payload: {}",
+                label, healthObj.toString().take(200))
+            return@coroutineScope null
+        }
+        val publicBaseUrl = publicBaseUrlFromHealth(healthObj) ?: seed.baseUrl()
+        KrillClient(
+            serverId = serverId,
+            baseUrl = seed.baseUrl(),
+            publicBaseUrl = publicBaseUrl,
+            bearerToken = tokenSupplier,
+        )
+    }
+
+    /**
+     * Mirror of Krill's `ServerMetaData.resolvedHost()`: derive a client-resolvable
+     * base URL from the `/health` payload so Diagram `source` URLs point somewhere
+     * a phone / browser can actually load. Bare hostnames get `.local` appended
+     * (mDNS), `.local` names are kept as-is, FQDNs and IPs pass through.
+     */
+    private fun publicBaseUrlFromHealth(health: JsonObject): String? {
+        val meta = health["meta"] as? JsonObject ?: return null
+        val name = meta["name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: return null
+        val port = meta["port"]?.jsonPrimitive?.intOrNull?.takeIf { it > 0 } ?: return null
+        val isLocal = meta["isLocal"]?.jsonPrimitive?.booleanOrNull ?: false
+        val host = when {
+            name.endsWith(".local") -> name
+            isLocal -> "$name.local"
+            !name.contains('.') -> "$name.local"
+            else -> name
+        }
+        return "https://$host:$port"
     }
 
     fun all(): List<KrillClient> = byId.values.toList()

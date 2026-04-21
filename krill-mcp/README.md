@@ -54,9 +54,9 @@ Claude clients authenticate *to* the MCP server using the same token. `postinst`
 |---------------------------|----------------------------------------------------------------------------------|
 | `list_projects`           | List `KrillApp.Project` containers on a server                                   |
 | `create_project`          | Create a new Project node — parent for diagrams, task lists, journals, cameras   |
-| `create_diagram`          | Create a `KrillApp.Project.Diagram` with inline SVG source + anchorBindings      |
-| `update_diagram`          | Edit an existing Diagram's source / bindings — for "improve this diagram" flows  |
-| `get_diagram`             | Fetch a Diagram's SVG + bindings for review or refinement                        |
+| `create_diagram`          | Upload an SVG file + create a `KrillApp.Project.Diagram` node pointing at it     |
+| `update_diagram`          | Re-upload the SVG and/or rewrite bindings — for "improve this diagram" flows     |
+| `get_diagram`             | Fetch a Diagram's node metadata AND the SVG content behind its `source` URL     |
 | `upload_diagram_file`     | Raw SVG PUT to `/project/{id}/diagram/{file}` static path (no node)              |
 | `download_diagram_file`   | Raw SVG GET from the same static path                                            |
 

@@ -27,6 +27,15 @@ import javax.net.ssl.X509TrustManager
 class KrillClient(
     val serverId: String,
     val baseUrl: String,
+    /**
+     * Client-resolvable base URL — what external apps (phones, browsers) should
+     * use to reach this server. Derived from `/health`'s ServerMetaData.name +
+     * port at probe time, falling back to [baseUrl] when we have nothing
+     * better. Important for building Diagram `source` URLs that other Krill
+     * clients will load — a `localhost:8442` seed is reachable from krill-mcp
+     * itself but not from a phone on the same network.
+     */
+    val publicBaseUrl: String,
     private val bearerToken: () -> String?,
 ) {
     private val log = LoggerFactory.getLogger(KrillClient::class.java)
