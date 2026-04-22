@@ -1,6 +1,6 @@
 ---
 name: krill
-version: 0.0.6
+version: 0.0.7
 description: Use when working with a Krill swarm — the home-automation/IoT system whose nodes are reachable via the krill-mcp Model Context Protocol server (typically http://<host>:50052/mcp, see https://krillswarm.com). Invoke for discovering or inspecting Krill servers, nodes, DataPoints, Triggers, Filters, Executors, Pins, or peers; reading time-series sensor data; reasoning about which node type to use for a given automation; and authoring, uploading, downloading, and improving SVG dashboards (Diagram nodes) that overlay live node state on a custom layout. Triggers on keywords like krill, swarm, krill server, krill node, krill-mcp, DataPoint, Trigger threshold, SVG dashboard, k_ anchor, swarm sensor, pi-krill, create project, create diagram, improve diagram.
 ---
 
@@ -63,7 +63,20 @@ Read these on demand — they're not auto-loaded:
 1. Skim `references/node-types/INDEX.md`, narrow to 1–3 candidates by role and one-liner.
 2. Read the full JSON spec for each candidate — pay attention to `llmConnectionHints` (what parents/children are valid), `llmSideEffectLevel`, `llmInputs`/`llmOutputs`, and the `llmExamples`.
 3. Recommend a single best-fit type with a short rationale. Mention valid parent/child wiring so the user knows where it slots into their tree.
-4. The only write tools today are for **Projects and Diagrams** (`create_project`, `create_diagram`, `update_diagram`, `upload_diagram_file`). For any other node type, emit the configuration as JSON / instructions for the user to apply in the Krill app, and flag that broader write support is a future capability.
+4. Call `create_node` to stand up the node on a server, passing `{server?, type, parent, name?, meta?}`. The `type` accepts either the short name (`KrillApp.DataPoint`) or the FQN. Use `list_node_types` (or the bundled `references/node-types/` specs) to see valid parent/child relationships and the default meta skeleton for each type. For specialized flows — Projects and Diagrams — keep using `create_project` / `create_diagram` (the diagram tool handles the SVG upload + URL computation that `create_node` doesn't).
+
+### For "build this tree on my server" (multi-node authoring)
+1. Discover: `list_servers` → `list_nodes` on the chosen server to find the root/parents that already exist.
+2. Consult `list_node_types` (or `references/node-types/INDEX.md`) and resolve the user's description to concrete `KrillApp.<Type>` values. Validate each pair against the `validParentTypes` / `validChildTypes` in the registry before building.
+3. Build **top-down, parent-first**. Each `create_node` call returns the new `nodeId`; use that as the `parent` for its children. Example chain: `KrillApp.DataPoint` on the server → `KrillApp.Trigger.HighThreshold` on the DataPoint → `KrillApp.Executor.OutgoingWebHook` on the Trigger.
+4. Overlay type-specific fields via the `meta` argument — e.g. `{"dataType": "DOUBLE", "unit": "°C", "precision": 1}` for a temperature DataPoint, `{"value": 100.0}` for a HighThreshold. Unknown keys are silently dropped by the server (`ignoreUnknownKeys = true`), so extras are safe but typos go unnoticed — stick to the field names in the MetaData classes.
+5. **Verify with `get_node`** after each create. The `create_node` response echoes what was sent, not what persisted; a round-trip read is the only ground truth.
+
+### For "record values to a DataPoint" (single value or a backfill series)
+1. Get the target DataPoint id (via `list_nodes type=DataPoint` or straight from the user).
+2. Call `record_snapshot` with either `{dataPointId, value, timestamp?}` for a single reading or `{dataPointId, snapshots: [{timestamp, value}, ...]}` for a series. `timestamp` is epoch **milliseconds**.
+3. Values are validated client-side against the DataPoint's `dataType`: TEXT non-empty, DIGITAL ∈ {0, 1} (booleans auto-map to 0/1), DOUBLE parseable, COLOR parseable as Long, JSON non-empty. If validation fails for any snapshot in a batch, **nothing is posted** — the tool refuses to half-apply a series.
+4. Each post is async on the server (202 Accepted). For a truly authoritative verification, call `read_series` over the time range you just wrote — the POST→ingest→filter→store pipeline may still drop a snapshot that a child Filter rejects.
 
 ## Topology, auth, limits
 
@@ -72,7 +85,7 @@ Read these on demand — they're not auto-loaded:
   1. On the krill-mcp host: `sudo krill-mcp-token` prints the connector URL + bearer.
   2. On any machine with `krill` installed: `~/.krill/pin_token` holds the 64-char hex bearer. Use as-is.
   3. On a server: `/etc/krill/credentials/pin_derived_key` (mode 0400, owned by `krill:krill`).
-- **v0.0.6 write surface is Projects + Diagrams only.** Tools: `create_project`, `list_projects`, `create_diagram`, `update_diagram`, `get_diagram`, `upload_diagram_file`, `download_diagram_file`. Everything else (DataPoints, Triggers, Executors, Filters, Pins, etc.) is still read-only.
+- **v0.0.7 write surface covers any node type plus DataPoint value writes.** Project/Diagram helpers: `create_project`, `list_projects`, `create_diagram`, `update_diagram`, `get_diagram`, `upload_diagram_file`, `download_diagram_file`. Generic node authoring: `create_node`, `list_node_types`. DataPoint time-series writes: `record_snapshot`. Deletes are still not exposed — do those in the Krill app.
 - **Diagrams must live under a Project.** Never call `create_diagram` with a `projectId` you haven't verified exists — call `list_projects` first, or create one with `create_project` and reuse the returned id.
 - **Registry is seed-config-driven and bootstrap-only.** There is **no** `add_server` MCP tool. To add a Krill server to an MCP install, edit `/etc/krill-mcp/config.json`'s `seeds` array and `sudo systemctl restart krill-mcp`. The `server` argument on tool calls only resolves servers already in the registry — passing a new hostname won't register it.
 - **Auth is one shared bearer token** per swarm. Anyone holding it can read everything AND write Diagrams; treat it like a household password.

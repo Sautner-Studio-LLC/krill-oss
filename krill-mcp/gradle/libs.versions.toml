@@ -6,7 +6,7 @@ ktor              = "3.0.3"
 logback           = "1.5.18"
 foojay            = "1.0.0"
 shadow            = "8.3.2"
-krill             = "0.0.1"
+krill             = "0.0.2"
 
 [libraries]
 

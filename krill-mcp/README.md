@@ -60,7 +60,15 @@ Claude clients authenticate *to* the MCP server using the same token. `postinst`
 | `upload_diagram_file`     | Raw SVG PUT to `/project/{id}/diagram/{file}` static path (no node)              |
 | `download_diagram_file`   | Raw SVG GET from the same static path                                            |
 
-Other node types (DataPoints, Triggers, Executors, Filters, Pins, TaskLists, Journals, Cameras) remain read-only.
+### Write (any node type, + DataPoint values) — v0.0.7
+
+| Tool                | Description                                                                       |
+|---------------------|-----------------------------------------------------------------------------------|
+| `list_node_types`   | Registry of every `KrillApp.*` type `create_node` can build — default meta, valid parents/children, side-effect level |
+| `create_node`       | Create a node of any registered type; overlay `meta` fields over the type default |
+| `record_snapshot`   | Record one or many `{timestamp, value}` pairs onto a DataPoint (validated against its `dataType`) |
+
+Node deletes and in-place meta edits for non-Diagram types remain outside this MCP's surface — do those in the Krill app.
 
 ## Companion Claude skill
 

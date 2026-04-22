@@ -30,7 +30,7 @@ In order of convenience:
 
 If no MCP connector is registered in the current Claude session, fall back to raw `curl` against `http://<host>:50052/mcp` with the bearer — see the direct-to-krill fallback at the end of this file for a second-level workaround.
 
-## Read tools (v0.0.6)
+## Read tools (v0.0.7)
 
 ### `list_servers`
 Returns every Krill server the local krill-mcp instance has registered. Use first to discover swarm topology.
@@ -73,9 +73,9 @@ Force `krill-mcp` to re-probe every configured seed in `/etc/krill-mcp/config.js
 ```
 Response: `{"before": N, "after": M, "servers": [{"id": "...", "baseUrl": "...", "publicBaseUrl": "..."}, ...]}`
 
-## Project + Diagram write tools (v0.0.6)
+## Project + Diagram write tools (v0.0.7)
 
-These are the only write tools today. All other node types (DataPoints, Triggers, Executors, Filters, Pins, etc.) are still read-only.
+Specialized Project and Diagram write tools — prefer these over the generic `create_node` for those two types, because `create_diagram` does the SVG file upload + `meta.source` URL construction that `create_node` doesn't.
 
 ### `list_projects`
 List existing `KrillApp.Project` containers on a server. Call this before `create_diagram` to pick a parent.
@@ -171,6 +171,73 @@ Download a raw SVG previously uploaded to `/project/{id}/diagram/{file}`.
 {"name": "download_diagram_file", "arguments": {"projectId": "<uuid>", "fileName": "floorplan.svg"}}
 ```
 Response: `{"server": "<id>", "projectId": "<id>", "fileName": "...", "svg": "<svg>...</svg>", "bytes": N}`
+
+## Generic node write tools (v0.0.7)
+
+The `create_node` / `list_node_types` pair covers every `KrillApp.*` type that's registered in the server's polymorphic serializer. For Projects and Diagrams, keep using the specialized tools above — `create_diagram` in particular handles SVG file upload + `meta.source` URL construction that `create_node` doesn't.
+
+### `list_node_types`
+Return the full creatable-type catalog the MCP knows about: short name, MetaData class FQN, role, side-effect level, description, valid parent/child types, and the default meta skeleton. Call this first when you don't know which `KrillApp.*` type to use — it's authoritative for *this* MCP version, whereas `references/node-types/` is the static companion catalog that may lag a server-side change.
+```json
+{"name": "list_node_types", "arguments": {"role": "trigger", "contains": "threshold"}}
+```
+Both filters are optional and case-insensitive. Response: `{"count": N, "types": [{"shortName": "KrillApp.Trigger.HighThreshold", "typeFqn": "...", "metaFqn": "...", "role": "trigger", "sideEffect": "low", "description": "...", "validParentTypes": [...], "validChildTypes": [...], "defaultMeta": {...}, "notes": "..."}, ...]}`
+
+### `create_node`
+Create a node of any registered type. Provide `type` (short name or FQN), `parent` (id of an existing node on the same server), optional `name`, and optional `meta` overlay.
+
+- `meta` is **shallow-merged** over the type's default meta skeleton. The `type` key (polymorphic discriminator) inside `meta` is always overwritten by the tool — callers can't break it.
+- A few MetaData classes have no `name` field (MQTT, Compute, Lambda, SMTP, LLM). Passing `name` on those types is silently dropped by the server's `ignoreUnknownKeys = true`.
+- If the parent's type isn't in the `validParentTypes` list for the requested type, the tool returns a `warnings[]` entry but still posts — the server will accept the node and the catalog may simply be behind.
+
+```json
+{
+  "name": "create_node",
+  "arguments": {
+    "server": "<optional>",
+    "type": "KrillApp.DataPoint",
+    "parent": "<server-uuid-or-other-parent>",
+    "name": "Aquarium temp",
+    "meta": {"dataType": "DOUBLE", "unit": "°C", "precision": 1, "manualEntry": false}
+  }
+}
+```
+Response: `{"server": "<id>", "nodeId": "<new-uuid>", "type": "KrillApp.DataPoint", "parent": "<id>", "parentType": {"fqn": "...", "shortName": "..."}, "meta": {...final merged...}, "warnings"?: [...]}`
+
+**Authoring a multi-node tree (parent-first):**
+1. `create_node type=KrillApp.DataPoint parent=<serverId> name="Aquarium temp" meta={dataType:"DOUBLE",unit:"°C"}` → record the returned `nodeId` as `dpId`.
+2. `create_node type=KrillApp.Trigger.HighThreshold parent=<dpId> name="Overheat" meta={value:30.0}` → record `tId`.
+3. `create_node type=KrillApp.Executor.OutgoingWebHook parent=<tId> name="Page me" meta={url:"https://...",method:"POST"}`.
+4. `get_node` each new id to confirm persistence — the create response echoes what was sent, not what the server stored.
+
+### `record_snapshot`
+Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot becomes a new point in the time-series store and runs through the DataPoint's child Filters + Triggers.
+
+- Single value: `{"dataPointId": "<uuid>", "value": 42.5, "timestamp": 1776700000000}` (timestamp optional; defaults to now in ms).
+- Series: `{"dataPointId": "<uuid>", "snapshots": [{"timestamp": 1776700000000, "value": 22.1}, {"timestamp": 1776700060000, "value": 22.3}]}`. Required `timestamp` is epoch **milliseconds**.
+- `value` is coerced to string on the wire. **Client-side validation mirrors the server** — if any snapshot fails, **nothing is posted**:
+  - TEXT → non-empty string
+  - JSON → non-empty string
+  - DIGITAL → 0 or 1 (booleans auto-map to 0/1)
+  - DOUBLE → must parse as Double
+  - COLOR → must parse as Long (packed ARGB)
+
+```json
+{
+  "name": "record_snapshot",
+  "arguments": {
+    "dataPointId": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
+    "snapshots": [
+      {"timestamp": 1776700000000, "value": 22.1},
+      {"timestamp": 1776700060000, "value": 22.3},
+      {"timestamp": 1776700120000, "value": 22.4}
+    ]
+  }
+}
+```
+Response: `{"server": "<id>", "dataPointId": "<id>", "dataType": "DOUBLE", "submitted": 3, "snapshots": [{"timestamp": ..., "value": "..."}], "note": "..."}`
+
+**Async ingest caveat.** Every POST returns `202 Accepted` *before* the server's ingest pipeline runs — a child `DiscardAbove` / `Debounce` / `Deadband` filter can still drop a value you submitted. The tool response only confirms submission. For authoritative verification, call `read_series` over the time range you just wrote.
 
 ## Standard discovery flow
 
@@ -296,4 +363,6 @@ When you use the fallback, tell the user so they know `krill-mcp` still needs at
 
 ## What's NOT here yet
 
-No write tools for DataPoints, Triggers, Filters, Executors, Pins, TaskLists, Journals, or Cameras. If the user asks to "set up an alarm", emit the configuration as JSON and instruct them to apply it manually in the Krill app — then note that broader write support is a future capability.
+- **Delete.** No `delete_node` tool. Point the user at the Krill app's delete UI. The server supports `DELETE /node/{id}` with the full Node in the body, but this MCP doesn't wrap it.
+- **Update in place.** `create_node` is for brand-new nodes (posts `state=CREATED`). Updating an existing non-Diagram node means fetching it, mutating meta, and POSTing back — no high-level helper for that yet. `update_diagram` is the one exception.
+- **Server-side join / bulk create.** Each `create_node` is a single HTTP POST. Large trees are N posts; no transactional "create this subtree" primitive.

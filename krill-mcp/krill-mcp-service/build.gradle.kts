@@ -5,14 +5,14 @@ plugins {
 }
 
 group = "krill.zone"
-version = "0.0.6"
+version = "0.0.7"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation(libs.krill.sdk)
+
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
 

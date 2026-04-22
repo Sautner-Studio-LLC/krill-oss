@@ -7,16 +7,17 @@ import krill.zone.mcp.krill.KrillRegistry
 import krill.zone.mcp.mcp.McpServer
 import krill.zone.mcp.mcp.tools.*
 import kotlinx.coroutines.runBlocking
-import krill.zone.krill.zone.Krill
+
+
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("krill-mcp")
 
-private const val SERVER_VERSION = "0.0.6"
+private const val SERVER_VERSION = "0.0.7"
 
 fun main() {
     log.info("Starting krill-mcp version={}", SERVER_VERSION)
-    val k = Krill.Server
+
     val config = KrillMcpConfigLoader.load()
     val pin = PinProvider(path = config.pinDerivedKeyPath)
     if (!pin.isConfigured()) {
@@ -44,6 +45,9 @@ fun main() {
         GetDiagramTool(registry),
         UploadDiagramFileTool(registry),
         DownloadDiagramFileTool(registry),
+        CreateNodeTool(registry),
+        ListNodeTypesTool(registry),
+        RecordSnapshotTool(registry),
     )
 
     val mcp = McpServer(
