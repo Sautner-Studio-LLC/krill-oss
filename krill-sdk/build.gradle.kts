@@ -5,7 +5,7 @@ plugins {
     `maven-publish`
 }
 
-group = "krill.forge"
+group = "com.krillforge"
 version = "0.0.1"
 
 repositories {
@@ -47,7 +47,7 @@ mavenPublishing {
     signAllPublications()
 
     coordinates(
-        groupId    = "krill.forge",
+        groupId    = "com.krillforge",
         artifactId = "krill-sdk",
         version    = project.version.toString(),
     )
