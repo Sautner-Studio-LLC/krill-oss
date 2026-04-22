@@ -25,3 +25,10 @@ replay_pid*
 
 # Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
 .kotlin/
+
+# krill-sdk (Gradle + IntelliJ output; sibling projects have their own .gitignore)
+krill-sdk/build/
+krill-sdk/.gradle/
+krill-sdk/.idea/
+krill-sdk/*.iml
+!krill-sdk/gradle/wrapper/gradle-wrapper.jar
