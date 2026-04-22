@@ -60,6 +60,27 @@ class KrillClient(
         postJson("/node/$id", node)
     }
 
+    /**
+     * DELETE /node/{id} with the full node body (server signature expects it).
+     * Returns 200 OK on success. On the server side this marks the node
+     * `state=DELETING`, broadcasts a DELETED event, then recursively deletes
+     * every child — a single call on a Project ID tears down the whole subtree.
+     */
+    suspend fun deleteNode(node: JsonObject) {
+        val id = node["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Node JSON missing required 'id' field")
+        val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
+        val response: HttpResponse = http.delete("$baseUrl/node/$id") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(node.toString())
+        }
+        if (!response.status.isSuccess()) {
+            val errBody = runCatching { response.bodyAsText() }.getOrDefault("")
+            error("DELETE $baseUrl/node/$id returned ${response.status}: $errBody")
+        }
+    }
+
     /** PUT raw SVG bytes to /project/{id}/diagram/{file}. */
     suspend fun uploadDiagramFile(projectId: String, fileName: String, svgContent: String) {
         val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")

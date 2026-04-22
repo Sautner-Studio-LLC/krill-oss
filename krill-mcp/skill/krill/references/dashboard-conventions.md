@@ -47,6 +47,7 @@ The `create_diagram` MCP tool encapsulates both steps: pass the SVG content as `
 - **You're designing a layout, not a visual.** Ask the user (or infer) where each node's tile/region should sit and how big — that's the entire creative surface. The Krill client fills in every pixel.
 - **Anchors must be `<rect fill="none"/>` with no children.** `<g>` groups that wrap an anchor are fine as layout scaffolding, but the id-carrying element should itself be an empty rect. Don't put decorative strokes on the anchor rect — the overlay will sit on top and the stroke will bleed through.
 - **Background art and decoration** outside of anchors can be anything that doesn't have a `k_*` id: a floor plan, an aquarium illustration, section dividers, a dark panel background. The renderer doesn't transform non-anchor elements, so decoration survives as-is.
+- **Preferred background color: `#0b1320ff`** (deep navy, fully opaque) unless the user asks for something different. It matches the Krill app's dark surface tone and keeps the live overlays' text/icons legible without needing per-tile contrast tweaks. Set it on the root `<svg>` via `style="background-color:#0b1320ff"` or emit a full-bleed `<rect x="0" y="0" width="100%" height="100%" fill="#0b1320ff"/>` as the first child so it sits under every other layer. If the user specifies their own background (color, image, gradient, or "no background"), use that instead — this is a default, not a rule.
 - **Static text rarely makes sense.** Section headers or captions *do* render (as whatever SVG you author), but Krill's renderer has historically skipped raw `<text>` elements in some client versions — if you need static labels, convert them to paths via `inkscape input.svg --export-text-to-path --export-plain-svg --export-filename=out.svg`. In practice, since the live overlays include the node title, you almost never need your own labels.
 - **Layered SVGs are fine.** Inkscape layers (`<g inkscape:groupmode="layer">`) survive the round-trip; just keep the `k_*` anchors at the layer level Krill will scan (top-level under `<svg>` or nested in groups — both work).
 - **Keep the file small.** Inkscape's verbose XML inflates files quickly (the bundled `water_demo.svg` is ~22k lines). Run through `svgo` before shipping if size matters. The server enforces a 2 MB upload cap.
@@ -74,6 +75,30 @@ Do **not** try to set `meta.source` to inline SVG markup. It's a URL. The server
 3. Call `update_diagram` with `{diagramId, source: <new markup>, anchorBindings?}`. When `source` is given, the tool **always** re-uploads — by default to the same filename the current `meta.source` URL references, so the URL stays stable and any existing embeds keep working. Pass `uploadFileName` only to rename the file. The response echoes the post-update `anchorBindings` and `anchorCount`.
 4. **Round-trip verify the write.** Call `get_diagram` again and compare its `svg` + `anchorBindings` against what you just sent. If anything differs, the write didn't fully land — fall back to the direct-PUT / direct-POST recovery recipes in `mcp-tools.md` → "Recovery: write didn't land". This defense-in-depth step caught a silent no-op bug in v0.0.5; keep doing it even when the tool response looks clean.
 5. **Preserve anchor ids that are still in use.** Since every anchor id is `k_<node-uuid>`, the only legitimate reason to change one is if the bound node itself was replaced — in which case you must rewrite `anchorBindings` in the same `update_diagram` call so the new id maps to the new UUID. Removing an anchor whose node is gone is fine; renaming an anchor while keeping the same binding is never correct under this convention.
+
+## Anchor dimensions — working defaults per node type
+
+There's no SVG-level spec for "the right size" of an anchor — Krill's client overlays a full tile inside whatever rect you draw, scaling the overlay's children to the anchor's bounding box. Too small and text clips; too wide and the graph stretches until it looks cartoonish. The following are **observed-working dimensions** — not authoritative — derived from hand-authoring sessions. Treat as a starting point; rescale if the live rendering looks wrong.
+
+| Node type                    | Typical W × H (px) | Aspect | Notes |
+|------------------------------|--------------------|--------|-------|
+| `KrillApp.DataPoint` (DOUBLE, TEXT, DIGITAL) | **~200 × 100**     | 2:1    | Compact numeric tile: icon + title + current value + unit. Shrinks cleanly to 160×80; below that the unit clips. |
+| `KrillApp.DataPoint` (COLOR) | **~180 × 120**     | 3:2    | Needs room for the color swatch plus label. Square-ish looks best. |
+| `KrillApp.DataPoint.Graph`   | **~685 × 120**     | ~5.7:1 | Timeline graph wants width. Height as low as 80 works; less than 600 wide loses useful detail. |
+| `KrillApp.Project.Camera`    | **~320 × 240**     | 4:3    | Matches typical sensor resolutions; 640×480 is also fine at 4:3. |
+| `KrillApp.Project.Diagram`   | n/a                | —      | Diagrams can't nest Diagrams. |
+| `KrillApp.Project.TaskList`  | **~280 × 200**     | 7:5    | Each task row ~28 px; size by expected task count + 1 header row. |
+| `KrillApp.Project.Journal`   | **~280 × 220**     | ~5:4   | Similar to TaskList. |
+| `KrillApp.Trigger.*` (state indicator) | **~80 × 80**       | 1:1    | Small square "status light" works well when placed next to the DataPoint it watches. |
+| `KrillApp.Trigger.Button`    | **~160 × 60**      | ~8:3   | Pill-shaped button tile. |
+| `KrillApp.Executor.*`        | **~160 × 80**      | 2:1    | Action-chip tile; keep small unless the executor has rich per-state output. |
+| `KrillApp.Server.Pin`        | **~100 × 100**     | 1:1    | Square "GPIO tile" with mode + state readout. |
+
+Rules of thumb:
+- **Never go below 80 px tall** — the Krill client's tile chrome (icon + title bar) needs at least that much to render without clipping the value.
+- **Graph-type tiles want 4:1 or wider.** A square Graph anchor squashes the line plot to the point of uselessness.
+- **Color swatches want close to 1:1.** The swatch takes most of the tile; narrow rectangles look broken.
+- **When you don't know, copy an existing diagram.** `get_diagram` on any working dashboard shows you sizes that actually render — much faster than guessing.
 
 ## Small facts worth knowing
 

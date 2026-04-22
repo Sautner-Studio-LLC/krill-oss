@@ -28,9 +28,9 @@ In order of convenience:
 2. **On any machine where `krill` was installed**, the encoded PIN lives at `~/.krill/pin_token` (64-char hex). Use it as-is: `Authorization: Bearer $(cat ~/.krill/pin_token)`. If the user tells you they have Krill installed locally, check here before asking them to SSH anywhere.
 3. **On a krill / krill-mcp server directly**, the credential file is `/etc/krill/credentials/pin_derived_key` (mode 0400, owned by `krill:krill`) or `/etc/krill-mcp/credentials/pin_derived_key` (a symlink to the former when co-installed).
 
-If no MCP connector is registered in the current Claude session, fall back to raw `curl` against `http://<host>:50052/mcp` with the bearer — see the direct-to-krill fallback at the end of this file for a second-level workaround.
+**If no MCP connector is registered in the current session**, don't give up and don't probe random Krill REST routes. Go straight to the **"Direct-to-MCP JSON-RPC fallback"** section at the bottom of this file — POST JSON-RPC 2.0 envelopes to `http://<host>:50052/mcp` with `Accept: application/json, text/event-stream` and the bearer, and **every MCP tool including writes** (`create_node`, `record_snapshot`, `delete_node`, `update_diagram`) is callable. The "Direct-to-Krill fallback" below it is the second-level workaround for when `krill-mcp` itself is down; it does not cover snapshot writes.
 
-## Read tools (v0.0.7)
+## Read tools (v0.0.8)
 
 ### `list_servers`
 Returns every Krill server the local krill-mcp instance has registered. Use first to discover swarm topology.
@@ -73,7 +73,7 @@ Force `krill-mcp` to re-probe every configured seed in `/etc/krill-mcp/config.js
 ```
 Response: `{"before": N, "after": M, "servers": [{"id": "...", "baseUrl": "...", "publicBaseUrl": "..."}, ...]}`
 
-## Project + Diagram write tools (v0.0.7)
+## Project + Diagram write tools (v0.0.8)
 
 Specialized Project and Diagram write tools — prefer these over the generic `create_node` for those two types, because `create_diagram` does the SVG file upload + `meta.source` URL construction that `create_node` doesn't.
 
@@ -172,7 +172,7 @@ Download a raw SVG previously uploaded to `/project/{id}/diagram/{file}`.
 ```
 Response: `{"server": "<id>", "projectId": "<id>", "fileName": "...", "svg": "<svg>...</svg>", "bytes": N}`
 
-## Generic node write tools (v0.0.7)
+## Generic node write tools (v0.0.8)
 
 The `create_node` / `list_node_types` pair covers every `KrillApp.*` type that's registered in the server's polymorphic serializer. For Projects and Diagrams, keep using the specialized tools above — `create_diagram` in particular handles SVG file upload + `meta.source` URL construction that `create_node` doesn't.
 
@@ -220,7 +220,32 @@ Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot bec
   - JSON → non-empty string
   - DIGITAL → 0 or 1 (booleans auto-map to 0/1)
   - DOUBLE → must parse as Double
-  - COLOR → must parse as Long (packed ARGB)
+  - COLOR → decimal string of a 24-bit RGB integer, `(R<<16) | (G<<8) | B`. See the "COLOR snapshot encoding" note below.
+
+### COLOR snapshot encoding
+
+For `DataType.COLOR` DataPoints, `Snapshot.value` is the **decimal string of a packed 24-bit RGB integer** — one channel per byte, no alpha:
+
+```
+value = (R << 16) | (G << 8) | B          // each channel 0–255
+```
+
+Stringify that integer with normal decimal (`.toString()`), not hex, not `#RRGGBB`. Examples:
+
+| Color    | Hex       | Snapshot `value` |
+|----------|-----------|------------------|
+| black    | `0x000000`| `"0"`            |
+| white    | `0xFFFFFF`| `"16777215"`     |
+| red      | `0xFF0000`| `"16711680"`     |
+| green    | `0x00FF00`| `"65280"`        |
+| blue     | `0x0000FF`| `"255"`          |
+| yellow   | `0xB3B800`| `"11778048"`     |
+
+Server-side validation is just `value.toLong()`, so any parseable Long is accepted — but values outside 24 bits are silently masked off (`value.toLong() and 0xFFFFFFL`) when the UI renders the swatch, so don't pack alpha or anything above bit 23. The Krill client reconstitutes opaque alpha (`0xFF000000`) at render time.
+
+**Don't mistake the widened high byte for alpha.** A stored value like `11778048` looks like `0x00B3B800` when you format the Long as 8 hex digits. The leading `00` is **not an alpha byte** — stored values never carry alpha, and the high byte of a sub-16M integer is simply zero. If you try to read it as ARGB and "fix" the alpha to opaque, you'll write something like `0xFFB3B800` (decimal `4290114560`) — harmless, because the renderer masks away everything above bit 23, but it's wasted reasoning and brittle. Model the value as three concatenated bytes R·G·B; ignore the Long's upper bits.
+
+**When in doubt, mirror the existing value.** If the user already has a COLOR DataPoint on the swarm, call `get_node` on it and look at `meta.snapshot.value` — whatever you see there is exactly the format to write back. Copy that encoding, don't re-derive it.
 
 ```json
 {
@@ -237,7 +262,11 @@ Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot bec
 ```
 Response: `{"server": "<id>", "dataPointId": "<id>", "dataType": "DOUBLE", "submitted": 3, "snapshots": [{"timestamp": ..., "value": "..."}], "note": "..."}`
 
-**Async ingest caveat.** Every POST returns `202 Accepted` *before* the server's ingest pipeline runs — a child `DiscardAbove` / `Debounce` / `Deadband` filter can still drop a value you submitted. The tool response only confirms submission. For authoritative verification, call `read_series` over the time range you just wrote.
+**Async ingest caveat.** Every POST returns `202 Accepted` before the server's ingest pipeline runs. Two observed behaviors:
+- **First `read_series` immediately after a POST often returns 0 snapshots, even on a bare DataPoint.** The server's `scope.launch`-based ingest isn't committed yet. **Wait ~1.5 seconds then re-read**, or retry once. The second read reliably sees the committed values. A zero-then-populated pattern is normal, not a failed write.
+- **Persistent drops happen on filter children.** If the DataPoint has a `DiscardAbove` / `DiscardBelow` / `Deadband` / `Debounce` child, those filters can silently reject a snapshot — `read_series` will still return 0 after retry. That's a real drop, not an ingest-delay false negative. Inspect the filter children before concluding why a value didn't land.
+
+**No REST equivalent — JSON-RPC only.** Unlike reads and node upserts, snapshot writes have no `POST /node/{id}/data`-style route on `:8442`. If MCP tools aren't in-session, use the **Direct-to-MCP JSON-RPC fallback** (see below) — don't waste time probing `/snapshot`, `/data/record`, etc. on the Krill server; they all 404.
 
 ## Standard discovery flow
 
@@ -340,9 +369,69 @@ Before reporting "server not found", try:
 2. Pass the selector the user gave you; if it fails, retry with `"localhost"` (or no selector at all — `list_nodes` defaults to the first registered server).
 3. When you use this fallback, tell the user plainly: "Your MCP registered this box as `localhost`, so I'm resolving `pi-krill-05` to it." They may want to reconfigure `/etc/krill-mcp/config.json`'s `seeds` to use the real hostname if the MCP ever needs to address the box from elsewhere.
 
+## Direct-to-MCP JSON-RPC fallback (preferred when write tools are needed)
+
+When no Claude-side MCP connector is registered in the current session but `krill-mcp` is running and reachable on the LAN, you can invoke every MCP tool — including `create_node`, `record_snapshot`, `update_diagram` — by POSTing JSON-RPC 2.0 envelopes straight to `http://<host>:50052/mcp` with the same bearer. This is **the preferred fallback for any write operation**, because the Krill REST API on `:8442` does not expose a snapshot-write endpoint (see the `record_snapshot` row in the "No REST equivalent" note below).
+
+Envelope and headers:
+
+```bash
+TOKEN=$(cat ~/.krill/pin_token)
+MCP_HOST=pi-krill-05.local:50052       # or wherever krill-mcp listens
+JSONRPC_ID=1
+
+curl -s -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  "http://$MCP_HOST/mcp" \
+  --data @- <<JSON
+{
+  "jsonrpc": "2.0",
+  "id": $JSONRPC_ID,
+  "method": "tools/call",
+  "params": {
+    "name": "record_snapshot",
+    "arguments": {
+      "dataPointId": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
+      "snapshots": [
+        {"timestamp": 1776700000000, "value": 22.1},
+        {"timestamp": 1776700060000, "value": 22.3}
+      ]
+    }
+  }
+}
+JSON
+```
+
+Notes:
+
+- **`:50052/mcp` is plain HTTP.** `krill-mcp` doesn't wrap its own TLS — security comes from the bearer. No `-k`. (The underlying Krill server on `:8442` is HTTPS self-signed; different box of the same shared secret.)
+- **Dual Accept header.** `application/json, text/event-stream` is the MCP Streamable HTTP spec's recommended value. `krill-mcp` itself is lenient and accepts plain `application/json`, but some MCP transports / proxies in front of it aren't — always send both.
+- **Method surface.** `initialize`, `notifications/initialized`, `ping`, `tools/list`, `tools/call`. Use `tools/list` first when exploring so you know the exact argument shapes:
+  ```bash
+  curl -s ... --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' http://$MCP_HOST/mcp | jq
+  ```
+- **Response shape.** A JSON-RPC result with `.result.content[0].text` containing the tool's JSON response (stringified), or `.result.isError = true` with an `ERROR: <message>` text block.
+- **Notifications get 202 with no body.** That's correct per JSON-RPC — a payload with no `id` (e.g. `notifications/initialized`) returns nothing.
+- **Report the fallback to the user.** "Your session doesn't have the krill-mcp connector registered, so I'm calling it over raw JSON-RPC at http://host:50052/mcp" — gives them the signal to add the Custom Connector for next time.
+
+### No REST equivalent on `:8442` for these operations
+
+The Krill server's REST API on `:8442` is **read + node-upsert + diagram-file** only. Operations below have no direct REST endpoint; the JSON-RPC fallback above is the only non-MCP-connector path:
+
+| Operation | Krill REST? | JSON-RPC fallback tool |
+|-----------|-------------|------------------------|
+| Record a DataPoint snapshot value | **No** — there is no `/data`, `/snapshot`, `/data/record`, `/data/snapshots` route | `record_snapshot` |
+| Create a node of arbitrary type | Yes (`POST /node/{id}` with full body) | `create_node` (simpler — handles discriminators + defaults) |
+| Create a project / diagram / update diagram | Yes (`POST /node/{id}` + `PUT /project/{id}/diagram/{file}`) | `create_project` / `create_diagram` / `update_diagram` |
+| Re-seed the MCP registry | N/A (MCP-only concern) | `reseed_servers` |
+
+If you catch yourself probing `POST /node/<uuid>/data` or `/snapshots` or similar against `:8442` — stop. They return 404. Write via the MCP tools (natively or through JSON-RPC), not against the Krill server directly.
+
 ## Direct-to-Krill fallback
 
-When `krill-mcp` is unavailable or its registry is empty, you can hit the Krill server's REST API directly with the same bearer token. This skips every MCP tool but gets the user unblocked:
+When **`krill-mcp` itself is down** (service stopped, box unreachable) but the underlying Krill server on `:8442` is up, hit the Krill REST API directly with the same bearer token. This covers reads and non-snapshot node upserts — for snapshot writes you need the JSON-RPC fallback above instead. If `krill-mcp` is up but its registry is empty, prefer the JSON-RPC fallback above — it gives you every MCP tool including `reseed_servers`, which a direct REST call can't recover.
 
 ```bash
 TOKEN=$(cat ~/.krill/pin_token)   # or read from /etc/krill/credentials/pin_derived_key
@@ -356,10 +445,59 @@ The `-k` is required because Krill uses a self-signed cert. Routes worth knowing
 - `GET /node/{id}` — same as MCP `get_node`
 - `GET /node/{id}/data/series?st=<ms>&et=<ms>` — same as MCP `read_series`
 - `GET /health` — same as MCP `server_health`
-- `POST /node/{id}` — upsert; body is the full Node JSON (what MCP `create_project` / `create_diagram` wrap)
+- `POST /node/{id}` — upsert; body is the full Node JSON (what MCP `create_project` / `create_diagram` / `create_node` wrap)
 - `PUT /project/{id}/diagram/{file}` (`Content-Type: image/svg+xml`) — what MCP `upload_diagram_file` wraps
+- `DELETE /node/{id}` — body is the full Node JSON
 
 When you use the fallback, tell the user so they know `krill-mcp` still needs attention.
+
+### REST fallback for `create_node`
+
+Posting a brand-new node by hand is a POST to `/node/{id}` with a self-generated UUID, `state: "CREATED"`, the right polymorphic discriminators, and a meta object shaped for the target MetaData class. Example — a DataPoint directly under the server:
+
+```bash
+TOKEN=$(cat ~/.krill/pin_token)
+HOST=pi-krill-05.local:8442                   # whichever Krill server
+SERVER_ID=$(curl -sk -H "Authorization: Bearer $TOKEN" https://$HOST/health | jq -r .id)
+NEW_ID=$(uuidgen)
+
+curl -sk -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  https://$HOST/node/$NEW_ID \
+  -d @- <<JSON
+{
+  "id": "$NEW_ID",
+  "parent": "$SERVER_ID",
+  "host": "$SERVER_ID",
+  "type": { "type": "krill.zone.shared.KrillApp.DataPoint" },
+  "state": "CREATED",
+  "meta": {
+    "type": "krill.zone.shared.krillapp.datapoint.DataPointMetaData",
+    "name": "test",
+    "snapshot": { "timestamp": 0, "value": "0.0" },
+    "dataType": "DOUBLE",
+    "precision": 2,
+    "unit": "",
+    "manualEntry": true,
+    "maxAge": 0,
+    "path": "",
+    "sourceId": "",
+    "error": ""
+  },
+  "timestamp": 0
+}
+JSON
+
+# ALWAYS round-trip to verify — the POST returns 202 with an empty body,
+# and the server backfills defaults for any meta fields you omitted
+# (e.g. if you skip `snapshot`, it comes back as {timestamp: 0, value: ""}).
+curl -sk -H "Authorization: Bearer $TOKEN" https://$HOST/node/$NEW_ID | jq
+```
+
+To derive the JSON shape for a different type, fetch an existing node of that type with `GET /node/{id}` and copy its structure. The two polymorphic discriminators on the wire are:
+- `node.type.type` — fully-qualified class name of the `KrillApp.*` data object (`krill.zone.shared.KrillApp.Trigger.HighThreshold`, etc.). Qualified name uses mixed case — `KrillApp` is the outer class.
+- `node.meta.type` — fully-qualified class name of the MetaData class (all lowercase `krill.zone.shared.krillapp.<subpath>.<Type>MetaData`). Not all KrillApp types have a uniquely-named MetaData: every Trigger uses `TriggerMetaData`, every Filter uses `FilterMetaData`. `list_node_types` (when the MCP is reachable) is authoritative; when it isn't, `references/node-types/INDEX.md` + a sample `GET /node/{id}` of the same type is the best source.
+
+**The `create_node` round-trip rule applies to the REST path too.** Always `GET /node/{id}` after a POST to see what the server actually stored — the echo of your POST is not authoritative. Same goes for `record_snapshot` / DataPoint value posts: use `GET /node/{id}/data/series?st=...&et=...` to confirm a snapshot actually landed (child Filters can drop it silently).
 
 ## What's NOT here yet
 

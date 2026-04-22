@@ -60,15 +60,16 @@ Claude clients authenticate *to* the MCP server using the same token. `postinst`
 | `upload_diagram_file`     | Raw SVG PUT to `/project/{id}/diagram/{file}` static path (no node)              |
 | `download_diagram_file`   | Raw SVG GET from the same static path                                            |
 
-### Write (any node type, + DataPoint values) — v0.0.7
+### Write (any node type, + DataPoint values, + cascade delete) — v0.0.8
 
 | Tool                | Description                                                                       |
 |---------------------|-----------------------------------------------------------------------------------|
-| `list_node_types`   | Registry of every `KrillApp.*` type `create_node` can build — default meta, valid parents/children, side-effect level |
-| `create_node`       | Create a node of any registered type; overlay `meta` fields over the type default |
+| `list_node_types`   | Registry of every `KrillApp.*` type `create_node` can build — default meta, valid parents/children, side-effect level, per-field shape hints |
+| `create_node`       | Create a node of any registered type; overlay `meta` fields over the type default. Response includes a deterministic `parentValidation` object. |
 | `record_snapshot`   | Record one or many `{timestamp, value}` pairs onto a DataPoint (validated against its `dataType`) |
+| `delete_node`       | Delete a node by id. Cascades on the server — deleting a Project tears down every Diagram/TaskList/Journal/Camera beneath it in one call. Requires `confirm: true`. |
 
-Node deletes and in-place meta edits for non-Diagram types remain outside this MCP's surface — do those in the Krill app.
+In-place meta edits for non-Diagram types remain outside this MCP's surface — for those, fetch with `get_node`, mutate, re-POST via `create_node`'s underlying route (or use the JSON-RPC fallback to `/node/{id}` directly).
 
 ## Companion Claude skill
 

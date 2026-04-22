@@ -1,6 +1,6 @@
 ---
 name: krill
-version: 0.0.7
+version: 0.0.8
 description: Use when working with a Krill swarm — the home-automation/IoT system whose nodes are reachable via the krill-mcp Model Context Protocol server (typically http://<host>:50052/mcp, see https://krillswarm.com). Invoke for discovering or inspecting Krill servers, nodes, DataPoints, Triggers, Filters, Executors, Pins, or peers; reading time-series sensor data; reasoning about which node type to use for a given automation; and authoring, uploading, downloading, and improving SVG dashboards (Diagram nodes) that overlay live node state on a custom layout. Triggers on keywords like krill, swarm, krill server, krill node, krill-mcp, DataPoint, Trigger threshold, SVG dashboard, k_ anchor, swarm sensor, pi-krill, create project, create diagram, improve diagram.
 ---
 
@@ -24,6 +24,17 @@ Krill is a peer-to-peer home-automation / IoT platform built around a tree of ty
 
 Do **not** invoke for generic IoT/home-automation questions that don't reference Krill — answer those directly.
 
+### Check for MCP tools *before* telling the user to install anything
+
+Before assuming the session needs a Custom Connector, verify what's actually available:
+
+1. Probe for MCP tools in the current session (e.g. search for `list_servers`, `create_node`, `list_node_types`, `read_series`). If they're present, use them.
+2. If they're absent but `krill-mcp` is running on the LAN, use the **Direct-to-MCP JSON-RPC fallback** — POST JSON-RPC envelopes to `http://<host>:50052/mcp` with the same bearer. This gives you **every MCP tool including writes** (`create_node`, `record_snapshot`, `update_diagram`). This is the preferred fallback for anything that mutates state. See `references/mcp-tools.md` → "Direct-to-MCP JSON-RPC fallback" for the exact envelope and headers.
+3. If `krill-mcp` itself is down but a Krill server on `:8442` is reachable, use the **Direct-to-Krill REST fallback** — but note the hard limits: **no endpoint exists for snapshot writes** (all attempts at `/data`, `/snapshot`, `/data/record`, etc. 404). REST fallback covers reads and generic `POST /node/{id}` upserts. See `references/mcp-tools.md` → "Direct-to-Krill fallback".
+4. Only ask the user to install / register the MCP connector when **none** of the above work (e.g. neither `:50052/mcp` nor `:8442` is reachable).
+
+Bearer-token locations checked in order: `~/.krill/pin_token`, then `sudo krill-mcp-token` on the krill-mcp host, then `/etc/krill/credentials/pin_derived_key` on a Krill server.
+
 ## Bundled references
 
 Read these on demand — they're not auto-loaded:
@@ -39,8 +50,8 @@ Read these on demand — they're not auto-loaded:
 1. If MCP tools are available in this Claude session, call `list_servers` → `server_health` → `list_nodes` (with a `type` filter when the user's intent narrows it). Use `get_node` for specific nodes the user names. Use `read_series` only when historical values matter.
 2. **If `list_servers` returns `{"servers": []}`** — call `reseed_servers` first. v0.0.6 mitigates the startup seed race with `After=krill.service`, bootstrap retries, and lazy re-probe on miss, but if the registry is still empty, `reseed_servers` forces a full re-probe without shell access. Only ask the user to `systemctl restart krill-mcp` after `reseed_servers` returns 0 servers AND the Krill server appears to be up (check via the direct-to-krill fallback below).
 3. **If the user names a Krill server (e.g. "check pi-krill-05") and it's not in `list_servers`** — before giving up, try `list_nodes` with `server: "localhost"` (or look in `list_servers` for a `localhost`-hosted entry). The default seed is `localhost:8442`, so a krill-mcp co-installed with a `krill` server registers the host under that alias — the user may have named the box thinking of it as the Krill server while the MCP only knows it as `localhost`. If that succeeds, tell the user you resolved their hostname to the MCP's local entry so they're not surprised.
-4. **If MCP tools are not configured** in the session, fall back to raw `curl` against `http://<host>:50052/mcp` with the bearer token, and tell the user how to add the Custom Connector so it works natively next time.
-5. **If `krill-mcp` is wedged** (empty registry, stopped, or unreachable), fall back to hitting the Krill server's REST API directly with the same bearer — `curl -sk -H "Authorization: Bearer $TOKEN" https://<host>:8442/nodes`. Self-signed TLS, same routes as the MCP tools wrap. Details in `references/mcp-tools.md` → "Direct-to-Krill fallback".
+4. **If MCP tools are not configured** in the session, use the **Direct-to-MCP JSON-RPC fallback** (`references/mcp-tools.md` → "Direct-to-MCP JSON-RPC fallback") — POST JSON-RPC envelopes to `http://<host>:50052/mcp` with `Accept: application/json, text/event-stream` and the bearer. This gives you **every MCP tool including writes**, not just reads. Then tell the user how to add the Custom Connector so it works natively next time.
+5. **If `krill-mcp` itself is wedged** (service stopped, or unreachable) but the underlying Krill server on `:8442` is up, fall back to hitting the Krill REST API directly — `curl -sk -H "Authorization: Bearer $TOKEN" https://<host>:8442/nodes`. Reads + generic node upserts work; **snapshot writes do NOT** (no `/data`, `/snapshot`, `/data/record` route exists — they 404). Details in `references/mcp-tools.md` → "Direct-to-Krill fallback".
 6. Translate type strings like `krill.zone.shared.KrillApp.DataPoint` into the human catalog entry from `references/node-types/INDEX.md` when explaining results.
 
 ### For SVG dashboard requests (create / improve)
@@ -68,15 +79,23 @@ Read these on demand — they're not auto-loaded:
 ### For "build this tree on my server" (multi-node authoring)
 1. Discover: `list_servers` → `list_nodes` on the chosen server to find the root/parents that already exist.
 2. Consult `list_node_types` (or `references/node-types/INDEX.md`) and resolve the user's description to concrete `KrillApp.<Type>` values. Validate each pair against the `validParentTypes` / `validChildTypes` in the registry before building.
-3. Build **top-down, parent-first**. Each `create_node` call returns the new `nodeId`; use that as the `parent` for its children. Example chain: `KrillApp.DataPoint` on the server → `KrillApp.Trigger.HighThreshold` on the DataPoint → `KrillApp.Executor.OutgoingWebHook` on the Trigger.
-4. Overlay type-specific fields via the `meta` argument — e.g. `{"dataType": "DOUBLE", "unit": "°C", "precision": 1}` for a temperature DataPoint, `{"value": 100.0}` for a HighThreshold. Unknown keys are silently dropped by the server (`ignoreUnknownKeys = true`), so extras are safe but typos go unnoticed — stick to the field names in the MetaData classes.
-5. **Verify with `get_node`** after each create. The `create_node` response echoes what was sent, not what persisted; a round-trip read is the only ground truth.
+3. **Resolve the parent.** Pick the first type from the target's `validParentTypes` for which the server has exactly one matching node — that's almost always the right answer. If none match, walk to the next valid parent type. If multiple match, ask the user which one. Hard rules worth memorizing:
+   - `KrillApp.DataPoint` → parent is `KrillApp.Server` (or `KrillApp.Server.SerialDevice` for a sensor wired to a serial device). **Not a Project.** Projects own Diagrams, TaskLists, Journals, Cameras — not DataPoints.
+   - Everything under a Diagram/TaskList/Journal/Camera → parent is the containing `KrillApp.Project`.
+   - Triggers → parent is the `KrillApp.DataPoint` they watch (or the shared `KrillApp.Trigger` container under that DataPoint, when one already exists).
+   - Executors → parent is the Trigger (or the shared `KrillApp.Executor` container under that Trigger) that fires them.
+   - Filters → parent is the `KrillApp.DataPoint.Filter` container under the DataPoint.
+4. Build **top-down, parent-first**. Each `create_node` call returns the new `nodeId`; use that as the `parent` for its children. Example chain: `KrillApp.DataPoint` on the server → `KrillApp.Trigger.HighThreshold` on the DataPoint → `KrillApp.Executor.OutgoingWebHook` on the Trigger.
+5. Overlay type-specific fields via the `meta` argument — e.g. `{"dataType": "DOUBLE", "unit": "°C", "precision": 1}` for a temperature DataPoint, `{"value": 100.0}` for a HighThreshold. Unknown keys are silently dropped by the server (`ignoreUnknownKeys = true`), so extras are safe but typos go unnoticed — stick to the field names in the MetaData classes.
+6. **Verify with `get_node`** after each create. The `create_node` response echoes what was sent, not what persisted; a round-trip read is the only ground truth. The server also **fills in defaults for meta fields you omitted** (e.g. a DataPoint you posted without a `snapshot` comes back with `snapshot: {timestamp: 0, value: ""}`) — not an error, but it's why the GET is authoritative.
 
 ### For "record values to a DataPoint" (single value or a backfill series)
 1. Get the target DataPoint id (via `list_nodes type=DataPoint` or straight from the user).
-2. Call `record_snapshot` with either `{dataPointId, value, timestamp?}` for a single reading or `{dataPointId, snapshots: [{timestamp, value}, ...]}` for a series. `timestamp` is epoch **milliseconds**.
-3. Values are validated client-side against the DataPoint's `dataType`: TEXT non-empty, DIGITAL ∈ {0, 1} (booleans auto-map to 0/1), DOUBLE parseable, COLOR parseable as Long, JSON non-empty. If validation fails for any snapshot in a batch, **nothing is posted** — the tool refuses to half-apply a series.
-4. Each post is async on the server (202 Accepted). For a truly authoritative verification, call `read_series` over the time range you just wrote — the POST→ingest→filter→store pipeline may still drop a snapshot that a child Filter rejects.
+2. Call `record_snapshot` with either `{dataPointId, value, timestamp?}` for a single reading or `{dataPointId, snapshots: [{timestamp, value}, ...]}` for a series. `timestamp` is epoch **milliseconds**. **If MCP tools aren't in-session**, snapshot writes have **no Krill REST endpoint** — don't probe `/data`, `/snapshot`, `/data/record`, etc. on `:8442` (they 404). Use the **Direct-to-MCP JSON-RPC fallback** in `references/mcp-tools.md` to reach `record_snapshot` through `http://<host>:50052/mcp`.
+3. Values are validated client-side against the DataPoint's `dataType`: TEXT non-empty, DIGITAL ∈ {0, 1} (booleans auto-map to 0/1), DOUBLE parseable, JSON non-empty. **COLOR values are the decimal string of a 24-bit RGB integer** — `(R<<16)|(G<<8)|B`, each channel 0–255, no alpha. Examples: red `"16711680"` (0xFF0000), yellow `"11778048"` (0xB3B800), white `"16777215"`, black `"0"`. Don't pass hex strings like `"#B3B800"` or CSS names — they'll fail validation. Alpha is never stored; the Krill client reconstitutes opaque alpha at render time. **When in doubt, mirror the existing value** — `get_node` on a COLOR DataPoint and copy whatever string you see in `meta.snapshot.value`. If validation fails for any snapshot in a batch, **nothing is posted** — the tool refuses to half-apply a series.
+4. Each POST returns 202 Accepted before the server finishes ingesting. Two rules for verifying with `read_series`:
+   - **Wait ~1.5 seconds before the first `read_series` call**, or be prepared to retry once. The ingest pipeline (`scope.launch` on the server) commonly returns 0 snapshots on an immediate follow-up read even on bare DataPoints with no filter children — a short delay or one retry reliably recovers. Don't interpret an empty first read as "the write failed" unless the retry also returns empty.
+   - **Persistence-verification is mandatory** when the DataPoint has a `DiscardAbove` / `DiscardBelow` / `Deadband` / `Debounce` filter child — those can silently drop a snapshot for good. On a bare DataPoint, verification is optional but still a useful round-trip.
 
 ## Topology, auth, limits
 
@@ -85,7 +104,7 @@ Read these on demand — they're not auto-loaded:
   1. On the krill-mcp host: `sudo krill-mcp-token` prints the connector URL + bearer.
   2. On any machine with `krill` installed: `~/.krill/pin_token` holds the 64-char hex bearer. Use as-is.
   3. On a server: `/etc/krill/credentials/pin_derived_key` (mode 0400, owned by `krill:krill`).
-- **v0.0.7 write surface covers any node type plus DataPoint value writes.** Project/Diagram helpers: `create_project`, `list_projects`, `create_diagram`, `update_diagram`, `get_diagram`, `upload_diagram_file`, `download_diagram_file`. Generic node authoring: `create_node`, `list_node_types`. DataPoint time-series writes: `record_snapshot`. Deletes are still not exposed — do those in the Krill app.
+- **v0.0.8 write surface covers any node type, DataPoint value writes, and delete.** Project/Diagram helpers: `create_project`, `list_projects`, `create_diagram`, `update_diagram`, `get_diagram`, `upload_diagram_file`, `download_diagram_file`. Generic node authoring: `create_node`, `list_node_types`. DataPoint time-series writes: `record_snapshot`. Cascading delete: `delete_node` (deletes a Project recursively removes Diagrams/TaskLists/Journals/Cameras; deleting a DataPoint recursively removes its Filters/Triggers/Executors/Graphs).
 - **Diagrams must live under a Project.** Never call `create_diagram` with a `projectId` you haven't verified exists — call `list_projects` first, or create one with `create_project` and reuse the returned id.
 - **Registry is seed-config-driven and bootstrap-only.** There is **no** `add_server` MCP tool. To add a Krill server to an MCP install, edit `/etc/krill-mcp/config.json`'s `seeds` array and `sudo systemctl restart krill-mcp`. The `server` argument on tool calls only resolves servers already in the registry — passing a new hostname won't register it.
 - **Auth is one shared bearer token** per swarm. Anyone holding it can read everything AND write Diagrams; treat it like a household password.

@@ -58,10 +58,27 @@ class ListNodesTool(private val registry: KrillRegistry) : Tool {
             val nodeType = (it as? JsonObject)?.get("type")?.toString()?.lowercase() ?: ""
             typeFilter in nodeType
         })
+        // Surface `meta.name` as a top-level `displayName` so agents scanning a
+        // nodes array can identify a node by its human name without having to
+        // dig through the per-type meta shape. Projects in particular were
+        // indistinguishable without this — every Project's type label is
+        // "Project", so "the Water Quality project" had no footprint in the
+        // response.
+        val enriched = JsonArray(
+            filtered.map { element ->
+                val obj = element as? JsonObject ?: return@map element
+                val displayName = (obj["meta"] as? JsonObject)
+                    ?.get("name")
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+                    .orEmpty()
+                JsonObject(obj.toMutableMap().apply { put("displayName", JsonPrimitive(displayName)) })
+            },
+        )
         return buildJsonObject {
             put("server", client.serverId)
-            put("count", filtered.size)
-            put("nodes", filtered)
+            put("count", enriched.size)
+            put("nodes", enriched)
         }
     }
 }

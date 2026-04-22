@@ -36,7 +36,18 @@ data class KrillNodeType(
     val validParentTypes: List<String>,
     val validChildTypes: List<String>,
     val notes: String? = null,
+    /**
+     * Field-shape disambiguation for meta fields whose JSON type alone doesn't
+     * convey enough — empty arrays (`sources: []`) don't show their element
+     * shape, enum fields look like bare strings. Keyed by meta field name.
+     * Only populated for fields where the default doesn't already make the
+     * shape obvious.
+     */
+    val metaFieldHints: Map<String, String> = emptyMap(),
 )
+
+private val NODE_IDENTITY_HINT =
+    "List<{nodeId: String, hostId: String}> — NodeIdentity. hostId is the server UUID that owns the referenced node."
 
 object KrillNodeTypes {
 
@@ -129,6 +140,10 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Project"),
             validChildTypes = listOf("KrillApp.Executor"),
             notes = "`priority` ∈ {NONE, LOW, MEDIUM, HIGH}. `tasks[]` entries carry their own cron/dueAt fields — overlay via the `meta` argument.",
+            metaFieldHints = mapOf(
+                "priority" to "enum: NONE | LOW | MEDIUM | HIGH",
+                "tasks" to "List<Task> — each entry is the shape Krill's TaskList stores; consult the Krill source or an existing TaskList node via `get_node` for the full Task shape before authoring.",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Project.Journal",
@@ -201,6 +216,10 @@ object KrillNodeTypes {
                 "KrillApp.Executor",
             ),
             notes = "`dataType` ∈ {TEXT, JSON, DIGITAL, DOUBLE, COLOR}. Use `record_snapshot` to write values.",
+            metaFieldHints = mapOf(
+                "dataType" to "enum: TEXT | JSON | DIGITAL | DOUBLE | COLOR",
+                "snapshot" to "{timestamp: Long (epoch ms), value: String} — value format depends on dataType; see `record_snapshot` docs.",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.DataPoint.Filter",
@@ -300,6 +319,12 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.DataPoint"),
             validChildTypes = emptyList(),
             notes = "`timeRange` ∈ {NONE, HOUR, DAY, WEEK, MONTH, YEAR}. Add the parent DataPoint to `sources`.",
+            metaFieldHints = mapOf(
+                "sources" to NODE_IDENTITY_HINT + " For Graph, populate with a single entry: the parent DataPoint's id + host.",
+                "targets" to NODE_IDENTITY_HINT + " Unused for Graph — leave empty.",
+                "timeRange" to "enum: NONE | HOUR | DAY | WEEK | MONTH | YEAR",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
 
         // ── Trigger ────────────────────────────────────────────────────────
@@ -430,6 +455,12 @@ object KrillNodeTypes {
             description = "Executes child nodes when an HTTP request hits `meta.path`.",
             validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
             validChildTypes = listOf("KrillApp.Executor"),
+            metaFieldHints = mapOf(
+                "method" to "enum: GET | POST | PUT | DELETE | PATCH",
+                "sources" to NODE_IDENTITY_HINT,
+                "targets" to NODE_IDENTITY_HINT + " DataPoint(s) that receive the incoming request body.",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Trigger.Color",
@@ -504,6 +535,12 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
             notes = "`gateType` ∈ {BUFFER, NOT, AND, OR, NAND, NOR, XOR, XNOR}.",
+            metaFieldHints = mapOf(
+                "gateType" to "enum: BUFFER | NOT | AND | OR | NAND | NOR | XOR | XNOR",
+                "sources" to NODE_IDENTITY_HINT,
+                "targets" to NODE_IDENTITY_HINT,
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Executor.OutgoingWebHook",
@@ -525,6 +562,14 @@ object KrillNodeTypes {
             description = "Sends an HTTP request to an external URL and stores the response in a target DataPoint.",
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
+            metaFieldHints = mapOf(
+                "method" to "enum: GET | POST | PUT | DELETE | PATCH",
+                "sources" to NODE_IDENTITY_HINT,
+                "targets" to NODE_IDENTITY_HINT + " Target DataPoint(s) receive the HTTP response body.",
+                "params" to "List<{first: String, second: String}> — query-string pairs.",
+                "headers" to "List<{first: String, second: String}> — request-header pairs.",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Executor.Lambda",
@@ -545,6 +590,12 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
             notes = "`filename` identifies the script on the server. LambdaSourceMetaData has no `name` field — any `name` arg is dropped by `ignoreUnknownKeys`.",
+            metaFieldHints = mapOf(
+                "sources" to NODE_IDENTITY_HINT + " Inputs the Python script reads.",
+                "targets" to NODE_IDENTITY_HINT + " DataPoints the script writes to.",
+                "tags" to "Map<String, String> — arbitrary key/value pairs the script can read from its context.",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Executor.Calculation",
@@ -563,6 +614,12 @@ object KrillNodeTypes {
             description = "Computes a mathematical formula from source DataPoint values and writes the result to a target DataPoint.",
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
+            metaFieldHints = mapOf(
+                "sources" to NODE_IDENTITY_HINT + " DataPoints whose values feed `formula`.",
+                "targets" to NODE_IDENTITY_HINT + " DataPoint(s) receiving the computed result.",
+                "formula" to "Infix math expression referencing source values by index (e.g. `s0 * 1.8 + 32`).",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Executor.Compute",
@@ -582,6 +639,13 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
             notes = "`operation` ∈ {AVERAGE, MIN, MAX, SUM, COUNT, MEDIAN}. `range` ∈ {NONE, HOUR, DAY, WEEK, MONTH, YEAR}.",
+            metaFieldHints = mapOf(
+                "sources" to NODE_IDENTITY_HINT + " The DataPoint whose history gets aggregated.",
+                "targets" to NODE_IDENTITY_HINT + " DataPoint receiving the aggregate result.",
+                "range" to "enum: NONE | HOUR | DAY | WEEK | MONTH | YEAR",
+                "operation" to "enum: AVERAGE | MIN | MAX | SUM | COUNT | MEDIAN",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Executor.SMTP",
@@ -604,6 +668,11 @@ object KrillNodeTypes {
             description = "Sends an email via SMTP when triggered.",
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
+            metaFieldHints = mapOf(
+                "sources" to NODE_IDENTITY_HINT + " DataPoints whose values can be interpolated into the email.",
+                "targets" to NODE_IDENTITY_HINT + " Usually empty — SMTP side-effects go to an external mailbox, not a target DataPoint.",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
 
         // ── MQTT ───────────────────────────────────────────────────────────
@@ -626,6 +695,12 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Server"),
             validChildTypes = emptyList(),
             notes = "`action` ∈ {PUB, SUB}. MqttMetaData has no `name` field.",
+            metaFieldHints = mapOf(
+                "action" to "enum: PUB | SUB",
+                "sources" to NODE_IDENTITY_HINT + " For PUB: DataPoints whose values are published to `topic`.",
+                "targets" to NODE_IDENTITY_HINT + " For SUB: DataPoints that receive messages from `topic`.",
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
 
         // ── Server-level peripherals ───────────────────────────────────────
@@ -651,6 +726,13 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Server"),
             validChildTypes = emptyList(),
             notes = "`pinNumber` > 0 and a non-empty `hardwareId` are required before Pi4J will register the pin. `mode` ∈ {IN, OUT, PWM}.",
+            metaFieldHints = mapOf(
+                "mode" to "enum: IN | OUT | PWM",
+                "state" to "enum: ON | OFF",
+                "initialState" to "enum: ON | OFF",
+                "shutdownState" to "enum: ON | OFF",
+                "hardwareType" to "enum: GROUND | POWER_3V3 | POWER_5V | DIGITAL | I2C | SPI | SERIAL | PWM | GPCLK",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Server.SerialDevice",
@@ -683,6 +765,20 @@ object KrillNodeTypes {
             description = "Reads from / writes to a serial port on the host.",
             validParentTypes = listOf("KrillApp.Server"),
             validChildTypes = listOf("KrillApp.DataPoint"),
+            metaFieldHints = mapOf(
+                "operation" to "enum: READ | WRITE",
+                "status" to "enum (NodeState): PAUSED | INFO | WARN | SEVERE | ERROR | PAIRING | NONE | PROCESSING | EXECUTED | DELETING | CREATED | USER_EDIT | USER_SUBMIT | SNAPSHOT_UPDATE | UNAUTHORISED | EDITING",
+                "dataBits" to "enum: FIVE | SIX | SEVEN | EIGHT",
+                "parity" to "enum: NONE | ODD | EVEN | MARK | SPACE",
+                "stopBits" to "enum: ONE | ONE_POINT_FIVE | TWO",
+                "flowControl" to "enum: NONE | RTS_CTS | XON_XOFF",
+                "encoding" to "enum: ASCII | UTF_8 | ISO_8859_1 | BINARY",
+                "terminator" to "enum: CR | LF | CRLF | NONE",
+                "hardwareType" to "enum: SERIAL (fixed for this type)",
+                "sources" to NODE_IDENTITY_HINT,
+                "targets" to NODE_IDENTITY_HINT,
+                "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Server.Backup",
@@ -720,6 +816,10 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Server"),
             validChildTypes = emptyList(),
             notes = "LLMMetaData has no `name` field — any `name` arg is dropped on the server.",
+            metaFieldHints = mapOf(
+                "selectedNodes" to NODE_IDENTITY_HINT + " Nodes the LLM is allowed to read/write as context.",
+                "chat" to "List<Message> — Ollama-style {role, content} entries; leave empty for fresh LLMs.",
+            ),
         ),
     )
 

@@ -91,8 +91,6 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
         val callerName = arguments["name"]?.jsonPrimitive?.contentOrNull
         val callerMeta = arguments["meta"] as? JsonObject
 
-        val warnings = mutableListOf<String>()
-
         // Verify parent exists on the server.
         val parentNode = runCatching { client.node(parentId) as? JsonObject }.getOrNull()
             ?: error(
@@ -102,12 +100,21 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
         val parentTypeFqn = parentNode["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
         val parentShortName = parentTypeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName }
 
-        if (spec.validParentTypes.isNotEmpty() && parentShortName != null &&
-            parentShortName !in spec.validParentTypes
-        ) {
-            warnings += "Parent type $parentShortName is not in ${spec.shortName}'s valid parent list " +
-                "(${spec.validParentTypes}). The server may still accept it; confirm with the user."
+        // Deterministic parent-type validation. Status values:
+        //   ok                    — parentShortName is in spec.validParentTypes
+        //   warn                  — known parent type that isn't in the valid list
+        //   unknown-parent-type   — parent node has a type FQN this MCP's registry doesn't know
+        //   no-constraint         — spec.validParentTypes is empty (container / root types)
+        val parentValidationStatus = when {
+            spec.validParentTypes.isEmpty() -> "no-constraint"
+            parentShortName == null -> "unknown-parent-type"
+            parentShortName in spec.validParentTypes -> "ok"
+            else -> "warn"
         }
+        val parentValidationWarning = if (parentValidationStatus == "warn") {
+            "Parent type $parentShortName is not in ${spec.shortName}'s valid parent list " +
+                "(${spec.validParentTypes}). The server will still accept the post; confirm with the user."
+        } else null
 
         val mergedMeta = buildMergedMeta(spec, callerName, callerMeta)
 
@@ -132,9 +139,17 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                 put("fqn", parentTypeFqn ?: "")
                 put("shortName", parentShortName ?: "")
             }
+            putJsonObject("parentValidation") {
+                put("status", parentValidationStatus)
+                put("parentShortName", parentShortName ?: "")
+                putJsonArray("expected") { spec.validParentTypes.forEach { add(JsonPrimitive(it)) } }
+                if (parentValidationWarning != null) put("warning", parentValidationWarning)
+            }
             put("meta", mergedMeta)
-            if (warnings.isNotEmpty()) {
-                putJsonArray("warnings") { warnings.forEach { add(JsonPrimitive(it)) } }
+            if (parentValidationWarning != null) {
+                // Keep the legacy `warnings[]` alongside `parentValidation.warning` so callers that
+                // were already scanning for warnings keep working.
+                putJsonArray("warnings") { add(JsonPrimitive(parentValidationWarning)) }
             }
         }
     }
@@ -219,6 +234,11 @@ class ListNodeTypesTool(@Suppress("unused") private val registry: KrillRegistry)
                         putJsonArray("validParentTypes") { t.validParentTypes.forEach { add(JsonPrimitive(it)) } }
                         putJsonArray("validChildTypes") { t.validChildTypes.forEach { add(JsonPrimitive(it)) } }
                         put("defaultMeta", t.defaultMeta)
+                        if (t.metaFieldHints.isNotEmpty()) {
+                            putJsonObject("metaFieldHints") {
+                                t.metaFieldHints.forEach { (k, v) -> put(k, v) }
+                            }
+                        }
                         if (t.notes != null) put("notes", t.notes)
                     }
                 }
@@ -249,9 +269,13 @@ class RecordSnapshotTool(private val registry: KrillRegistry) : Tool {
             "(with optional `timestamp`) or a `snapshots` array of {timestamp, value} pairs for a " +
             "backfill / series. Values are coerced to string on the wire and validated client-side " +
             "against the DataPoint's `dataType`: TEXT non-empty; DIGITAL ∈ {0, 1} (booleans are " +
-            "mapped to 0/1); DOUBLE parseable; COLOR parseable as Long; JSON non-empty. Each " +
-            "accepted snapshot is posted with `state=USER_EDIT` so the server's filter/trigger " +
-            "pipeline evaluates it."
+            "mapped to 0/1); DOUBLE parseable; COLOR a decimal 24-bit RGB int (R<<16|G<<8|B); " +
+            "JSON non-empty. Each accepted snapshot is posted with `state=USER_EDIT` so the " +
+            "server's filter/trigger pipeline evaluates it. " +
+            "Verification note: the first `read_series` immediately after this call commonly " +
+            "returns 0 snapshots even on bare DataPoints — the server ingest runs in `scope.launch` " +
+            "and isn't committed yet. Wait ~1.5s or retry once. Persistent zeros after retry mean a " +
+            "child Filter rejected the write."
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -412,6 +436,84 @@ class RecordSnapshotTool(private val registry: KrillRegistry) : Tool {
             "DOUBLE" -> content.toDoubleOrNull()?.toString()
             "COLOR" -> content.toLongOrNull()?.toString()
             else -> content
+        }
+    }
+}
+
+/**
+ * Delete a node by id. Hits the existing Krill REST route `DELETE /node/{id}`,
+ * which the server implements as a **recursive cascade** — deleting a Project
+ * tears down its Diagrams, TaskLists, Journals, Cameras in one call; deleting
+ * a DataPoint removes its Filters, Graphs, Triggers, Executors transitively.
+ * Useful for automated regression-test teardown without reaching for the
+ * Krill app UI.
+ *
+ * The server sets `state = DELETING`, broadcasts a DELETED SSE event, then
+ * recursively deletes children. For this MCP, we fetch the node first and
+ * pass the whole body back as the DELETE payload — the server signature
+ * requires it.
+ */
+class DeleteNodeTool(private val registry: KrillRegistry) : Tool {
+    override val name = "delete_node"
+    override val description =
+        "Delete a node by id. This is a **recursive cascade** on the server — a Project delete " +
+            "removes every child it contains; a DataPoint delete removes all its Filters/Graphs/" +
+            "Triggers/Executors; and so on. There is no soft-delete, no undo, no tombstone — the " +
+            "node and its subtree are gone. Prefer this over `curl DELETE` when scripting teardown."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("server") { put("type", "string") }
+            putJsonObject("id") {
+                put("type", "string")
+                put("description", "Id of the node to delete. Works for any KrillApp type including Projects (cascades).")
+            }
+            putJsonObject("confirm") {
+                put("type", "boolean")
+                put(
+                    "description",
+                    "Required `true` safety interlock. The tool refuses to delete without it — prevents " +
+                        "agents from firing a cascade on a single-word user prompt.",
+                )
+            }
+        }
+        putJsonArray("required") {
+            add("id")
+            add("confirm")
+        }
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val client = resolve(registry, arguments)
+        val id = arguments["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: id")
+        val confirm = arguments["confirm"]?.jsonPrimitive?.booleanOrNull ?: false
+        if (!confirm) {
+            error(
+                "Refusing to delete without `confirm: true`. Pass confirm=true once the user has " +
+                    "explicitly acknowledged this is a cascading delete.",
+            )
+        }
+
+        val existing = client.node(id) as? JsonObject
+            ?: error("Node $id not found on server ${client.serverId}.")
+        val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+        val shortName = typeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName } ?: typeFqn ?: "unknown"
+        val name = (existing["meta"] as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull
+
+        client.deleteNode(existing)
+
+        return buildJsonObject {
+            put("server", client.serverId)
+            put("deletedId", id)
+            put("type", shortName)
+            if (name != null) put("name", name)
+            put(
+                "note",
+                "Server cascaded deletes to children. Call `list_nodes` to confirm the subtree is gone — " +
+                    "the DELETE returns 200 synchronously but SSE broadcasts and any cross-peer " +
+                    "replication can be moments behind.",
+            )
         }
     }
 }
