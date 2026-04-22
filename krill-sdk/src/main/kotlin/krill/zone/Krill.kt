@@ -1,4 +1,4 @@
-package krill.zone.krill.zone
+package krill.zone
 
 sealed class Krill {
 

@@ -12,6 +12,7 @@ repositories {
 }
 
 dependencies {
+    implementation(libs.krill.sdk)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
 
