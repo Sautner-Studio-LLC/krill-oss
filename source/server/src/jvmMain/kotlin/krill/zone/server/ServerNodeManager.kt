@@ -125,10 +125,16 @@ class ServerNodeManager(
 
     fun update(node: Node) {
 
-        readNodeStateOrNull(node.id).value?.let { origin ->
-            logger.i { "Updating node ${node.details()}" }
+        // Read persisted node once — used both to detect state transitions and
+        // to tell whether this is a brand-new node (so we can broadcast CREATED
+        // to SSE clients). Must happen before save() or "new" always looks false.
+        val persisted = nodePersistence.read(node.id)
+        val isNewNode = persisted == null
+
+        persisted?.takeIf { it.state != NodeState.DELETING }?.let { origin ->
+            logger.d { "Updating node ${node.details()}" }
             if (node.state != NodeState.NONE && origin.state != node.state && node.timestamp - origin.timestamp > 1000) {
-                logger.i("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")
+                logger.d("state changed ${origin.state} -> ${node.state} (${node.timestamp - origin.timestamp}ms)")
                 scope.launch {
                     EventFlowContainer.postEvent(
                         Event(
@@ -148,11 +154,24 @@ class ServerNodeManager(
 
         scope.launch { _nodeUpdates.emit(node) }
 
+        if (isNewNode) {
+            logger.d { "${node.details()}: broadcasting CREATED to SSE clients" }
+            scope.launch {
+                EventFlowContainer.postEvent(
+                    Event(
+                        node.id,
+                        EventType.CREATED,
+                        NodeCreatedPayload(node)
+                    )
+                )
+            }
+        }
+
         logger.d("Updated node: $node")
     }
 
     fun create(node: Node) {
-        logger.i("Creating new node: ${node.details()}")
+        logger.d("Creating new node: ${node.details()}")
         update(node.copy(state = NodeState.CREATED))
     }
 
@@ -162,6 +181,11 @@ class ServerNodeManager(
         nodePersistence.save(deletingNode)
         scope.launch { _nodeUpdates.emit(deletingNode) }
 
+        // Broadcast DELETED to SSE clients so connected UIs remove the node
+        // immediately instead of waiting for a manual refresh.
+        scope.launch {
+            EventFlowContainer.postEvent(Event(node.id, EventType.DELETED))
+        }
 
         // Get children before deleting
         val childIds = nodePersistence.loadAll()
@@ -179,7 +203,7 @@ class ServerNodeManager(
             nodePersistence.read(childId)?.let { delete(it) }
         }
 
-        logger.i("Deleted node: ${node.details()}")
+        logger.d("Deleted node: ${node.details()}")
     }
 
 
@@ -325,14 +349,14 @@ class ServerNodeManager(
                     && (n.meta as TargetingNodeMetaData).executionSource.contains(ExecutionSource.SOURCE_VALUE_MODIFIED) }
                     && n.id !in excludeIds
         }.forEach { target ->
-            logger.i("---${node.details()}: executing targeting node ${target.id}")
+            logger.d("---${node.details()}: executing targeting node ${target.id}")
             execute(target)
         }
     }
 
     fun executeChildren(node: Node) {
         children(node).forEach { child ->
-            logger.i("${node.details()}: Triggering child ${child.name()} ${child.type}")
+            logger.d("${node.details()}: Triggering child ${child.name()} ${child.type}")
 
 
             scope.launch {
@@ -358,7 +382,7 @@ class ServerNodeManager(
         children(node)
             .filter { it.state != NodeState.DELETING }
             .forEach { child ->
-                logger.i("${node.details()}: force-executing child ${child.name()} ${child.type}")
+                logger.d("${node.details()}: force-executing child ${child.name()} ${child.type}")
                 scope.launch { execute(child) }
             }
     }

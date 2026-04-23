@@ -7,7 +7,6 @@ import krill.zone.shared.*
 import krill.zone.shared.io.*
 import krill.zone.shared.krillapp.*
 import krill.zone.shared.krillapp.datapoint.*
-import krill.zone.shared.krillapp.server.*
 import krill.zone.shared.node.*
 import org.koin.ext.*
 import kotlin.time.*
@@ -162,7 +161,12 @@ class ClientNodeManager(
     // ==================== Read Operations ====================
 
     fun nodes(): List<Node> {
-        return nodes.filter { it.value.value.state != NodeState.DELETING }.map { it.value.value }
+        try {
+            return nodes.filter { it.value.value.state != NodeState.DELETING }.map { it.value.value }
+        } catch (e: Exception) {
+            logger.e("Critical: ${e.message}", e)
+            return emptyList()
+        }
     }
 
     fun nodeAvailable(id: String): Boolean {

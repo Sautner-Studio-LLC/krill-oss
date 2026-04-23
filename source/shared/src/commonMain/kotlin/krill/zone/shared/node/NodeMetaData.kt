@@ -25,6 +25,7 @@ import krill.zone.shared.krillapp.server.serialdevice.*
 import krill.zone.shared.krillapp.spacer.*
 import krill.zone.shared.krillapp.trigger.*
 import krill.zone.shared.krillapp.trigger.button.*
+import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.krillapp.trigger.cron.*
 import krill.zone.shared.krillapp.trigger.webhook.*
 
@@ -98,6 +99,7 @@ fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData {
         is SMTPMetaData -> meta.copy(error = error)
         is CameraMetaData -> meta.copy(error = error)
         is BackupMetaData -> meta.copy(error = error)
+        is ColorTriggerMetaData -> meta.copy(error = error)
         else -> meta // Fallback for unknown types
     }
 }

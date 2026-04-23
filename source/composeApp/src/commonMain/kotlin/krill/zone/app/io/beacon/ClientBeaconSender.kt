@@ -7,6 +7,7 @@ import krill.zone.shared.io.beacon.*
 import krill.zone.shared.krillapp.client.*
 import krill.zone.shared.node.*
 import krill.zone.shared.node.manager.*
+import krill.zone.shared.security.*
 import org.koin.ext.*
 import kotlin.concurrent.atomics.*
 import kotlin.time.*
@@ -16,8 +17,15 @@ import kotlin.time.*
  * Rate-limits beacon sending to avoid network flooding.
  *
  * @param multicast Multicast service for sending beacons
+ * @param pinStore  Stored PIN-derived bearer token, used to sign beacons so
+ *                  PIN-protected servers accept them (servers drop beacons
+ *                  whose [NodeWire.clusterToken] is missing or stale).
  */
-class ClientBeaconSender(private val nodeManager: ClientNodeManager, private val multicast: Multicast) : BeaconSender {
+class ClientBeaconSender(
+    private val nodeManager: ClientNodeManager,
+    private val multicast: Multicast,
+    private val pinStore: ClientPinStore?,
+) : BeaconSender {
     private val logger = Logger.withTag(this::class.getFullName())
 
     @OptIn(ExperimentalAtomicApi::class)
@@ -43,6 +51,7 @@ class ClientBeaconSender(private val nodeManager: ClientNodeManager, private val
                 host = meta.name,
                 port = 0,
                 platform = platform,
+                clusterToken = computeClusterToken(),
             )
 
 
@@ -52,6 +61,13 @@ class ClientBeaconSender(private val nodeManager: ClientNodeManager, private val
                 lastSentTimestamp.update { Clock.System.now().toEpochMilliseconds() }
             }
         }
+    }
+
+    @OptIn(ExperimentalTime::class)
+    private fun computeClusterToken(): String {
+        val bearer = pinStore?.bearerToken() ?: return ""
+        val epochSeconds = Clock.System.now().toEpochMilliseconds() / 1000
+        return PinDerivation.deriveBeaconToken(bearer, installId(), epochSeconds)
     }
 
 }

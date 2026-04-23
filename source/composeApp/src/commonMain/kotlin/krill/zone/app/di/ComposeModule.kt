@@ -12,7 +12,7 @@ val composeModule = module {
 
     single<ScreenCore> { DefaultScreenCore(get() ) }
 
-    single<BeaconSender> { ClientBeaconSender(get(), get()) }
+    single<BeaconSender> { ClientBeaconSender(get(), get(), getOrNull()) }
     single<BeaconWireHandler> { ClientBeaconWireHandler(get(), get(),  get(named(IO_SCOPE))) }
     single<BeaconSupervisor> { ClientBeaconSupervisor(get(), get(), get(), get(named(IO_SCOPE))) }
     single<ServerConnector> { ClientServerConnector(get(), get(),get(), get(),  get(named(IO_SCOPE))) }

@@ -76,9 +76,16 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
                             deserialize<Event>(incoming.data)?.let { event ->
                                 logger.i { "Event Received: $event" }
 
-                                // CREATED doesn't require the node to already exist on the client
+                                // CREATED and DELETED don't require the node to already exist
+                                // on the client — they drive add/remove on the swarm directly.
                                 if (event.type == EventType.CREATED) {
                                     nodeManager.update((event.payload as NodeCreatedPayload).node)
+                                    return@let
+                                }
+
+                                if (event.type == EventType.DELETED) {
+                                    logger.i { "Node deleted remotely: ${event.id}" }
+                                    nodeManager.remove(event.id)
                                     return@let
                                 }
 
@@ -109,7 +116,7 @@ class EventClient(private val nodeManager: ClientNodeManager, private val bearer
                                             )
                                         }
 
-                                        EventType.DELETED -> {}
+                                        EventType.DELETED -> {} // handled above
                                         EventType.ACK -> {}
                                         EventType.CREATED -> {} // handled above
                                         EventType.LLM -> {

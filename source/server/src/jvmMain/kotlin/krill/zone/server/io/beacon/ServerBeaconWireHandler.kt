@@ -44,13 +44,16 @@ class ServerBeaconWireHandler(
                 logger.d { "$hostName received valid beacon from ${wire.host()}:${wire.port}" }
 
                 // Only reply with our beacon if this peer is NEW (not already connected).
-                // This prevents constant beacon ping-pong between known peers.
+                // This prevents constant beacon ping-pong between known peers, but still
+                // responds to client apps (which send wire.port=0 since they don't host)
+                // so they can discover us.
                 val isNewPeer = !nodeManager.nodeAvailable(wire.installId)
-                if (isNewPeer && wire.port > 0) {
+                if (isNewPeer) {
                     beaconSender.sendSignal()
                 }
 
-                // Process the wire (connect if from another server)
+                // Only peers that expose a port are server-to-server connections;
+                // client apps (wire.port=0) don't need a serverConnector handshake.
                 if (wire.port > 0 && wire.installId != installId()) {
                     serverConnector.connectWire(wire)
                 }

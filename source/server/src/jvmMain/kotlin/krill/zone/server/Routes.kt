@@ -320,41 +320,85 @@ private fun Routing.configureNodeRoutes(
             }
         }
 
-        // Update node
+        // Create or update a node. Body is a serialized Node.
+        // The heavy lifting (persist + emit + processor) runs asynchronously,
+        // so a 202 here only means the body parsed and was accepted for processing.
         post("/node/{id}") {
-            try {
+            val pathId = call.parameters["id"]
+            val node = try {
+                call.receive<Node>()
+            } catch (ex: Exception) {
+                // Deserialization failures (wrong meta type, unknown enum value,
+                // missing required field, polymorphic discriminator mismatch) all
+                // land here. The old handler collapsed these into a generic 500;
+                // return 400 with the specific reason so callers can correct it.
+                logger.e("Failed to parse node body for id=$pathId", ex)
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    "Invalid node body (${ex::class.simpleName}): ${ex.message ?: "no message"}"
+                )
+                return@post
+            }
 
-                val node = call.receive<Node>()
-                scope.launch {
+            if (pathId != null && pathId != node.id) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    "Path id '$pathId' does not match body id '${node.id}'"
+                )
+                return@post
+            }
+
+            scope.launch {
+                try {
                     logger.i("${node.details()}: $node")
                     nodeManager.update(node)
+                } catch (ex: Exception) {
+                    // Async path — can't reach the client, but at least the log
+                    // names the failing node so the cause is findable.
+                    logger.e("Async update failed for ${node.details()}", ex)
                 }
-
-
-                call.respond(HttpStatusCode.Accepted)
-
-
-            } catch (ex: Exception) {
-                logger.e("Error updating node", ex)
-                call.respond(HttpStatusCode.InternalServerError, "Failed to update node")
             }
+
+            call.respond(HttpStatusCode.Accepted)
         }
 
         delete("/node/{id}") {
+            val id = call.parameters["id"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, "Missing node ID")
+                return@delete
+            }
+
+            // Previously this endpoint required a full Node body, which forced
+            // callers (MCP, peers, scripts) to fetch-then-delete just to get
+            // an ID-keyed delete. Accept an empty body and fall back to the
+            // persisted node so `curl -X DELETE /node/{id}` works.
+            val node = try {
+                if (call.request.contentLength().let { it != null && it > 0 }) {
+                    call.receive<Node>()
+                } else null
+            } catch (ex: Exception) {
+                logger.w("Delete body parse failed for id=$id, falling back to persisted node: ${ex.message}")
+                null
+            } ?: nodeManager.readNode(id) ?: run {
+                call.respond(HttpStatusCode.NotFound, "Node not found: $id")
+                return@delete
+            }
+
+            if (node.id != id) {
+                call.respond(HttpStatusCode.BadRequest, "Path id '$id' does not match body id '${node.id}'")
+                return@delete
+            }
+
             try {
-                call.parameters["id"] ?: run {
-                    call.respond(HttpStatusCode.BadRequest, "Missing node ID")
-                    return@delete
-                }
-
-                val node = call.receive<Node>()
-
-                logger.i("${node.details()}: received node post ${node.meta}")
+                logger.i("${node.details()}: deleting")
                 nodeManager.delete(node)
                 call.respond(HttpStatusCode.OK)
             } catch (ex: Exception) {
-                logger.e("Error updating node", ex)
-                call.respond(HttpStatusCode.InternalServerError, "Failed to update node")
+                logger.e("Error deleting node $id", ex)
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    "Failed to delete node (${ex::class.simpleName}): ${ex.message ?: "no message"}"
+                )
             }
         }
 
