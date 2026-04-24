@@ -5,8 +5,8 @@ android-compileSdk = "36"
 android-minSdk     = "30"
 foojay             = "1.0.0"
 coroutines         = "1.10.2"
-shadow             = "9.4.1"
 vanniktech         = "0.36.0"
+dokka              = "2.2.0"
 
 [libraries]
 # Kotlinx
@@ -16,5 +16,5 @@ kotlinx-coroutines-core   = { module = "org.jetbrains.kotlinx:kotlinx-coroutines
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform",                version.ref = "kotlin" }
 androidKmpLibrary   = { id = "com.android.kotlin.multiplatform.library",          version.ref = "agp" }
 foojay-resolver     = { id = "org.gradle.toolchains.foojay-resolver-convention",  version.ref = "foojay" }
-shadow              = { id = "com.gradleup.shadow",                               version.ref = "shadow" }
 vanniktech          = { id = "com.vanniktech.maven.publish",                      version.ref = "vanniktech" }
+dokka               = { id = "org.jetbrains.dokka",                               version.ref = "dokka" }

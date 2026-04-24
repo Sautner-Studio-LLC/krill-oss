@@ -1,5 +1,8 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinMultiplatform
+import com.vanniktech.maven.publish.SourcesJar
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -7,13 +10,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKmpLibrary)
-    alias(libs.plugins.shadow)
     alias(libs.plugins.vanniktech)
+    alias(libs.plugins.dokka)
     `maven-publish`
 }
 
 group = "com.krillforge"
-version = "0.0.2"
+version = "0.0.3"
 
 kotlin {
     jvmToolchain(21)
@@ -62,25 +65,36 @@ kotlin {
     }
 }
 
-// ── Fat jar for JVM target (standalone distribution, not the Maven Central artifact) ──
-tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
-    val jvmJar = tasks.named("jvmJar")
-    dependsOn(jvmJar)
-    from(jvmJar.map { (it as Jar).archiveFile })
-    configurations = listOf(project.configurations.getByName("jvmRuntimeClasspath"))
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    mergeServiceFiles()
-    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
-    archiveBaseName.set("krill-sdk")
-    archiveVersion.set("")
-    archiveClassifier.set("all")
+// ── Dokka (KDoc → HTML API docs, consumed by the Maven javadoc jar) ───────────
+dokka {
+    moduleName.set("Krill SDK")
+
+    dokkaSourceSets.configureEach {
+        jdkVersion.set(21)
+        reportUndocumented.set(false)
+        skipDeprecated.set(false)
+        sourceLink {
+            localDirectory.set(projectDir.resolve("src"))
+            remoteUrl("https://github.com/bsautner/krill-oss/tree/main/krill-sdk/src")
+            remoteLineSuffix.set("#L")
+        }
+    }
 }
+
+
 
 // ── Maven Central publishing ───────────────────────────────────────────────────
 
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
+
+    configure(
+        KotlinMultiplatform(
+            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
+            sourcesJar = SourcesJar.Sources(),
+        )
+    )
 
     coordinates(
         groupId    = "com.krillforge",
