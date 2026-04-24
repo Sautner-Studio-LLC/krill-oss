@@ -5,15 +5,18 @@ android-compileSdk = "36"
 android-minSdk     = "30"
 foojay             = "1.0.0"
 coroutines         = "1.10.2"
+serializationCore  = "1.11.0"
 vanniktech         = "0.36.0"
 dokka              = "2.2.0"
 
 [libraries]
 # Kotlinx
-kotlinx-coroutines-core   = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-core       = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",       version.ref = "coroutines" }
+kotlinx-serialization-core    = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core",    version.ref = "serializationCore" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform",                version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization",         version.ref = "kotlin" }
 androidKmpLibrary   = { id = "com.android.kotlin.multiplatform.library",          version.ref = "agp" }
 foojay-resolver     = { id = "org.gradle.toolchains.foojay-resolver-convention",  version.ref = "foojay" }
 vanniktech          = { id = "com.vanniktech.maven.publish",                      version.ref = "vanniktech" }
