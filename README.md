@@ -2,7 +2,8 @@
 
 [![Learn More](https://img.shields.io/badge/Learn%20More-krillswarm.com-blue)](https://krillswarm.com/)
 [![Download](https://img.shields.io/badge/Download-Get%20Krill-green)](https://krillswarm.com/categories/download/)
-[![krill sdk](https://maven-badges.sml.io/sonatype-central/com.krillforge/krill-sdk/badge.svg)](https://maven-badges.sml.io/sonatype-central/com.krillforge/krill-sdk/)
+[![krill sdk](https://maven-badges.sml.io/sonatype-central/com.krillforge/krill-sdk/badge.svg?subject=krill-sdk)](https://maven-badges.sml.io/sonatype-central/com.krillforge/krill-sdk)
+[![krill Pi4J](https://maven-badges.sml.io/sonatype-central/com.krillforge/krill-pi4j/badge.svg?subject=krill-pi4j)](https://maven-badges.sml.io/sonatype-central/com.krillforge/krill-pi4j)
 
 ---
  
