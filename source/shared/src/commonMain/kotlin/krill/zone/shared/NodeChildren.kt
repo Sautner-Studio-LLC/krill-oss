@@ -86,207 +86,211 @@ class NodeChildren(private val nodeManager: ClientNodeManager) {
         if (!nodeManager.nodeAvailable(node.id)) {
             return listOf(MenuCommand.Delete)
         }
+        try {
+            val state = nodeManager.readNodeState(node.id).value
+            val host = nodeManager.readNodeState(state.host).value
+            val parent = nodeManager.readNodeState(state.parent).value
+            val distinct = mutableListOf<KrillApp>()
 
-        val state = nodeManager.readNodeState(node.id).value
-        val host = nodeManager.readNodeState(state.host).value
-        val parent = nodeManager.readNodeState(state.parent).value
-        val distinct = mutableListOf<KrillApp>()
+            when (state.type) {
 
-        when (state.type) {
-
-            KrillApp.Server -> {
-                distinct.addAll(serverCapabilities(state))
-            }
-
-            KrillApp.Client -> {
-                val meta = state.meta as ClientMetaData
-                if (meta.ftue) {
-                    distinct.clear()
-                } else {
-                    distinct.add(KrillApp.Client.About)
-                    distinct.add(KrillApp.Server)
-                    distinct.add(KrillApp.Server.Peer)
-
-                    nodeManager.nodes().map { state -> state.type }.distinct().minus(KrillApp.Server.Peer)
-                        .forEach { type ->
-                            distinct.add(type)
-                        }
+                KrillApp.Server -> {
+                    distinct.addAll(serverCapabilities(state))
                 }
-                distinct.remove(KrillApp.Client)
-                distinct.remove(KrillApp.Trigger.Button)
-                distinct.remove(MenuCommand.Update)
-                distinct.remove(MenuCommand.Delete)
+
+                KrillApp.Client -> {
+                    val meta = state.meta as ClientMetaData
+                    if (meta.ftue) {
+                        distinct.clear()
+                    } else {
+                        distinct.add(KrillApp.Client.About)
+                        distinct.add(KrillApp.Server)
+                        distinct.add(KrillApp.Server.Peer)
+
+                        nodeManager.nodes().map { state -> state.type }.distinct().minus(KrillApp.Server.Peer)
+                            .forEach { type ->
+                                distinct.add(type)
+                            }
+                    }
+                    distinct.remove(KrillApp.Client)
+                    distinct.remove(KrillApp.Trigger.Button)
+                    distinct.remove(MenuCommand.Update)
+                    distinct.remove(MenuCommand.Delete)
 
 
-            }
+                }
 
-            KrillApp.Server.Pin -> {
-                val meta = state.meta as PinMetaData
+                KrillApp.Server.Pin -> {
+                    val meta = state.meta as PinMetaData
 
 
-                if (meta.pinNumber > 0) {
+                    if (meta.pinNumber > 0) {
+                        distinct.addAll(triggerCapabilities())
+                    }
+
+                }
+
+                KrillApp.Server.SerialDevice -> {
+                    distinct.remove(KrillApp.DataPoint)
+                }
+
+                KrillApp.DataPoint -> {
+                    val meta = state.meta as DataPointMetaData
+                    distinct.add(MenuCommand.Update)
+                    distinct.add(KrillApp.DataPoint)
+
+                    if (meta.dataType == DataType.DIGITAL) {
+                        distinct.addAll(triggerCapabilities())
+                        distinct.add(KrillApp.DataPoint.Graph)
+                    }
+
+                    if (meta.dataType == DataType.DOUBLE) {
+
+                        distinct.add(KrillApp.DataPoint.Filter)
+                        distinct.add(KrillApp.Trigger)
+                        distinct.addAll(dataExecutors())
+                        distinct.add(KrillApp.DataPoint.Graph)
+                    }
+
+                    if (meta.dataType == DataType.COLOR) {
+                        distinct.add(KrillApp.Trigger)
+                        distinct.addAll(dataExecutors())
+                        distinct.add(KrillApp.DataPoint.Graph)
+                    }
+                }
+
+                KrillApp.DataPoint.Graph -> {
+                    // Graph is read-only, no child nodes
+                    distinct.remove(MenuCommand.Update)
+                }
+
+                KrillApp.Trigger.CronTimer -> {
+                    val meta = state.meta as CronMetaData
+                    if (meta.expression.isEmpty()) {
+                        return emptyList()
+                    } else {
+                        distinct.addAll(triggerCapabilities())
+                    }
+
+
+                }
+
+
+                KrillApp.Trigger.IncomingWebHook -> {
+                    val meta = state.meta as IncomingWebHookMetaData
+                    if (meta.path.isEmpty()) {
+                        return emptyList()
+                    } else {
+                        distinct.addAll(triggerCapabilities())
+                    }
+
+
+                }
+
+                KrillApp.Trigger.SilentAlarmMs,
+
+                KrillApp.Trigger.HighThreshold,
+
+                KrillApp.Trigger.LowThreshold,
+
+                KrillApp.Trigger.Color -> {
+
+                    val hostmeta = host.meta as ServerMetaData
+
+                    distinct.addAll(triggerCapabilities())
+
+
+                    if (hostmeta.platform != Platform.RASPBERRY_PI) {
+                        distinct.remove(KrillApp.Server.Pin)
+
+                    }
+
+
+                }
+
+                KrillApp.DataPoint.Filter -> {
+                    val pm = parent.meta as DataPointMetaData
+                    distinct.add(MenuCommand.Delete)
+                    if (pm.dataType == DataType.DOUBLE || pm.dataType != DataType.DIGITAL) {
+                        distinct.remove(KrillApp.Trigger.HighThreshold)
+                        distinct.remove(KrillApp.Trigger.LowThreshold)
+                        distinct.add(KrillApp.DataPoint.Filter.DiscardBelow)
+                        distinct.add(KrillApp.DataPoint.Filter.DiscardAbove)
+                        distinct.add(KrillApp.DataPoint.Filter.Deadband)
+                        distinct.add(KrillApp.DataPoint.Filter.Debounce)
+
+                    }
+
+                    distinct.remove(MenuCommand.Update)
+
+                }
+
+                KrillApp.Trigger -> {
+                    distinct.addAll(
+                        listOf(
+                            MenuCommand.Delete,
+                            KrillApp.Trigger.HighThreshold,
+                            KrillApp.Trigger.LowThreshold,
+                            KrillApp.Trigger.SilentAlarmMs,
+                            KrillApp.Trigger.Color
+                        ).plus(dataExecutors())
+                    )
+                }
+
+                KrillApp.Trigger.Button -> {
                     distinct.addAll(triggerCapabilities())
                 }
 
-            }
+                KrillApp.Executor, KrillApp.DataPoint.Filter.DiscardAbove, KrillApp.DataPoint.Filter.DiscardBelow, KrillApp.DataPoint.Filter.Deadband, KrillApp.DataPoint.Filter.Debounce -> {
+                    distinct.remove(MenuCommand.Update)
 
-            KrillApp.Server.SerialDevice -> {
-                distinct.remove(KrillApp.DataPoint)
-            }
+                }
 
-            KrillApp.DataPoint -> {
-                val meta = state.meta as DataPointMetaData
-                distinct.add(MenuCommand.Update)
-                distinct.add(KrillApp.DataPoint)
-
-                if (meta.dataType == DataType.DIGITAL) {
+                KrillApp.Executor.LogicGate -> {
                     distinct.addAll(triggerCapabilities())
+                }
+
+                KrillApp.Project -> {
+                    distinct.addAll(serverCapabilities(state))
+                    distinct.add(KrillApp.Project)
+                    distinct.add(KrillApp.Project.Diagram)
+                    distinct.add(KrillApp.Project.TaskList)
+                    distinct.add(KrillApp.Project.Journal)
                     distinct.add(KrillApp.DataPoint.Graph)
+                    distinct.add(KrillApp.Executor.LogicGate)
+                    distinct.add(KrillApp.Executor.Lambda)
+                    val meta = host.meta as ServerMetaData
+                    if (meta.platform == Platform.RASPBERRY_PI) {
+                        distinct.add(KrillApp.Server.Pin)
+                        distinct.add(KrillApp.Project.Camera)
+                    }
                 }
 
-                if (meta.dataType == DataType.DOUBLE) {
-
-                    distinct.add(KrillApp.DataPoint.Filter)
-                    distinct.add(KrillApp.Trigger)
+                KrillApp.Project.TaskList -> {
+                    distinct.add(MenuCommand.Update)
                     distinct.addAll(dataExecutors())
-                    distinct.add(KrillApp.DataPoint.Graph)
                 }
 
-                if (meta.dataType == DataType.COLOR) {
-                    distinct.add(KrillApp.Trigger)
-                    distinct.addAll(dataExecutors())
-                    distinct.add(KrillApp.DataPoint.Graph)
-                }
-            }
-
-            KrillApp.DataPoint.Graph -> {
-                // Graph is read-only, no child nodes
-                distinct.remove(MenuCommand.Update)
-            }
-
-            KrillApp.Trigger.CronTimer -> {
-                val meta = state.meta as CronMetaData
-                if (meta.expression.isEmpty()) {
-                    return emptyList()
-                } else {
-                    distinct.addAll(triggerCapabilities())
-                }
-
-
-            }
-
-
-            KrillApp.Trigger.IncomingWebHook -> {
-                val meta = state.meta as IncomingWebHookMetaData
-                if (meta.path.isEmpty()) {
-                    return emptyList()
-                } else {
-                    distinct.addAll(triggerCapabilities())
-                }
-
-
-            }
-
-            KrillApp.Trigger.SilentAlarmMs,
-
-            KrillApp.Trigger.HighThreshold,
-
-            KrillApp.Trigger.LowThreshold,
-
-            KrillApp.Trigger.Color -> {
-
-                val hostmeta = host.meta as ServerMetaData
-
-                distinct.addAll(triggerCapabilities())
-
-
-                if (hostmeta.platform != Platform.RASPBERRY_PI) {
-                    distinct.remove(KrillApp.Server.Pin)
+                KrillApp.Project.Diagram -> {
 
                 }
 
-
-            }
-
-            KrillApp.DataPoint.Filter -> {
-                val pm = parent.meta as DataPointMetaData
-                distinct.add(MenuCommand.Delete)
-                if (pm.dataType == DataType.DOUBLE || pm.dataType != DataType.DIGITAL) {
-                    distinct.remove(KrillApp.Trigger.HighThreshold)
-                    distinct.remove(KrillApp.Trigger.LowThreshold)
-                    distinct.add(KrillApp.DataPoint.Filter.DiscardBelow)
-                    distinct.add(KrillApp.DataPoint.Filter.DiscardAbove)
-                    distinct.add(KrillApp.DataPoint.Filter.Deadband)
-                    distinct.add(KrillApp.DataPoint.Filter.Debounce)
-
+                KrillApp.Executor.Lambda -> {
+                    distinct.add(MenuCommand.Update)
                 }
 
-                distinct.remove(MenuCommand.Update)
-
+                else -> {}
             }
 
-            KrillApp.Trigger -> {
-                distinct.addAll(
-                    listOf(
-                        MenuCommand.Delete,
-                        KrillApp.Trigger.HighThreshold,
-                        KrillApp.Trigger.LowThreshold,
-                        KrillApp.Trigger.SilentAlarmMs,
-                        KrillApp.Trigger.Color
-                    ).plus(dataExecutors())
-                )
-            }
 
-            KrillApp.Trigger.Button -> {
-                distinct.addAll(triggerCapabilities())
-            }
+            return distinct.distinct().sortedWith(compareBy<KrillApp> {
+                if (it == MenuCommand.Update) 0 else 1
+            }.thenBy { it::class.simpleName ?: "" })
 
-            KrillApp.Executor, KrillApp.DataPoint.Filter.DiscardAbove, KrillApp.DataPoint.Filter.DiscardBelow, KrillApp.DataPoint.Filter.Deadband, KrillApp.DataPoint.Filter.Debounce -> {
-                distinct.remove(MenuCommand.Update)
 
-            }
-
-            KrillApp.Executor.LogicGate -> {
-                distinct.addAll(triggerCapabilities())
-            }
-
-            KrillApp.Project -> {
-                distinct.addAll(serverCapabilities(state))
-                distinct.add(KrillApp.Project)
-                distinct.add(KrillApp.Project.Diagram)
-                distinct.add(KrillApp.Project.TaskList)
-                distinct.add(KrillApp.Project.Journal)
-                distinct.add(KrillApp.DataPoint.Graph)
-                distinct.add(KrillApp.Executor.LogicGate)
-                distinct.add(KrillApp.Executor.Lambda)
-                val meta = host.meta as ServerMetaData
-                if (meta.platform == Platform.RASPBERRY_PI) {
-                    distinct.add(KrillApp.Server.Pin)
-                    distinct.add(KrillApp.Project.Camera)
-                }
-            }
-            KrillApp.Project.TaskList -> {
-                distinct.add(MenuCommand.Update)
-                distinct.addAll(dataExecutors())
-            }
-
-            KrillApp.Project.Diagram -> {
-
-            }
-
-            KrillApp.Executor.Lambda -> {
-                distinct.add(MenuCommand.Update)
-            }
-
-            else -> {}
+        } catch (_: Exception) {
+            return emptyList()
         }
-
-
-        return distinct.distinct().sortedWith(compareBy<KrillApp> {
-            if (it == MenuCommand.Update) 0 else 1
-        }.thenBy { it::class.simpleName ?: "" })
-
-
     }
 
 

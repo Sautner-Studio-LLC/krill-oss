@@ -32,7 +32,7 @@ fun TimeRangeSelector(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        ComputeTimeRange.entries.filter { it != ComputeTimeRange.YEAR }.forEach { range ->
+        ComputeTimeRange.entries.filter { it != ComputeTimeRange.WEEK }.forEach { range ->
             FilterChip(
                 selected = range == selectedRange,
                 onClick = { onRangeSelected(range) },
