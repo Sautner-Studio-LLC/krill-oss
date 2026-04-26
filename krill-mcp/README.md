@@ -1,5 +1,10 @@
 # krill-mcp
 
+Install Krill MCP alongside your Krill servers to connect them to Claude Desktop and Claude Code via a Model Context Protocol server. This allows you to use LLMs to discover, monitor, and interact with your Krill swarm — including creating live dashboards, writing code to control your project, and even asking for improvement suggestions on your diagrams and automations.
+
+
+
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes a [Krill](https://krillswarm.com) swarm to Claude. Install once on any Debian box on your LAN — Claude Desktop and Claude Code connect to it as a remote Custom Connector, and it fans out to every Krill server in your swarm using the same 4-digit PIN you use for the Krill apps.
 
 ```
