@@ -1,42 +1,33 @@
-/**
- * Cross-cutting helper for updating the `error` field on any concrete
- * [NodeMetaData] without the caller knowing the subtype.
- *
- * Lives in its own file because the `when` over every concrete MetaData
- * subtype pulls in imports from every `krillapp/*` subpackage; keeping it
- * separate from the [NodeMetaData] interface declaration keeps that file
- * dependency-light.
- */
 package krill.zone.shared.node
 
-import krill.zone.shared.krillapp.client.ClientMetaData
-import krill.zone.shared.krillapp.datapoint.DataPointMetaData
-import krill.zone.shared.krillapp.datapoint.filter.FilterMetaData
-import krill.zone.shared.krillapp.datapoint.graph.GraphMetaData
-import krill.zone.shared.krillapp.executor.ExecuteMetaData
-import krill.zone.shared.krillapp.executor.calculation.CalculationEngineNodeMetaData
-import krill.zone.shared.krillapp.executor.compute.ComputeMetaData
-import krill.zone.shared.krillapp.executor.lambda.LambdaSourceMetaData
-import krill.zone.shared.krillapp.executor.logicgate.LogicGateMetaData
-import krill.zone.shared.krillapp.executor.mqtt.MqttMetaData
-import krill.zone.shared.krillapp.executor.smtp.SMTPMetaData
-import krill.zone.shared.krillapp.executor.webhook.WebHookOutMetaData
-import krill.zone.shared.krillapp.project.ProjectMetaData
-import krill.zone.shared.krillapp.project.camera.CameraMetaData
-import krill.zone.shared.krillapp.project.diagram.DiagramMetaData
-import krill.zone.shared.krillapp.project.journal.JournalMetaData
-import krill.zone.shared.krillapp.project.tasklist.TaskListMetaData
-import krill.zone.shared.krillapp.server.ServerMetaData
-import krill.zone.shared.krillapp.server.backup.BackupMetaData
-import krill.zone.shared.krillapp.server.pin.PinMetaData
-import krill.zone.shared.krillapp.server.serialdevice.SerialDeviceMetaData
-import krill.zone.shared.krillapp.server.serialdevice.SerialDeviceTargetMetaData
-import krill.zone.shared.krillapp.spacer.SpacerMetaData
-import krill.zone.shared.krillapp.trigger.TriggerMetaData
-import krill.zone.shared.krillapp.trigger.button.ButtonMetaData
-import krill.zone.shared.krillapp.trigger.color.ColorTriggerMetaData
-import krill.zone.shared.krillapp.trigger.cron.CronMetaData
-import krill.zone.shared.krillapp.trigger.webhook.IncomingWebHookMetaData
+
+import krill.zone.shared.krillapp.client.*
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.krillapp.datapoint.filter.*
+import krill.zone.shared.krillapp.datapoint.graph.*
+import krill.zone.shared.krillapp.executor.*
+import krill.zone.shared.krillapp.executor.calculation.*
+import krill.zone.shared.krillapp.executor.compute.*
+import krill.zone.shared.krillapp.executor.lambda.*
+import krill.zone.shared.krillapp.executor.logicgate.*
+import krill.zone.shared.krillapp.executor.mqtt.*
+import krill.zone.shared.krillapp.executor.smtp.*
+import krill.zone.shared.krillapp.executor.webhook.*
+import krill.zone.shared.krillapp.project.*
+import krill.zone.shared.krillapp.project.camera.*
+import krill.zone.shared.krillapp.project.diagram.*
+import krill.zone.shared.krillapp.project.journal.*
+import krill.zone.shared.krillapp.project.tasklist.*
+import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.krillapp.server.backup.*
+import krill.zone.shared.krillapp.server.pin.*
+import krill.zone.shared.krillapp.server.serialdevice.*
+import krill.zone.shared.krillapp.spacer.*
+import krill.zone.shared.krillapp.trigger.*
+import krill.zone.shared.krillapp.trigger.button.*
+import krill.zone.shared.krillapp.trigger.color.*
+import krill.zone.shared.krillapp.trigger.cron.*
+import krill.zone.shared.krillapp.trigger.webhook.*
 
 /**
  * Returns a copy of [meta] with its `error` field replaced by [error].
@@ -80,3 +71,4 @@ fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData {
         else -> meta
     }
 }
+
