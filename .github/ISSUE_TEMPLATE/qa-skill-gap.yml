@@ -1,7 +1,7 @@
 name: "QA: Skill gap"
 description: The system lacked a capability or affordance you needed — a missing tool, a missing API surface, an unsupported operation, or skill instructions that don't cover this case.
 title: "[skill-gap] <one-line summary>"
-labels: ["qa", "skill-gap"]
+labels: ["qa", "skill-gap", "agent-tooling"]
 body:
   - type: markdown
     attributes:

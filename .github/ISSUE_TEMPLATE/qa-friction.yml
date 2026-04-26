@@ -1,7 +1,7 @@
 name: "QA: Friction"
 description: Something was harder than it should have been. Use this when the task succeeded but cost more effort, retries, or guesswork than it should have.
 title: "[friction] <one-line summary>"
-labels: ["qa", "friction"]
+labels: ["qa", "friction", "dx"]
 body:
   - type: markdown
     attributes:
