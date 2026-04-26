@@ -63,8 +63,8 @@ else
         fi
     done
 
-    # Must match PinDerivation.deriveBearerToken() in the Kotlin code and the
-    # matching line in the krill server's postinst.
+    # Must match krill.zone.shared.security.PinDerivation.deriveBearerToken()
+    # from the krill-sdk and the matching line in the krill server's postinst.
     PIN_DERIVED_KEY=$(printf '%s' "$KRILL_PIN" | openssl dgst -sha256 -hmac "krill-api-pbkdf2-v1" -hex 2>/dev/null | awk '{print $NF}')
 
     if [ -z "$PIN_DERIVED_KEY" ] || [ ${#PIN_DERIVED_KEY} -ne 64 ]; then

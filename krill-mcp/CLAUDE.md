@@ -41,8 +41,13 @@ Key modules (all under `krill-mcp-service/src/main/kotlin/krill/zone/mcp/`):
 - **`mcp/Tool.kt`** + **`mcp/tools/*Tool.kt`** — each tool declares `name`, `description`, a JSON Schema `inputSchema`, and a `suspend execute()` returning any `JsonElement`. The dispatcher wraps the return as a single `text` content block (stringified JSON); errors become `isError: true` with `ERROR: <message>`.
 - **`krill/KrillRegistry.kt`** — owns one `KrillClient` per seed in `config.seeds[]`. `bootstrap()` probes each seed with 5 retries / 2 s backoff to handle the **systemd startup race** where `krill-mcp` comes up before the Krill server it targets is listening. `resolve()` does a synchronous single-shot re-probe if the registry is still empty on a call — this is what makes the `reseed_servers` MCP tool viable without shell access. Seed lookup accepts server id, host, or `host:port`.
 - **`krill/KrillClient.kt`** — thin HTTPS client per server. Trusts self-signed certs (Krill installs its own); security comes from the PIN-derived bearer, not the cert. Exposes `/health`, `/nodes`, `/node/{id}`, `/node/{id}/data/series`, plus Project/Diagram writes. Returns raw `JsonElement` trees — deliberately *does not* mirror Krill's internal data model.
-- **`auth/PinDerivation.kt`** — `HMAC-SHA256(key="krill-api-pbkdf2-v1", data=PIN)` → hex. **Must stay byte-identical** with the `openssl dgst` line in `package/DEBIAN/postinst` and the upstream Krill server's postinst. Any drift breaks authentication swarm-wide. `constantTimeEquals` is used for bearer validation.
-- **`auth/PinProvider.kt`** — reads `pin_derived_key` from disk; lazy and re-readable.
+- **PIN derivation** — provided by the `krill-sdk` library at
+  `krill.zone.shared.security.PinDerivation.deriveBearerToken` =
+  `HMAC-SHA256(key="krill-api-pbkdf2-v1", data=PIN)` → hex. **Must stay
+  byte-identical** with the `openssl dgst` line in `package/DEBIAN/postinst`
+  and the upstream Krill server's postinst. Any drift in the SDK constant
+  breaks authentication swarm-wide.
+- **`auth/PinProvider.kt`** — reads `pin_derived_key` from disk; lazy and re-readable. Holds the local `constantTimeEquals` used for bearer validation.
 - **`krill/KrillClient.kt` → `publicBaseUrl`** — derived at probe time from `/health.meta` (name + port, with `.local` suffixing for bare/mDNS names). Used when building `Diagram.source` URLs so phones/browsers on the LAN can actually fetch the SVG — a `localhost:8442` seed would be unreachable from any other host.
 
 ## Adding an MCP tool

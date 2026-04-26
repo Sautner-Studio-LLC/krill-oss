@@ -3,6 +3,7 @@ package krill.zone.mcp.krill
 import krill.zone.mcp.auth.PinProvider
 import krill.zone.mcp.config.KrillMcpConfig
 import krill.zone.mcp.config.KrillSeed
+import krill.zone.shared.krillapp.server.ServerMetaData
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
@@ -130,23 +131,22 @@ class KrillRegistry(
     }
 
     /**
-     * Mirror of Krill's `ServerMetaData.resolvedHost()`: derive a client-resolvable
-     * base URL from the `/health` payload so Diagram `source` URLs point somewhere
-     * a phone / browser can actually load. Bare hostnames get `.local` appended
-     * (mDNS), `.local` names are kept as-is, FQDNs and IPs pass through.
+     * Derive a client-resolvable base URL from the `/health` payload so Diagram
+     * `source` URLs point somewhere a phone / browser can actually load.
+     * Delegates to the SDK's [ServerMetaData.getUrl] for the resolution rules
+     * (`.local` suffixing for bare/mDNS hostnames, FQDNs/IPs pass through).
      */
     private fun publicBaseUrlFromHealth(health: JsonObject): String? {
-        val meta = health["meta"] as? JsonObject ?: return null
-        val name = meta["name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: return null
-        val port = meta["port"]?.jsonPrimitive?.intOrNull?.takeIf { it > 0 } ?: return null
-        val isLocal = meta["isLocal"]?.jsonPrimitive?.booleanOrNull ?: false
-        val host = when {
-            name.endsWith(".local") -> name
-            isLocal -> "$name.local"
-            !name.contains('.') -> "$name.local"
-            else -> name
-        }
-        return "https://$host:$port"
+        val metaJson = health["meta"] as? JsonObject ?: return null
+        val meta = runCatching {
+            healthMetaJson.decodeFromJsonElement(ServerMetaData.serializer(), metaJson)
+        }.getOrNull() ?: return null
+        if (meta.name.isBlank() || meta.port <= 0) return null
+        return meta.getUrl()
+    }
+
+    private companion object {
+        private val healthMetaJson = Json { ignoreUnknownKeys = true }
     }
 
     fun all(): List<KrillClient> = byId.values.toList()

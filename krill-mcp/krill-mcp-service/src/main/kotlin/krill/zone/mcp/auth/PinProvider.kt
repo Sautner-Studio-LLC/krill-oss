@@ -41,7 +41,16 @@ class PinProvider(
     /** Constant-time compare; lowercases both sides to tolerate client case differences. */
     fun validate(candidate: String): Boolean {
         val expected = bearerToken() ?: return false
-        return PinDerivation.constantTimeEquals(expected.lowercase(), candidate.lowercase())
+        return constantTimeEquals(expected.lowercase(), candidate.lowercase())
+    }
+
+    private fun constantTimeEquals(a: String, b: String): Boolean {
+        if (a.length != b.length) return false
+        var result = 0
+        for (i in a.indices) {
+            result = result or (a[i].code xor b[i].code)
+        }
+        return result == 0
     }
 
     private fun readFromDisk(): String? {
