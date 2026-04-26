@@ -1,11 +1,3 @@
-/**
- * Helpers for serialising / deserialising a [krill.zone.shared.node.NodeWire]
- * to and from the byte payload of a multicast beacon datagram.
- *
- * Takes the [kotlinx.serialization.json.Json] instance as a parameter so
- * the SDK doesn't require its own polymorphic-serialization configuration —
- * callers pass the project-wide `fastJson` (or any compatible `Json`).
- */
 package krill.zone.shared.io.http
 
 import kotlinx.serialization.json.Json

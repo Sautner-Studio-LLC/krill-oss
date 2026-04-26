@@ -60,6 +60,7 @@ kotlin {
         commonMain.dependencies {
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.serialization.core)
+            api(libs.kotlinx.serialization.json)
             api(libs.ktor.http)
             api(libs.ktor.client.core)
             api(libs.kermit)
