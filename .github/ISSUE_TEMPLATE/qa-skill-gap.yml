@@ -1,0 +1,71 @@
+name: "QA: Skill gap"
+description: The system lacked a capability or affordance you needed — a missing tool, a missing API surface, an unsupported operation, or skill instructions that don't cover this case.
+title: "[skill-gap] <one-line summary>"
+labels: ["qa", "skill-gap"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Filed by a QA agent. Use this when the issue isn't a bug or a docs gap, but a *missing capability* — the right tool / endpoint / instruction simply doesn't exist yet, or the skill's coverage stops short of the task.
+  - type: textarea
+    id: task
+    attributes:
+      label: Task you were asked to do
+      description: The original prompt or goal, verbatim if possible.
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module that should provide the missing capability
+      options:
+        - krill-sdk
+        - krill-mcp (server)
+        - krill skill (Claude skill bundled with krill-mcp)
+        - krill-pi4j (client lib + daemon)
+        - Unsure / other
+    validations:
+      required: true
+  - type: dropdown
+    id: gap_kind
+    attributes:
+      label: Kind of gap
+      options:
+        - Missing MCP tool / API endpoint
+        - Existing tool can't express what I needed
+        - Skill instructions don't cover this scenario
+        - Skill instructions are ambiguous / contradictory
+        - Required data isn't exposed at all
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: missing
+    attributes:
+      label: What capability is missing
+      description: Describe the thing that should exist. Name a hypothetical tool/endpoint/instruction if helpful.
+      placeholder: "e.g. a `krill_node_history(node_id, since, until)` MCP tool that returns DataPoints over a time range"
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround you used (if any)
+      description: What you did instead, and why it isn't good enough as a permanent answer.
+    validations:
+      required: false
+  - type: textarea
+    id: shape
+    attributes:
+      label: Proposed shape
+      description: Inputs, outputs, error cases. Doesn't have to be final — just enough for a dev agent to start designing.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways this could be solved (e.g. document the workaround, expose lower-level primitives, change the skill instructions instead of adding a tool).
+    validations:
+      required: false
