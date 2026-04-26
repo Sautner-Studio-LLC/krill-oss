@@ -17,7 +17,7 @@ plugins {
 }
 
 group = "com.krillforge"
-version = "0.0.14"
+version = "0.0.15"
 
 kotlin {
     jvmToolchain(21)
@@ -61,6 +61,8 @@ kotlin {
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.serialization.core)
             api(libs.ktor.http)
+            api(libs.ktor.client.core)
+            api(libs.kermit)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

@@ -7,6 +7,7 @@ foojay             = "1.0.0"
 coroutines         = "1.10.2"
 serializationCore  = "1.11.0"
 ktor               = "3.4.2"
+kermit             = "2.1.0"
 vanniktech         = "0.36.0"
 dokka              = "2.2.0"
 
@@ -15,9 +16,15 @@ dokka              = "2.2.0"
 kotlinx-coroutines-core       = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",       version.ref = "coroutines" }
 kotlinx-serialization-core    = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core",    version.ref = "serializationCore" }
 
-# Ktor — HTTP primitives only (Url, ContentType, status codes). The full
-# client and content-negotiation modules land in a later phase when NodeHttp moves.
+# Ktor — HTTP primitives + the cross-platform client core. Engine-specific
+# modules (CIO, OkHttp, Darwin, JS) stay in consuming modules so the SDK
+# remains agnostic about which transport they bring.
 ktor-http                     = { module = "io.ktor:ktor-http",                                    version.ref = "ktor" }
+ktor-client-core              = { module = "io.ktor:ktor-client-core",                             version.ref = "ktor" }
+
+# Kermit — Touchlab's KMP-friendly logger. Used by `NodeHttp` and any future
+# SDK component that needs to log; consumers can attach their own log writers.
+kermit                        = { module = "co.touchlab:kermit",                                   version.ref = "kermit" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform",                version.ref = "kotlin" }
