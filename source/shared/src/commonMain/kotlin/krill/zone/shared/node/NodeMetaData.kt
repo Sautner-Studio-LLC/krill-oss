@@ -1,6 +1,5 @@
 package krill.zone.shared.node
 
-import kotlinx.serialization.*
 import krill.zone.shared.krillapp.client.*
 import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.datapoint.filter.*
@@ -28,43 +27,6 @@ import krill.zone.shared.krillapp.trigger.button.*
 import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.krillapp.trigger.cron.*
 import krill.zone.shared.krillapp.trigger.webhook.*
-
-interface NodeMetaData {
-    val error: String
-}
-
-/**
- * Identifies a node by its own ID and the ID of its host server.
- * Used in TargetingNodeMetaData source and target lists so callers never need
- * to parse a "host:id" string to obtain the two parts separately.
- */
-@Serializable
-data class NodeIdentity(
-    val nodeId: String,
-    val hostId: String
-) {
-
-
-    override fun toString(): String {
-        return  "${hostId}:${nodeId}"
-    }
-}
-
-enum class ExecutionSource(val displayLabel: String) {
-    PARENT_EXECUTE_SUCCESS("Parent Execute Success"),
-    SOURCE_VALUE_MODIFIED("Source Value Modified"),
-    ON_CLICK("On Click")
-}
-/**
- * Interface for metadata classes that have source and target node references.
- * Used by executor nodes that read from a source data point and write to a target data point.
- */
-interface TargetingNodeMetaData : NodeMetaData {
-    val sources: List<NodeIdentity>
-    val targets: List<NodeIdentity>
-
-    val executionSource: List<ExecutionSource>
-}
 
 /**
  * Updates the error field in any NodeMetaData implementation.
@@ -103,5 +65,3 @@ fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData {
         else -> meta // Fallback for unknown types
     }
 }
-
-

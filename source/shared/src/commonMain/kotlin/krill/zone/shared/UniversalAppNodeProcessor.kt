@@ -69,9 +69,6 @@ UniversalAppNodeProcessor(
 
     @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
     override fun post(node: Node) {
-
-
-
         scope.launch {
             when (node.state) {
                 NodeState.PAUSED -> {}
@@ -81,27 +78,18 @@ UniversalAppNodeProcessor(
                 NodeState.ERROR -> {}
                 NodeState.PAIRING -> {}
                 NodeState.NONE -> { }
-
                 NodeState.USER_EDIT -> {
                     logger.i { "${node.details()} user edit node processor posted " }
                 }
                 NodeState.UNAUTHORISED -> {}
                 NodeState.EXECUTED -> {
-
                     executeVisuals(node)
-
                 }
-
                 NodeState.DELETING -> {
-
                         observer.remove(node.id)
                         nodeManager.remove(node.id)
-
                 }
-
-
                 NodeState.SNAPSHOT_UPDATE, NodeState.USER_SUBMIT, NodeState.CREATED -> {
-
                     showActivity(node)
                 }
 

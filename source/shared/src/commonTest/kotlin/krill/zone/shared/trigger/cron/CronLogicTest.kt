@@ -104,7 +104,7 @@ class CronLogicTest {
         val next = cronLogic.nextExecutionInstant("0 0 9 * * MON", mondayAt10)
         // Then: should be strictly in the future and ≤ 8 days out
         assertTrue(next != null, "weekly expression should return a next instant")
-        assertTrue(next!! > mondayAt10, "next must be strictly after from")
+        assertTrue(next > mondayAt10, "next must be strictly after from")
         assertTrue(next - mondayAt10 <= 8L * 24 * 60 * 60 * 1000, "next should be within a week")
     }
 
@@ -126,7 +126,7 @@ class CronLogicTest {
         // "every 5 seconds" with fromEpochMillis = 0 should land very close to 0 + up to 5s
         val next = cronLogic.nextExecutionInstant("*/5 * * * * *", 0L)
         assertTrue(next != null, "every-5-seconds should return a next instant")
-        assertTrue(next!! >= 0L, "next must be non-negative")
+        assertTrue(next >= 0L, "next must be non-negative")
         assertTrue(next <= 5000L, "next must be within 5 seconds of from")
     }
 
