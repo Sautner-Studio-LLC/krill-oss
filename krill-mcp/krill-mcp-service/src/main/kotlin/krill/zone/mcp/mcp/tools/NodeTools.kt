@@ -99,6 +99,7 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
             )
         val parentTypeFqn = parentNode["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
         val parentShortName = parentTypeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName }
+        val resolvedCallerName = callerName ?: derivedDefaultName(spec, parentNode)
 
         // Deterministic parent-type validation. Status values:
         //   ok                    — parentShortName is in spec.validParentTypes
@@ -116,7 +117,7 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                 "(${spec.validParentTypes}). The server will still accept the post; confirm with the user."
         } else null
 
-        val mergedMeta = buildMergedMeta(spec, callerName, callerMeta)
+        val mergedMeta = buildMergedMeta(spec, resolvedCallerName, callerMeta)
 
         val newId = UUID.randomUUID().toString()
         val node = buildJsonObject {
@@ -152,6 +153,27 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                 putJsonArray("warnings") { add(JsonPrimitive(parentValidationWarning)) }
             }
         }
+    }
+
+    /**
+     * For node types whose default name would collide across siblings (e.g.
+     * `KrillApp.DataPoint.Graph`), derive a parent-aware default from the
+     * verified parent node. Returns `null` when no derivation applies — the
+     * caller then falls through to the registry's `defaultMeta.name`.
+     *
+     * Graph rule: `"<parent DataPoint name> graph"` (parent is always a
+     * DataPoint per `validParentTypes`). Empty parent name yields `null` so
+     * we don't emit a leading-space artefact like `" graph"`.
+     */
+    internal fun derivedDefaultName(spec: KrillNodeType, parentNode: JsonObject): String? {
+        if (spec.shortName != "KrillApp.DataPoint.Graph") return null
+        val parentName = (parentNode["meta"] as? JsonObject)
+            ?.get("name")
+            ?.jsonPrimitive
+            ?.contentOrNull
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+        return "$parentName graph"
     }
 
     /**

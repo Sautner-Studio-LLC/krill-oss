@@ -307,7 +307,7 @@ object KrillNodeTypes {
             metaFqn = "krill.zone.shared.krillapp.datapoint.graph.GraphMetaData",
             defaultMeta = meta(
                 "krill.zone.shared.krillapp.datapoint.graph.GraphMetaData",
-                "name" to JsonPrimitive("Data Graph"),
+                "name" to JsonPrimitive(""),
                 "sources" to nodeIdentityArray(),
                 "targets" to nodeIdentityArray(),
                 "timeRange" to JsonPrimitive("HOUR"),
@@ -318,7 +318,9 @@ object KrillNodeTypes {
             description = "Renders historical DataPoint values as a graph over `meta.timeRange`.",
             validParentTypes = listOf("KrillApp.DataPoint"),
             validChildTypes = emptyList(),
-            notes = "`timeRange` ∈ {NONE, HOUR, DAY, WEEK, MONTH, YEAR}. Add the parent DataPoint to `sources`.",
+            notes = "`timeRange` ∈ {NONE, HOUR, DAY, WEEK, MONTH, YEAR}. Add the parent DataPoint to `sources`. " +
+                "Default `name` is empty — `create_node` derives `\"<parent DataPoint name> graph\"` " +
+                "from the parent when no `name` is supplied, so siblings under different DataPoints don't collide.",
             metaFieldHints = mapOf(
                 "sources" to NODE_IDENTITY_HINT + " For Graph, populate with a single entry: the parent DataPoint's id + host.",
                 "targets" to NODE_IDENTITY_HINT + " Unused for Graph — leave empty.",
