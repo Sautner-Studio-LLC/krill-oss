@@ -22,7 +22,13 @@ import krill.zone.shared.node.TargetingNodeMetaData
  */
 @Serializable
 data class GraphMetaData(
-    val name: String = "Data Graph",
+    /**
+     * Display name. Empty string falls back to `"Graph"` in [krill.zone.shared.node.name].
+     * The previous default of `"Data Graph"` produced indistinguishable siblings under
+     * different parent DataPoints; callers (UI, MCP) are expected to supply a
+     * parent-derived name like `"<parent> graph"` at construction time.
+     */
+    val name: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     /** Not used for graphs but required by the [TargetingNodeMetaData] contract. */
     override val targets: List<NodeIdentity> = emptyList(),

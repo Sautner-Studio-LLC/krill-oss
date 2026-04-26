@@ -72,7 +72,7 @@ fun Node.name(): String {
         KrillApp.Server, KrillApp.Server.Peer -> (this.meta as ServerMetaData).name
         KrillApp.Client -> (this.meta as krill.zone.shared.krillapp.client.ClientMetaData).name
         KrillApp.Server.Pin -> (this.meta as PinMetaData).name
-        KrillApp.DataPoint.Graph -> (this.meta as GraphMetaData).name
+        KrillApp.DataPoint.Graph -> (this.meta as GraphMetaData).name.ifEmpty { "Graph" }
         KrillApp.Project.TaskList -> (this.meta as TaskListMetaData).name
         KrillApp.Project.Journal -> (this.meta as JournalMetaData).name
         KrillApp.Project.Camera -> (this.meta as CameraMetaData).name.ifEmpty { "Camera" }
