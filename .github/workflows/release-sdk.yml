@@ -98,7 +98,7 @@ jobs:
             exit 1
           fi
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error::KRILL_PUBLISH_TOKEN secret is not set on bsautner/krill-oss. Add a fine-grained PAT scoped to bsautner/krill with Actions: read+write."
+            echo "::error::KRILL_PUBLISH_TOKEN secret is not set on bsautner/krill-oss. Add a fine-grained PAT scoped to bsautner/krill with Actions: read+write and Contents: read."
             exit 1
           fi
           echo "Dispatching: gh workflow run 'Publish Krill-SDK Maven.yml' --repo bsautner/krill --ref main -f version=$version"
