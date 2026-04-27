@@ -1,0 +1,65 @@
+name: "Dev task"
+description: Work the dev agent should pick up that didn't come from QA — feature requests, refactors, repo plumbing, planned chores. Use the qa-* templates when the trigger was a real reproduction by the QA agent.
+title: "<one-line summary>"
+labels: ["dev-task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Filed by Ben or another maintainer to assign work directly to the dev agent. The dev agent picks tasks from `qa`-labelled issues first, then `dev-task` ordered by severity.
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Where the change lives. Pick the closest match.
+      options:
+        - krill-sdk
+        - krill-mcp (server)
+        - krill skill (Claude skill bundled with krill-mcp)
+        - krill-pi4j (client lib + daemon)
+        - cookbook / lambdas
+        - SVG Templates
+        - repo plumbing (CI / docs / templates / CLAUDE.md)
+        - cross-cutting / multiple
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What you want the end-state to look like, from a user / consumer POV. Skip the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why now
+      description: What's blocked, who's asking, what deadline drives this. Helps the dev pick when to start.
+    validations:
+      required: false
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints / non-goals
+      description: Things that should NOT change, or scope you explicitly want to defer. Saves the dev a round-trip.
+    validations:
+      required: false
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Drives queue ordering. Match the QA repo's severity scale.
+      options:
+        - severity:blocker
+        - severity:high
+        - severity:medium
+        - severity:low
+    validations:
+      required: true
+  - type: textarea
+    id: cross_repo
+    attributes:
+      label: Upstream coordination required?
+      description: If this work depends on or coordinates with `bsautner/krill`, name the upstream issue / PR / module so the dev can sequence it.
+    validations:
+      required: false
