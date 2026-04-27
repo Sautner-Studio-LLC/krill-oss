@@ -1,0 +1,106 @@
+name: build
+
+# Validates pull requests by building each Gradle root affected by the
+# change. Three independent jobs (sdk / mcp / pi4j) so each surfaces as
+# its own check for branch protection. Path filters skip a job when its
+# tree didn't change — a docs-only PR runs no build work.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # Lets you re-run the matrix from the Actions tab without a code change.
+  workflow_dispatch:
+
+# Cancel in-flight builds when the PR gets a new push — saves runner cycles.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: detect changes
+    runs-on: [self-hosted, Linux, X64]
+    outputs:
+      sdk: ${{ steps.filter.outputs.sdk }}
+      mcp: ${{ steps.filter.outputs.mcp }}
+      pi4j: ${{ steps.filter.outputs.pi4j }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # Each module's filter also matches its own workflow file, so
+          # editing the workflow re-runs the relevant build paths.
+          filters: |
+            sdk:
+              - 'krill-sdk/**'
+              - '.github/workflows/build.yml'
+            mcp:
+              - 'krill-mcp/**'
+              - '.github/workflows/build.yml'
+            pi4j:
+              - 'pi4j-ktx-service/**'
+              - '.github/workflows/build.yml'
+
+  krill-sdk:
+    name: krill-sdk · check
+    needs: changes
+    if: ${{ needs.changes.outputs.sdk == 'true' }}
+    runs-on: [self-hosted, Linux, X64]
+    defaults:
+      run:
+        working-directory: krill-sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Highest toolchain in the repo is JDK 25 (pi4j-service). The SDK
+          # itself is JDK 21, but a single launcher JDK across all jobs
+          # keeps Gradle's toolchain auto-provisioning consistent.
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew check --no-daemon --stacktrace
+
+  krill-mcp:
+    name: krill-mcp · build
+    needs: changes
+    if: ${{ needs.changes.outputs.mcp == 'true' }}
+    runs-on: [self-hosted, Linux, X64]
+    defaults:
+      run:
+        working-directory: krill-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      # `:krill-mcp-service:build` depends on `shadowJar` and runs `test`,
+      # which is the same gate the local dev loop uses.
+      - run: ./gradlew :krill-mcp-service:build --no-daemon --stacktrace
+
+  krill-pi4j:
+    name: krill-pi4j · build
+    needs: changes
+    if: ${{ needs.changes.outputs.pi4j == 'true' }}
+    runs-on: [self-hosted, Linux, X64]
+    defaults:
+      run:
+        working-directory: pi4j-ktx-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      # Builds both `:krill-pi4j` (JDK 21 client lib) and
+      # `:krill-pi4j-service` (JDK 25 daemon). Foojay auto-provisions the
+      # client toolchain off the JDK 25 launcher.
+      - run: ./gradlew build --no-daemon --stacktrace
