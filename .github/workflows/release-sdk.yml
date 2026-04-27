@@ -1,0 +1,109 @@
+name: release-sdk
+
+# Cross-repo automation for `com.krillforge:krill-sdk` Maven Central
+# releases. The actual publish workflow (Maven + Dokka + S3 + CloudFront)
+# lives in the private `bsautner/krill` repo because the signing /
+# Sonatype / AWS secrets live there. This workflow detects a krill-sdk
+# version bump on `main` and dispatches that upstream workflow with the
+# new version, so the publish pipeline doesn't need a manual button-press
+# in the private repo on every release.
+#
+# Required repo secret:
+#   KRILL_PUBLISH_TOKEN — fine-grained PAT or GitHub App token scoped to
+#     `bsautner/krill` with `Actions: read+write` and `Contents: read`.
+#     Rotate independently of `GITHUB_TOKEN`; this token never reaches
+#     non-dispatch steps.
+#
+# Manual override:
+#   The `workflow_dispatch` trigger lets you republish a specific version
+#   from the Actions tab without bumping `build.gradle.kts` (e.g. when an
+#   upstream publish step failed mid-run and Maven Central rejected the
+#   first attempt).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'krill-sdk/build.gradle.kts'
+      - '.github/workflows/release-sdk.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.0.17). Leave blank to read from krill-sdk/build.gradle.kts."
+        required: false
+        type: string
+
+# Releases must serialise — never cancel an in-flight dispatch.
+concurrency:
+  group: release-sdk
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Dispatch upstream Maven publish
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need HEAD~1 to diff the version line.
+          fetch-depth: 2
+
+      - name: Resolve target version
+        id: version
+        run: |
+          set -euo pipefail
+          manual="${{ inputs.version }}"
+          new_version=$(grep -E '^version = ' krill-sdk/build.gradle.kts | head -1 | sed -E 's/^version = "([^"]+)"/\1/')
+          old_version=$(git show HEAD~1:krill-sdk/build.gradle.kts 2>/dev/null \
+            | grep -E '^version = ' | head -1 | sed -E 's/^version = "([^"]+)"/\1/' || true)
+          target="${manual:-$new_version}"
+          echo "old=${old_version:-<none>}"   >> "$GITHUB_OUTPUT"
+          echo "new=$new_version"             >> "$GITHUB_OUTPUT"
+          echo "target=$target"               >> "$GITHUB_OUTPUT"
+          if [ -n "$manual" ]; then
+            echo "reason=manual workflow_dispatch (version=$manual)"     >> "$GITHUB_OUTPUT"
+            echo "should_dispatch=true"                                  >> "$GITHUB_OUTPUT"
+          elif [ "$new_version" = "${old_version:-}" ]; then
+            echo "reason=krill-sdk/build.gradle.kts touched but version unchanged ($new_version)" >> "$GITHUB_OUTPUT"
+            echo "should_dispatch=false"                                 >> "$GITHUB_OUTPUT"
+          else
+            echo "reason=version bumped: ${old_version:-<none>} → $new_version" >> "$GITHUB_OUTPUT"
+            echo "should_dispatch=true"                                  >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Summarise decision
+        run: |
+          {
+            echo "## release-sdk decision"
+            echo ""
+            echo "- Old version: \`${{ steps.version.outputs.old }}\`"
+            echo "- New version: \`${{ steps.version.outputs.new }}\`"
+            echo "- Target version: \`${{ steps.version.outputs.target }}\`"
+            echo "- Will dispatch: \`${{ steps.version.outputs.should_dispatch }}\`"
+            echo "- Reason: ${{ steps.version.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dispatch publish workflow on bsautner/krill
+        if: ${{ steps.version.outputs.should_dispatch == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.KRILL_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.target }}"
+          if [ -z "$version" ]; then
+            echo "::error::Could not resolve a version to publish."
+            exit 1
+          fi
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::KRILL_PUBLISH_TOKEN secret is not set on bsautner/krill-oss. Add a fine-grained PAT scoped to bsautner/krill with Actions: read+write."
+            exit 1
+          fi
+          echo "Dispatching: gh workflow run 'Publish Krill-SDK Maven.yml' --repo bsautner/krill --ref main -f version=$version"
+          gh workflow run "Publish Krill-SDK Maven.yml" \
+            --repo bsautner/krill \
+            --ref main \
+            -f version="$version"
+          echo "::notice::Dispatched bsautner/krill publish for krill-sdk@$version. Watch: https://github.com/bsautner/krill/actions/workflows/Publish%20Krill-SDK%20Maven.yml"
