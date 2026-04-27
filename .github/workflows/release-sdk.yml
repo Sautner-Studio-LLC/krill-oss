@@ -67,7 +67,7 @@ jobs:
             echo "reason=manual workflow_dispatch (version=$manual)"     >> "$GITHUB_OUTPUT"
             echo "should_dispatch=true"                                  >> "$GITHUB_OUTPUT"
           elif [ "$new_version" = "${old_version:-}" ]; then
-            echo "reason=krill-sdk/build.gradle.kts touched but version unchanged ($new_version)" >> "$GITHUB_OUTPUT"
+            echo "reason=workflow triggered but version unchanged ($new_version)" >> "$GITHUB_OUTPUT"
             echo "should_dispatch=false"                                 >> "$GITHUB_OUTPUT"
           else
             echo "reason=version bumped: ${old_version:-<none>} → $new_version" >> "$GITHUB_OUTPUT"
