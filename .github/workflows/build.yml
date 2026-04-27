@@ -30,6 +30,8 @@ jobs:
       pi4j: ${{ steps.filter.outputs.pi4j }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - id: filter
         uses: dorny/paths-filter@v3
         with:
