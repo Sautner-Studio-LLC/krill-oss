@@ -256,11 +256,27 @@ gh issue comment <n> --repo bsautner/krill-oss \
   MCP under `krill-mcp/krill-mcp-service/src/test/`; pi4j under each
   module's `src/test/`. JUnit 5 (`useJUnitPlatform()`) on the
   JVM-only modules.
-- **Versioning:** routine bug-fix PRs **do not** bump module versions.
-  Releases bump them per each module's documented sync rules
-  (krill-mcp release: see `krill-mcp/CLAUDE.md` "Version sync — five
-  sites"; krill-sdk: `build.gradle.kts` `version` + the `libs.krill.sdk`
-  reference in `krill-mcp/gradle/libs.versions.toml`).
+- **Versioning:**
+  - **`krill-sdk`** — every PR that changes anything under `krill-sdk/**`
+    **must also bump the patch** in `krill-sdk/build.gradle.kts` (e.g.
+    `0.0.17` → `0.0.18`). CI (`.github/workflows/release-sdk.yml`)
+    detects the bump on push to `main` and dispatches the upstream
+    Maven publish workflow in `bsautner/krill` automatically — there is
+    no manual republish step. Skipping the bump silently leaves the fix
+    out of Maven Central; the build still passes, so be deliberate.
+    Dispatch requires the `KRILL_PUBLISH_TOKEN` repo secret (fine-grained
+    PAT scoped to `bsautner/krill` with `Actions: read+write`,
+    `Contents: read`); the workflow surfaces a clear error if it's
+    missing.
+  - **`krill-sdk` consumer pin** — `krill-mcp/gradle/libs.versions.toml`
+    has `krill-sdk = "x.y.z"`. Only bump it in a follow-up PR **after**
+    the new artifact is live on Maven Central. Pinning to a yet-unpublished
+    version breaks the krill-mcp build.
+  - **`krill-mcp`** — bug-fix PRs **do not** bump version. Releases
+    follow `krill-mcp/CLAUDE.md` "Version sync — five sites" and ship
+    the Debian package; treat that as a separate, deliberate flow.
+  - **`krill-pi4j`** — bug-fix PRs do not bump version. Releases are
+    coordinated with the upstream Pi4J Maven publish workflow.
 
 ## QA verification handoff
 
