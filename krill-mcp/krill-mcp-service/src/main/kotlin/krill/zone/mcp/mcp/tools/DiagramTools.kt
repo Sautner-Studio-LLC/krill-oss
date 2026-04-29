@@ -560,7 +560,7 @@ class ReseedServersTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
-private fun resolve(registry: KrillRegistry, arguments: JsonObject): KrillClient {
+private suspend fun resolve(registry: KrillRegistry, arguments: JsonObject): KrillClient {
     val selector = arguments["server"]?.jsonPrimitive?.contentOrNull
     registry.resolve(selector)?.let { return it }
     if (selector != null && KrillRegistry.looksLikeHost(selector)) {

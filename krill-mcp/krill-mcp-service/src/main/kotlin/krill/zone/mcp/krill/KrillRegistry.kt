@@ -215,18 +215,18 @@ class KrillRegistry(
      * 3. If the selector looks like a host, dial it and register it
      *    (lazy registration — see [tryRegisterByHost]).
      */
-    fun resolve(selector: String?): KrillClient? {
+    suspend fun resolve(selector: String?): KrillClient? {
         lookup(selector)?.let { return it }
         // Registry empty or the selector doesn't match — the startup probe
-        // likely lost its race. Try once more synchronously before giving up
-        // so a just-in-time retry can recover the seed without shell access.
+        // likely lost its race. Try once more before giving up so a
+        // just-in-time retry can recover the seed without shell access.
         if (byId.isEmpty() && config.seeds.isNotEmpty()) {
             log.info("Registry empty on resolve('{}'); re-probing seeds now.", selector)
-            runBlocking { probeAllSeeds(attempts = 1, backoffMs = 0) }
+            probeAllSeeds(attempts = 1, backoffMs = 0)
             lookup(selector)?.let { return it }
         }
         if (selector != null && looksLikeHost(selector)) {
-            return runBlocking { tryRegisterByHost(selector) }
+            return tryRegisterByHost(selector)
         }
         return null
     }
