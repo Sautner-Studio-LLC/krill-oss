@@ -310,11 +310,20 @@ If you see `Seed ... failed` N times without a matching `Registered Krill server
 
 ### Adding a new Krill server at runtime
 
-There is no `add_server` MCP tool. Adding a new server means editing `/etc/krill-mcp/config.json`'s `seeds` array and running either `reseed_servers` (if the new seed is reachable now) or `sudo systemctl restart krill-mcp`. `reseed_servers` is the no-shell path.
+There is no `add_server` MCP tool. Two ways to add one:
 
-### The `server` argument only resolves registered servers
+1. **Lazy registration (no shell):** pass the new host as the `server` selector on any tool call. If `<selector>` contains a `.` (e.g. `pi-krill.local`, `192.168.1.10`) or an explicit `:port`, krill-mcp dials `https://<selector>:<port>/health` with the swarm bearer; on success it registers the host and the tool call proceeds. Subsequent `list_servers` includes it. Unreachable hosts surface as `host unreachable: <selector>`. The registration lives only for the current `krill-mcp` process — restart loses it.
+2. **Permanent (shell):** edit `/etc/krill-mcp/config.json`'s `seeds` array and call `reseed_servers` (if the new seed is reachable now) or `sudo systemctl restart krill-mcp`. Use this when you want the host re-registered on every boot.
 
-`server: "id | host | host:port"` works only for servers already in the registry (seeded at startup). Passing a brand-new hostname does not register it — you'll get `"No Krill server matches '<selector>' (and no default is registered)."` Fix the seed list + restart.
+Lazy registration covers the no-shell case but doesn't survive a restart. For long-lived peers, pair it with a `seeds[]` edit when shell access is available.
+
+### The `server` argument: registered, lazy-registerable, or unknown
+
+`server: "<id|host|host:port>"` resolution order:
+
+1. **Match in the registry** (id, host, or host:port). Returns immediately.
+2. **Lazy registration** when the selector contains `.` or `:` — krill-mcp dials `/health` once with the swarm bearer and registers the host on success. Bare names without a dot (`pi-krill`, `f47ac10b-...`) are skipped to avoid pointless DNS lookups against UUID-shaped strings.
+3. **Failure modes:** `host unreachable: <selector>` when the lazy dial fails (DNS, port closed, bad bearer); `"No Krill server matches '<selector>' (and no default is registered)."` when the selector didn't look like a host at all (UUID typo, bare unknown name).
 
 ### Recovery: write didn't land
 

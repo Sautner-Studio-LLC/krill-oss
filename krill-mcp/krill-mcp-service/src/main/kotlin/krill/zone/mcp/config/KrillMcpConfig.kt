@@ -30,11 +30,15 @@ data class KrillMcpConfig(
 @Serializable
 data class KrillSeed(
     val host: String,
-    val port: Int = 8442,
+    val port: Int = DEFAULT_PORT,
     /** Override the bearer token for this seed only (rare — normally the cluster PIN covers everyone). */
     val bearerToken: String? = null,
 ) {
     fun baseUrl(): String = "https://$host:$port"
+
+    companion object {
+        const val DEFAULT_PORT = 8442
+    }
 }
 
 object KrillMcpConfigLoader {

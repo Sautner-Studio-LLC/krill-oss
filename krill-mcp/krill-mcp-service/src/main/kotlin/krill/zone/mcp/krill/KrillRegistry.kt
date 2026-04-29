@@ -10,13 +10,18 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Tracks known Krill servers. v1 is static: one KrillClient per seed in config.
+ * Tracks known Krill servers. The registry starts from `config.seeds[]` at
+ * boot, and grows lazily when a tool call references a host that wasn't in
+ * the seed config (see [tryRegisterByHost]).
  *
  * The seed's server id is resolved by hitting /health once on startup — this
  * double-checks that the bearer token works and gives us a stable identifier
  * for MCP tool calls ("server" parameter accepts either id or host).
  *
- * Peer auto-discovery from ServerMetaData is deliberately out of scope for v1.
+ * Transitive peer auto-discovery from `/health` is still out of scope: the
+ * krill server filters `KrillApp.Server` nodes out of its `/health` payload,
+ * so there's nothing to recurse on. Tracked upstream as bsautner/krill#178;
+ * once it lands, [bootstrap]/[reseed] can walk the swarm from one seed.
  */
 class KrillRegistry(
     private val config: KrillMcpConfig,
@@ -145,13 +150,71 @@ class KrillRegistry(
         return meta.getUrl()
     }
 
-    private companion object {
+    /**
+     * Try to dial [selector] (a host or `host:port`) and register it on success.
+     * Returns the registered client, or null if the selector doesn't look like a
+     * host, the host was unreachable, or `/health` rejected the swarm bearer.
+     *
+     * The lazy companion to [bootstrap]: an agent can hand a tool a
+     * `server: "pi-krill.local"` selector and the swarm picks it up on first
+     * use — no shell access on the krill-mcp host, no edits to
+     * `/etc/krill-mcp/config.json`, no `systemctl restart`. Closes the gap in
+     * bsautner/krill-oss#23 (Part B).
+     */
+    suspend fun tryRegisterByHost(selector: String): KrillClient? {
+        if (!looksLikeHost(selector)) return null
+        val (host, port) = parseHostPort(selector)
+        val seed = KrillSeed(host = host, port = port)
+        val label = "${seed.host}:${seed.port}"
+        // Already known under any synonym (id or host:port)? Just hand it
+        // back so a follow-up tool call with the same hostname doesn't reprobe.
+        byHost[label]?.let { return it }
+        val client = probe(seed) ?: return null
+        byId[client.serverId] = client
+        byHost[label] = client
+        log.info("Lazy-registered Krill server: id={} host={}", client.serverId, label)
+        return client
+    }
+
+    private fun parseHostPort(selector: String): Pair<String, Int> {
+        val colonIdx = selector.lastIndexOf(':')
+        if (colonIdx < 0) return selector to KrillSeed.DEFAULT_PORT
+        val host = selector.substring(0, colonIdx)
+        val port = selector.substring(colonIdx + 1).toIntOrNull() ?: KrillSeed.DEFAULT_PORT
+        return host to port
+    }
+
+    companion object {
         private val healthMetaJson = Json { ignoreUnknownKeys = true }
+
+        /**
+         * Does [selector] look like a host (or host:port) we should try to dial?
+         *
+         * Conservative on purpose: requires a literal `.` (FQDN / `.local` /
+         * dotted-quad IP) or `:` (explicit port). Bare names without a dot
+         * collide with the UUID space — a UUID like
+         * `f47ac10b-58cc-4372-a567-0e02b2c3d479` matches `^[a-z0-9-]+$` too,
+         * and probing it would burn the connect timeout for nothing. Real
+         * peers in this swarm always carry a `.local` suffix anyway.
+         */
+        fun looksLikeHost(selector: String?): Boolean {
+            if (selector.isNullOrBlank()) return false
+            return '.' in selector || ':' in selector
+        }
     }
 
     fun all(): List<KrillClient> = byId.values.toList()
 
-    /** Resolve "server" tool param — accepts server id, "host", or "host:port". */
+    /**
+     * Resolve "server" tool param — accepts server id, "host", or "host:port".
+     *
+     * Resolution order:
+     * 1. Exact match in the registry (id or host:port).
+     * 2. If the registry is empty and seeds are configured, re-probe seeds
+     *    once (recovers from a startup race without shell access).
+     * 3. If the selector looks like a host, dial it and register it
+     *    (lazy registration — see [tryRegisterByHost]).
+     */
     fun resolve(selector: String?): KrillClient? {
         lookup(selector)?.let { return it }
         // Registry empty or the selector doesn't match — the startup probe
@@ -161,6 +224,9 @@ class KrillRegistry(
             log.info("Registry empty on resolve('{}'); re-probing seeds now.", selector)
             runBlocking { probeAllSeeds(attempts = 1, backoffMs = 0) }
             lookup(selector)?.let { return it }
+        }
+        if (selector != null && looksLikeHost(selector)) {
+            return runBlocking { tryRegisterByHost(selector) }
         }
         return null
     }

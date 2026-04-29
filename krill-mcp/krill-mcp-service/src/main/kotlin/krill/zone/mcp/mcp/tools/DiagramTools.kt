@@ -562,8 +562,11 @@ class ReseedServersTool(private val registry: KrillRegistry) : Tool {
 
 private fun resolve(registry: KrillRegistry, arguments: JsonObject): KrillClient {
     val selector = arguments["server"]?.jsonPrimitive?.contentOrNull
-    return registry.resolve(selector)
-        ?: error("No Krill server matches '$selector' (and no default is registered). Try calling reseed_servers — the registry may have missed the initial probe.")
+    registry.resolve(selector)?.let { return it }
+    if (selector != null && KrillRegistry.looksLikeHost(selector)) {
+        error("host unreachable: $selector — krill-mcp tried to lazy-register but /health did not respond (check DNS, port 8442, and the swarm bearer).")
+    }
+    error("No Krill server matches '$selector' (and no default is registered). Try calling reseed_servers — the registry may have missed the initial probe.")
 }
 
 /** Slugify a human-readable name into `lowercase_snake_case.svg`. */
