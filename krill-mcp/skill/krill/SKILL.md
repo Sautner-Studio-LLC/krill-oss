@@ -89,6 +89,37 @@ Read these on demand — they're not auto-loaded:
 5. Overlay type-specific fields via the `meta` argument — e.g. `{"dataType": "DOUBLE", "unit": "°C", "precision": 1}` for a temperature DataPoint, `{"value": 100.0}` for a HighThreshold. Unknown keys are silently dropped by the server (`ignoreUnknownKeys = true`), so extras are safe but typos go unnoticed — stick to the field names in the MetaData classes.
 6. **Verify with `get_node`** after each create. The `create_node` response echoes what was sent, not what persisted; a round-trip read is the only ground truth. The server also **fills in defaults for meta fields you omitted** (e.g. a DataPoint you posted without a `snapshot` comes back with `snapshot: {timestamp: 0, value: ""}`) — not an error, but it's why the GET is authoritative.
 
+### For "natural-language commands → action" (voice or chat-mode requests)
+
+When the user gives an action-shaped request that names a thing in plain language — *"turn on the Vivarium mister"*, *"toggle the porch lamp"*, *"log a temperature reading of 72"* — the goal is to converge in 1–2 round-trips when the swarm is unambiguous and short-circuit to a single confirmation question when it isn't. Voice flows have no inline diff and no rendered tool-call to read; the user said *"turn it on"* and either gets the action or one follow-up question.
+
+1. **Resolve the target.** Call `find_node(query, type?)` once with the user's phrase (e.g. `query: "vivarium mister", type: "Pin"`). It iterates every registered server and returns ranked `(serverId, nodeId)` candidates. Decision rule:
+   - Top score `>= 0.9` and clearly above the runner-up (gap `>~ 0.1`) → fire on it.
+   - Two or more candidates within `~0.1` of each other → **ask the user which one**, by server + displayName, never by UUID. Voice example: *"I see two — the Vivarium mister on `pi-krill.local` and the test mister on `pi-krill-05.local`. Which one?"*
+   - Empty result → tell the user the phrase didn't match anything in the swarm and stop. Don't speculate-substitute.
+
+   If `find_node` is not available in the session, fall back to: `list_servers` → for each server, `list_nodes type=<inferred>` → match `displayName` against the user's phrase tokens. Apply the same disambiguation rule.
+
+2. **Resolve the action.** "Turn on" / "turn off" / "toggle" maps to firing a `KrillApp.Executor.LogicGate` whose `meta.target` is the named Pin or DataPoint. From the resolved target, look up the controlling gate: walk `meta.parent` upward, or `list_nodes type=LogicGate` on the same server and pick the one whose `meta.target` references the resolved node id. "Log a value" / "record" maps to `record_snapshot` directly on the named DataPoint (covered in the next workflow). "Read" / "what is" maps to `get_node` or `read_series`.
+
+3. **Confirm — based on the *target's* side-effect level, not the executor's.** A LogicGate is `llmSideEffectLevel: "medium"`, but the Pin it writes to is `"high"` — a mister, lamp, valve, or relay is the real-world side effect. Look at the **target** node's catalog `llmSideEffectLevel` (cross-reference `references/node-types/INDEX.md`):
+   - **`high`** (Pins, OutgoingWebHook, Lambda, Email/SMS, Camera capture) → **ALWAYS confirm in one short voice-friendly turn.** Include server name + current state so the user can hear what's about to change. Voice example: *"Toggle the Vivarium mister on `pi-krill.local` now? It's currently off."* Wait for an affirmative response before step 4. Do not fire on an ambiguous response — re-ask.
+   - **`medium`** → confirm only if step 1 returned multiple close candidates, or if the user's phrase was indirect (*"do the mister thing"* vs *"toggle the mister"*). Otherwise fire directly.
+   - **`low`** → fire directly, no confirmation.
+
+4. **Fire.** Prefer `execute_node` when available (tracked as `bsautner/krill-oss#24`; not shipped at v0.0.8). Until it lands, the only way to fire a gate from MCP is to **`record_snapshot` to the gate's `meta.sources[0].nodeId`** with a value that flips its evaluation (DOUBLE: `1.0` / `0.0`; DIGITAL: `1` / `0`; the gate then writes the result to its target Pin). Constraints when using the snapshot fallback:
+   - Only after step 3's confirmation has been received.
+   - Warn the user **once per session** that this writes a synthetic reading into the source DataPoint's history: *"Heads up — until `execute_node` ships, firing the gate writes a synthetic snapshot into the source DataPoint. The mister will toggle but you'll see an extra reading on the upstream sensor."*
+   - If the user says they want to *execute* (not log), and only the snapshot path is available, surface the trade-off and let them decide. Don't silently pollute history.
+
+5. **Report.** After a 1–2 second delay (the gate evaluates async), `get_node` on `meta.targets[0].nodeId` (or the resolved target Pin) and speak the new state — *"Mister on."* / *"Lamp off."* — short enough to fit voice. If the read shows the state didn't change, say so and stop; don't loop.
+
+**Failure modes to avoid in this flow:**
+- Silently picking from multiple candidates when scores are close. The whole point of the confirmation budget is to spend one turn on disambiguation rather than fire wrong.
+- Firing a `high`-side-effect action without confirmation, even if the phrase is unambiguous. *"Turn on the mister"* is not consent to a specific server's mister.
+- Falling back to `record_snapshot` when the user explicitly asked to *execute* something — the snapshot pattern is a stopgap for the missing `execute_node` tool, not a voice answer. Always surface the trade-off.
+- Multi-turn breadth-first exploration (`list_servers` → walk every server → ask the user to clarify the intent). Voice has no budget for it; resolve in one `find_node` call or escalate to a single confirmation question.
+
 ### For "record values to a DataPoint" (single value or a backfill series)
 1. Get the target DataPoint id (via `list_nodes type=DataPoint` or straight from the user).
 2. Call `record_snapshot` with either `{dataPointId, value, timestamp?}` for a single reading or `{dataPointId, snapshots: [{timestamp, value}, ...]}` for a series. `timestamp` is epoch **milliseconds**. **If MCP tools aren't in-session**, snapshot writes have **no Krill REST endpoint** — don't probe `/data`, `/snapshot`, `/data/record`, etc. on `:8442` (they 404). Use the **Direct-to-MCP JSON-RPC fallback** in `references/mcp-tools.md` to reach `record_snapshot` through `http://<host>:50052/mcp`.
