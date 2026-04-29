@@ -73,6 +73,41 @@ Force `krill-mcp` to re-probe every configured seed in `/etc/krill-mcp/config.js
 ```
 Response: `{"before": N, "after": M, "servers": [{"id": "...", "baseUrl": "...", "publicBaseUrl": "..."}, ...]}`
 
+### `find_node`
+Resolve a free-text phrase from the user (e.g. *"the Vivarium mister"*, *"basement humidity"*) to one or more concrete `(serverId, nodeId)` candidates. Iterates **every registered server** by default, scores each node against the query by name + parent path (with type as a tiebreaker), and returns the top-k ranked candidates with normalized scores in `[0, 1]`. Use this **before** `get_node` when the user names a node by display name — it replaces the multi-round-trip ritual of `list_nodes` → substring scan → `get_node`. An empty result is returned as `[]`, not an error.
+
+Parameters:
+- `query` — required. The free-text phrase. Whitespace-tokenized; case-insensitive.
+- `type` — optional case-insensitive substring of the type FQN (e.g. `"Pin"`, `"LogicGate"`, `"DataPoint"`).
+- `scope` — `"swarm"` (default; iterates `registry.all()`) or `"server"` (restricts to one server, paired with `server`).
+- `server` — used only with `scope: "server"` — Krill server id, host, or `host:port`.
+- `limit` — max candidates returned. Default 5, capped at 25.
+
+```json
+{"name": "find_node", "arguments": {"query": "vivarium mister", "type": "Pin", "limit": 3}}
+```
+Response shape:
+```json
+{
+  "query": "vivarium mister",
+  "scope": "swarm",
+  "count": 1,
+  "candidates": [
+    {
+      "serverId": "<uuid>",
+      "nodeId": "<uuid>",
+      "type": "KrillApp.Server.Pin",
+      "displayName": "Vivarium Mister",
+      "path": "Vivarium > Vivarium Mister",
+      "score": 1.0,
+      "summary": "KrillApp.Server.Pin under Vivarium"
+    }
+  ]
+}
+```
+
+When the top score is `>=` 0.9 and clearly above the runner-up, fire on it. When two top candidates are within ~0.1 of each other, surface them to the user and ask which one before mutating state. With one seed registered today (until `bsautner/krill-oss#23` lands), `scope: "swarm"` only sees that one server's nodes — `find_node` will rank what it can reach, not what it can't.
+
 ## Project + Diagram write tools (v0.0.8)
 
 Specialized Project and Diagram write tools — prefer these over the generic `create_node` for those two types, because `create_diagram` does the SVG file upload + `meta.source` URL construction that `create_node` doesn't.
