@@ -37,6 +37,7 @@ fun main() {
         GetNodeTool(registry),
         ReadSeriesTool(registry),
         ServerHealthTool(registry),
+        ExecuteNodeTool(registry),
         ReseedServersTool(registry),
         ListProjectsTool(registry),
         CreateProjectTool(registry),

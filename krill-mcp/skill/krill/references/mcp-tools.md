@@ -210,6 +210,30 @@ Response: `{"server": "<id>", "nodeId": "<new-uuid>", "type": "KrillApp.DataPoin
 3. `create_node type=KrillApp.Executor.OutgoingWebHook parent=<tId> name="Page me" meta={url:"https://...",method:"POST"}`.
 4. `get_node` each new id to confirm persistence — the create response echoes what was sent, not what the server stored.
 
+### `execute_node`
+
+Manually fire a Trigger or Executor once — equivalent to tapping the manual-execute button in the Krill app. Use when the user wants to run a `KrillApp.Executor.LogicGate`, `KrillApp.Executor.Lambda`, `KrillApp.Trigger.Button`, etc., **right now** without waiting for the trigger chain to drive it.
+
+Wire shape: the tool fetches the existing node body, sets `state="EXECUTED"`, refreshes `timestamp`, and POSTs it back to `/node/{id}`. The server's `update()` runs `node.type.emit(node)` on every upsert, so the per-type processor (`ServerExecutorProcessor`, `LogicGateProcessor`, etc.) reacts to `EXECUTED` and runs the action — no new server endpoint needed. The Compose client uses the same wire pattern when its UI fires a node.
+
+```json
+{"name": "execute_node", "arguments": {"server": "<optional>", "id": "<node-uuid>"}}
+```
+
+Response: `{"server": "<id>", "nodeId": "<id>", "type": "krill.zone.shared.KrillApp.Executor.LogicGate", "priorState": "<NONE|EXECUTED|...>", "requestedState": "EXECUTED", "firedAt": <epoch-ms>, "node": <full post-fire node>, "note": "..."}`
+
+**When to reach for this vs. `record_snapshot`:**
+- `execute_node` is the right primitive for *"fire this gate / run this lambda once"*. It runs the action directly without polluting any DataPoint's history.
+- `record_snapshot` is the right primitive for *"observe a new sensor reading"*. The server-side trigger evaluation chain runs as a side effect of the value landing.
+
+If the chain you care about happens to read upstream from a DataPoint, you *could* use `record_snapshot` to drive it indirectly — but that adds a synthetic sample to the time-series store and won't work at all for executors whose source is a derived/computed value with no DataPoint to write to. Default to `execute_node` for manual fire and reserve `record_snapshot` for actual readings.
+
+**Type filter — what's NOT firable:**
+- `KrillApp.Server`, `KrillApp.Client`, `KrillApp.Client.About`, `KrillApp.Server.Peer`, `KrillApp.Server.Backup`. These are containers/infrastructure; firing them is a no-op or semantically wrong. The tool returns `ERROR: Node type ... does not support manual execution.` and refuses to POST.
+- Everything else is allowed. Block-list, not allow-list — new node types ship without a coordinated MCP release, so unknown FQNs default to firable.
+
+**Verifying the fire took:** the POST returns `202` before the per-type processor runs. The `node` field in the response is the post-fire GET, but actions with downstream effects (a LogicGate flipping a Pin's state, an Executor recording a snapshot on its target) take ~1s to settle. For those, follow up with `get_node` on the *target* (`meta.targets[0].nodeId` for a LogicGate / Trigger) — the target's `state` and `meta.snapshot` are where the visible change lands.
+
 ### `record_snapshot`
 Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot becomes a new point in the time-series store and runs through the DataPoint's child Filters + Triggers.
 
@@ -423,6 +447,7 @@ The Krill server's REST API on `:8442` is **read + node-upsert + diagram-file** 
 | Operation | Krill REST? | JSON-RPC fallback tool |
 |-----------|-------------|------------------------|
 | Record a DataPoint snapshot value | **No** — there is no `/data`, `/snapshot`, `/data/record`, `/data/snapshots` route | `record_snapshot` |
+| Manually fire a Trigger or Executor | Indirect — `POST /node/{id}` with the body's `state` set to `"EXECUTED"` (no dedicated `/execute` route). | `execute_node` |
 | Create a node of arbitrary type | Yes (`POST /node/{id}` with full body) | `create_node` (simpler — handles discriminators + defaults) |
 | Create a project / diagram / update diagram | Yes (`POST /node/{id}` + `PUT /project/{id}/diagram/{file}`) | `create_project` / `create_diagram` / `update_diagram` |
 | Re-seed the MCP registry | N/A (MCP-only concern) | `reseed_servers` |

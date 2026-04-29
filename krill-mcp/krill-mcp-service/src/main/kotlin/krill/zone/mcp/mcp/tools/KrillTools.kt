@@ -149,6 +149,117 @@ class ReadSeriesTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
+/**
+ * Manual fire-once primitive. Mirrors the Compose client's `nodeManager.execute(node)`
+ * call (see `ClientNodeManager.execute` in the upstream Krill repo) — which over the
+ * wire is just `POST /node/{id}` with the existing body and `state="EXECUTED"`.
+ *
+ * The Krill server's `update()` runs `node.type.emit(node)` on every upsert; the
+ * per-type processor (`ServerExecutorProcessor`, `LogicGateProcessor`, etc.) then
+ * reacts to `state == NodeState.EXECUTED` and runs the action. So this tool
+ * doesn't need a new server endpoint — it composes existing ones.
+ *
+ * Type filter: rejects pure-container / infrastructure types where firing is a
+ * no-op or semantically wrong (`KrillApp.Server`, `KrillApp.Client`, peer links,
+ * backup tasks). Anything else is allowed; the per-type processor decides what
+ * EXECUTED means for it (DataPoint propagates downstream, Trigger fires its
+ * children, Executor performs its action).
+ */
+class ExecuteNodeTool(private val registry: KrillRegistry) : Tool {
+    override val name = "execute_node"
+    override val description =
+        "Manually fire a Trigger or Executor node once — equivalent to tapping the manual-execute button " +
+            "in the Krill app. Use this for `KrillApp.Executor.LogicGate`, `KrillApp.Executor.Lambda`, " +
+            "`KrillApp.Trigger.Button`, etc., when you want to run the action immediately and don't want " +
+            "to synthesize an upstream DataPoint snapshot just to drive the chain. Posts the node body " +
+            "back with `state=EXECUTED`; the server's per-type processor reacts and runs the action " +
+            "asynchronously. Returns the post-fire node so you can verify without a separate `get_node`. " +
+            "Rejects pure-container / infrastructure types (`KrillApp.Server`, `KrillApp.Client`, " +
+            "peer / backup nodes) where manual fire is meaningless."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("server") {
+                put("type", "string")
+                put("description", "Krill server id, host, or host:port. Defaults to the first registered server.")
+            }
+            putJsonObject("id") {
+                put("type", "string")
+                put("description", "The id of the node to fire (UUID).")
+            }
+        }
+        putJsonArray("required") { add("id") }
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val client = resolve(registry, arguments)
+        val id = arguments["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: id")
+
+        val existing = runCatching { client.node(id) as? JsonObject }.getOrNull()
+            ?: error("Node $id not found on server ${client.serverId}.")
+        val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+            ?: error("Node $id has no type discriminator.")
+        if (!isFirable(typeFqn)) {
+            error(
+                "Node type $typeFqn does not support manual execution. Pure containers (Server, Client) and " +
+                    "infrastructure nodes (Peer, Backup) cannot be fired — mutate the appropriate child instead.",
+            )
+        }
+
+        val priorState = existing["state"]?.jsonPrimitive?.contentOrNull
+        val now = System.currentTimeMillis()
+        val updatedNode = JsonObject(
+            existing.toMutableMap().apply {
+                put("state", JsonPrimitive("EXECUTED"))
+                put("timestamp", JsonPrimitive(now))
+            },
+        )
+
+        runCatching { client.postNode(updatedNode) }.onFailure { ex ->
+            error("execution failed: ${ex.message ?: ex::class.simpleName ?: "unknown error"}")
+        }
+
+        // Round-trip read so the caller sees what the server actually persisted —
+        // matches the documented `create_node` / `update_diagram` discipline.
+        val postFire = runCatching { client.node(id) }.getOrNull()
+
+        return buildJsonObject {
+            put("server", client.serverId)
+            put("nodeId", id)
+            put("type", typeFqn)
+            if (priorState != null) put("priorState", priorState)
+            put("requestedState", "EXECUTED")
+            put("firedAt", now)
+            if (postFire != null) put("node", postFire)
+            put(
+                "note",
+                "POST returns 202; the per-type processor runs asynchronously. The node body above is the " +
+                    "post-fire GET — for actions with downstream effects (a LogicGate flipping a Pin, an " +
+                    "Executor recording a snapshot), allow ~1s before reading the affected target.",
+            )
+        }
+    }
+
+    companion object {
+        private val NON_FIRABLE_TYPE_FQNS = setOf(
+            "krill.zone.shared.KrillApp.Server",
+            "krill.zone.shared.KrillApp.Client",
+            "krill.zone.shared.KrillApp.Client.About",
+            "krill.zone.shared.KrillApp.Server.Peer",
+            "krill.zone.shared.KrillApp.Server.Backup",
+        )
+
+        /**
+         * Whether a node of the given fully-qualified `KrillApp.*` type can be
+         * manually fired. Block-list, not allow-list — the upstream catalog
+         * grows; defaulting unknown types to "firable" keeps the tool useful as
+         * new node types ship without coordinated MCP releases.
+         */
+        fun isFirable(typeFqn: String): Boolean = typeFqn !in NON_FIRABLE_TYPE_FQNS
+    }
+}
+
 class ServerHealthTool(private val registry: KrillRegistry) : Tool {
     override val name = "server_health"
     override val description = "Return the /health payload of a Krill server (server info + peer list)."
