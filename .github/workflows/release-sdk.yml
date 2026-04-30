@@ -2,7 +2,7 @@ name: release-sdk
 
 # Cross-repo automation for `com.krillforge:krill-sdk` Maven Central
 # releases. The actual publish workflow (Maven + Dokka + S3 + CloudFront)
-# lives in the private `bsautner/krill` repo because the signing /
+# lives in the private `Sautner-Studio-LLC/krill` repo because the signing /
 # Sonatype / AWS secrets live there. This workflow detects a krill-sdk
 # version bump on `main` and dispatches that upstream workflow with the
 # new version, so the publish pipeline doesn't need a manual button-press
@@ -106,4 +106,4 @@ jobs:
             --repo bsautner/krill \
             --ref main \
             -f version="$version"
-          echo "::notice::Dispatched bsautner/krill publish for krill-sdk@$version. Watch: https://github.com/bsautner/krill/actions/workflows/Publish%20Krill-SDK%20Maven.yml"
+          echo "::notice::Dispatched Sautner-Studio-LLC/krill publish for krill-sdk@$version. Watch: https://github.com/Sautner-Studio-LLC/krill/actions/workflows/Publish%20Krill-SDK%20Maven.yml"
