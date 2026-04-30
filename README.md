@@ -49,4 +49,4 @@ Krill is designed with privacy in mind. By default, it does not collect personal
 
 ---
 
-**Current version:** 1.0.839
+**Current version:** 1.0.890
