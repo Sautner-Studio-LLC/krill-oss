@@ -49,7 +49,7 @@ Response shape: `{"server": "<id>", "count": N, "nodes": [<full node tree, each 
 Each node's `type.type` is the dotted KrillApp type (e.g. `krill.zone.shared.KrillApp.DataPoint`) — strip the `krill.zone.shared.` prefix to look up that node type in `node-types/INDEX.md`.
 
 ### `get_node`
-Fetch a single node by id (UUID, or peer-prefixed `serverId:nodeId` for cross-server peers).
+Fetch a single node by id (bare UUID). **Peer-prefixed ids** of the form `serverId:nodeId` (the shape returned by `list_nodes type=Peer`) are **not supported** — krill-mcp v1 does not proxy node fetches across servers. The `Peer` entry returned by `list_nodes` is itself the full peer-node body, so you usually don't need a follow-up `get_node`. If you do want the local-side `KrillApp.Server` proxy for that peer, pass the bare UUID after the colon — but you'll get a `Server` node, not a `Peer`-typed entry.
 ```json
 {"name": "get_node", "arguments": {"server": "<optional>", "id": "<uuid>"}}
 ```
