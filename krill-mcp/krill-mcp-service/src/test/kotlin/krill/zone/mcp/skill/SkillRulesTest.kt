@@ -6,7 +6,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Regression test for issue bsautner/krill-oss#12.
+ * Regression test for issue Sautner-Studio-LLC/krill-oss#12.
  *
  * The skill's "build this tree" section used to declare a hard rule that
  * `KrillApp.DataPoint` must be parented by `KrillApp.Server` — `**Not a

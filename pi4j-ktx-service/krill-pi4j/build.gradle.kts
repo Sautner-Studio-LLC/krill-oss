@@ -85,7 +85,7 @@ mavenPublishing {
         description = "gRPC client library for the krill-pi4j hardware service. " +
             "Lets any JDK 21+ project control Raspberry Pi GPIO, PWM and I2C " +
             "via a local gRPC daemon without requiring JDK 25."
-        url         = "https://github.com/bsautner/krill-oss"
+        url         = "https://github.com/Sautner-Studio-LLC/krill-oss"
 
         licenses {
             license {
@@ -104,9 +104,9 @@ mavenPublishing {
         }
 
         scm {
-            url                 = "https://github.com/bsautner/krill-oss"
-            connection          = "scm:git:git://github.com/bsautner/krill-oss.git"
-            developerConnection = "scm:git:ssh://git@github.com/bsautner/krill-oss.git"
+            url                 = "https://github.com/Sautner-Studio-LLC/krill-oss"
+            connection          = "scm:git:git://github.com/Sautner-Studio-LLC/krill-oss.git"
+            developerConnection = "scm:git:ssh://git@github.com/Sautner-Studio-LLC/krill-oss.git"
         }
     }
 }

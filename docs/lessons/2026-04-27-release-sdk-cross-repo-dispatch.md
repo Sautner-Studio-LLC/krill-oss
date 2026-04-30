@@ -1,6 +1,6 @@
 # krill-sdk releases needed manual cross-repo dispatch
 
-**Issue:** [krill-oss#17](https://github.com/bsautner/krill-oss/issues/17)
+**Issue:** [krill-oss#17](https://github.com/Sautner-Studio-LLC/krill-oss/issues/17)
 **Root cause category:** CI/CD friction — split source-of-truth and
 publish pipeline across two repos with no automatic handoff
 **Module:** `krill-sdk` (build), repo plumbing (CI)
@@ -8,10 +8,10 @@ publish pipeline across two repos with no automatic handoff
 ## What happened
 
 `krill-sdk` source lives in this repo, but the Maven Central publish
-workflow lives in the **private** `bsautner/krill` repo (because the
+workflow lives in the **private** `Sautner-Studio-LLC/krill` repo (because the
 Sonatype / GPG / AWS / CloudFront secrets live there). A merge to
 `krill-oss/main` that touched `krill-sdk/` produced no published
-artifact until someone manually opened `bsautner/krill`'s Actions tab,
+artifact until someone manually opened `Sautner-Studio-LLC/krill`'s Actions tab,
 clicked **Run workflow** on `Publish Krill-SDK Maven.yml`, and typed
 the new version. QA #156 / krill-oss #14 sat for ~5 hours after merge
 with no consumer-visible artifact, surfacing as krill-oss #17 from the
@@ -39,11 +39,11 @@ Two contributing factors:
   triggers on push to `main` when `krill-sdk/build.gradle.kts` changes,
   detects whether the version line actually moved (vs. unrelated edits
   to that file), and calls
-  `gh workflow run "Publish Krill-SDK Maven.yml" --repo bsautner/krill`
+  `gh workflow run "Publish Krill-SDK Maven.yml" --repo Sautner-Studio-LLC/krill`
   with the new version. Manual `workflow_dispatch` trigger is preserved
   for republishes after a half-failed upstream run.
 - **Token plumbing.** Dispatch uses a `KRILL_PUBLISH_TOKEN` repo secret
-  (fine-grained PAT, scoped to `bsautner/krill` with `Actions:
+  (fine-grained PAT, scoped to `Sautner-Studio-LLC/krill` with `Actions:
   read+write`, `Contents: read`). The workflow checks for the token
   and surfaces an actionable error if it's missing — rather than
   silently 401-ing.
