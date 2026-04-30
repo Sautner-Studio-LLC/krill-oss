@@ -54,7 +54,7 @@ jobs:
     name: krill-sdk · check
     needs: changes
     if: ${{ needs.changes.outputs.sdk == 'true' }}
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: krill-sdk
@@ -93,7 +93,7 @@ jobs:
     name: krill-pi4j · build
     needs: changes
     if: ${{ needs.changes.outputs.pi4j == 'true' }}
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: pi4j-ktx-service
