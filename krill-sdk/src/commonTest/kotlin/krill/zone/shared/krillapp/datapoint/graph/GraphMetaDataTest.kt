@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 /**
- * Regression tests for issue bsautner/krill-oss#13.
+ * Regression tests for issue Sautner-Studio-LLC/krill-oss#13.
  *
  * The previous `GraphMetaData(name = "Data Graph")` default produced
  * indistinguishable Graph siblings under different parent DataPoints; the
