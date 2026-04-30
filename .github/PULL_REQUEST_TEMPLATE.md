@@ -1,5 +1,5 @@
 <!--
-PR template for bsautner/krill-oss. The dev agent's CLAUDE.md mandates
+PR template for Sautner-Studio-LLC/krill-oss. The dev agent's CLAUDE.md mandates
 this shape — keep all four sections, even if a section is one line.
 
 `Closes #<n>` is mandatory. CI rejects PRs without a lesson entry under
@@ -12,11 +12,11 @@ this shape — keep all four sections, even if a section is one line.
 
 ## Approach
 
-<!-- The how. Bullet the file-level changes; pick option-vs-option if you considered alternatives. Include any cross-repo escalation (filed bsautner/krill#<m>?). -->
+<!-- The how. Bullet the file-level changes; pick option-vs-option if you considered alternatives. Include any cross-repo escalation (filed Sautner-Studio-LLC/krill#<m>?). -->
 
 ## Introducing commit
 
-<!-- `git log -S '<symbol>'` result that introduced the bug, plus a one-line summary. If genuinely cannot find one (e.g. predates this repo's history), say "predates split from bsautner/krill" and link the QA issue's evidence. -->
+<!-- `git log -S '<symbol>'` result that introduced the bug, plus a one-line summary. If genuinely cannot find one (e.g. predates this repo's history), say "predates split from Sautner-Studio-LLC/krill" and link the QA issue's evidence. -->
 
 ## Test plan
 

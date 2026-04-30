@@ -60,6 +60,6 @@ body:
     id: cross_repo
     attributes:
       label: Upstream coordination required?
-      description: If this work depends on or coordinates with `bsautner/krill`, name the upstream issue / PR / module so the dev can sequence it.
+      description: If this work depends on or coordinates with `Sautner-Studio-LLC/krill`, name the upstream issue / PR / module so the dev can sequence it.
     validations:
       required: false

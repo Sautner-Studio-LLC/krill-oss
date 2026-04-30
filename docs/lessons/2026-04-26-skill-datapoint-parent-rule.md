@@ -1,6 +1,6 @@
 # Skill rule contradicted what the Krill server accepts
 
-**Issue:** [krill-oss#12](https://github.com/bsautner/krill-oss/issues/12)
+**Issue:** [krill-oss#12](https://github.com/Sautner-Studio-LLC/krill-oss/issues/12)
 **Root cause category:** Documentation drift — absolute rule that doesn't
 reflect runtime behaviour
 **Module:** `krill-mcp` companion skill (`skill/krill/SKILL.md`)

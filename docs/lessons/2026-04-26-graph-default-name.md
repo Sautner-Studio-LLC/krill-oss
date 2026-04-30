@@ -1,6 +1,6 @@
 # Graph default name collided across siblings
 
-**Issue:** [krill-oss#13](https://github.com/bsautner/krill-oss/issues/13)
+**Issue:** [krill-oss#13](https://github.com/Sautner-Studio-LLC/krill-oss/issues/13)
 **Root cause category:** API design — colliding default value
 **Module:** `krill-sdk`, `krill-mcp`
 

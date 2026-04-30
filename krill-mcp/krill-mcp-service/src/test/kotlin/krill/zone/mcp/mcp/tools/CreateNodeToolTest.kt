@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * Regression tests for issue bsautner/krill-oss#13.
+ * Regression tests for issue Sautner-Studio-LLC/krill-oss#13.
  *
  * `create_node` must inject a parent-derived display name when creating a
  * `KrillApp.DataPoint.Graph` and the caller did not supply one — otherwise
