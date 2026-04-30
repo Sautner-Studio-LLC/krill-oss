@@ -81,7 +81,7 @@ dokka {
         skipDeprecated.set(false)
         sourceLink {
             localDirectory.set(projectDir.resolve("src"))
-            remoteUrl("https://github.com/bsautner/krill-oss/tree/main/krill-sdk/src")
+            remoteUrl("https://github.com/Sautner-Studio-LLC/krill-oss/tree/main/krill-sdk/src")
             remoteLineSuffix.set("#L")
         }
     }
@@ -112,7 +112,7 @@ mavenPublishing {
         name        = "Krill SDK"
         description = "Shared Kotlin Multiplatform client SDK for the Krill home-automation swarm. " +
             "Provides common data models and utilities for building integrations against a Krill server."
-        url         = "https://github.com/bsautner/krill-oss"
+        url         = "https://github.com/Sautner-Studio-LLC/krill-oss"
 
         licenses {
             license {
@@ -131,9 +131,9 @@ mavenPublishing {
         }
 
         scm {
-            url                 = "https://github.com/bsautner/krill-oss"
-            connection          = "scm:git:git://github.com/bsautner/krill-oss.git"
-            developerConnection = "scm:git:ssh://git@github.com/bsautner/krill-oss.git"
+            url                 = "https://github.com/Sautner-Studio-LLC/krill-oss"
+            connection          = "scm:git:git://github.com/Sautner-Studio-LLC/krill-oss.git"
+            developerConnection = "scm:git:ssh://git@github.com/Sautner-Studio-LLC/krill-oss.git"
         }
     }
 }
