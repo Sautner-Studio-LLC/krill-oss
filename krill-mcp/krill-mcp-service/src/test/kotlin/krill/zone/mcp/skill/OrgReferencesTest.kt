@@ -80,8 +80,7 @@ class OrgReferencesTest {
         // Files whose old-org slugs require a follow-up PR Ben pushes
         // himself: the krill-blue-bot PAT lacks `workflow` scope, so
         // GitHub's webhook rejects any push that touches these paths.
-        // Tracked in the issue linked from the PR for #38; remove from
-        // this set once that PR lands.
+        // Tracked in #43; remove from this set once that PR lands.
         val PENDING_PATHS = setOf(
             ".github/workflows/release-sdk.yml",
         )
