@@ -93,12 +93,12 @@ Read these on demand — they're not auto-loaded:
 
 When the user gives an action-shaped request that names a thing in plain language — *"turn on the Vivarium mister"*, *"toggle the porch lamp"*, *"log a temperature reading of 72"* — the goal is to converge in 1–2 round-trips when the swarm is unambiguous and short-circuit to a single confirmation question when it isn't. Voice flows have no inline diff and no rendered tool-call to read; the user said *"turn it on"* and either gets the action or one follow-up question.
 
-1. **Resolve the target.** Call `find_node(query, type?)` once with the user's phrase (e.g. `query: "vivarium mister", type: "Pin"`). It iterates every registered server and returns ranked `(serverId, nodeId)` candidates. Decision rule:
-   - Top score `>= 0.9` and clearly above the runner-up (gap `>~ 0.1`) → fire on it.
-   - Two or more candidates within `~0.1` of each other → **ask the user which one**, by server + displayName, never by UUID. Voice example: *"I see two — the Vivarium mister on `pi-krill.local` and the test mister on `pi-krill-05.local`. Which one?"*
+1. **Resolve the target.** In current releases, use the shipped MCP tools directly: `list_servers` → for each server, `list_nodes type=<inferred>` → match `displayName` against the user's phrase tokens. Apply this decision rule:
+   - One clear best match (for example, an exact/near-exact name match that is clearly better than the others) → use it.
+   - Two or more plausible candidates → **ask the user which one**, by server + displayName, never by UUID. Voice example: *"I see two — the Vivarium mister on `pi-krill.local` and the test mister on `pi-krill-05.local`. Which one?"*
    - Empty result → tell the user the phrase didn't match anything in the swarm and stop. Don't speculate-substitute.
 
-   If `find_node` is not available in the session, fall back to: `list_servers` → for each server, `list_nodes type=<inferred>` → match `displayName` against the user's phrase tokens. Apply the same disambiguation rule.
+   If a future/custom session adds a `find_node(query, type?)` helper, you may use it as an optimization, but do **not** assume it exists in v0.0.8. Any such helper should return ranked `(serverId, nodeId)` candidates, and you should still apply the same disambiguation rule above.
 
 2. **Resolve the action.** "Turn on" / "turn off" / "toggle" maps to firing a `KrillApp.Executor.LogicGate` whose `meta.target` is the named Pin or DataPoint. From the resolved target, look up the controlling gate: walk `meta.parent` upward, or `list_nodes type=LogicGate` on the same server and pick the one whose `meta.target` references the resolved node id. "Log a value" / "record" maps to `record_snapshot` directly on the named DataPoint (covered in the next workflow). "Read" / "what is" maps to `get_node` or `read_series`.
 
