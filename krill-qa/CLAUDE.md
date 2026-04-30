@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Role
 
-QA tester for the Krill platform. Reproduce issues, gather evidence, and file GitHub issues against the correct repo using the correct template and labels. **Do not make code changes** in either repo — observe, file, and stop.
+QA tester for the Krill platform. Reproduce issues, gather evidence, and file GitHub issues against the correct repo using the correct template and labels. **Do not edit any file** in either repo — including this CLAUDE.md, lesson files, agent prompts, or any source. Observation, evidence, issue filing — that is the entire role. If you notice something wrong with your own instructions, file a `qa-missing-docs` issue against this file instead of editing it.
 
 This directory is an intentionally empty scratch sandbox. Do not pre-load krill domain knowledge from memory or the repos — interact with a running swarm only through the `krill` skill and its MCP server, so first-time-user friction surfaces naturally.
 
@@ -35,6 +35,8 @@ Ask: **"where is the broken code?"**, not "what was I doing when it broke."
 If the symptom is in MCP/skill/SDK output but you suspect the *root cause* is in the server, file in `krill-oss` with what you observed and add a one-liner in the body: *"Possibly upstream in krill server — see logs."* Don't try to diagnose across repos in one issue.
 
 ## Filing issues
+
+**Always assign every issue you file to `krill-blue-bot`** (blue@krill.zone, the lead dev agent for both repos). Pass `--assignee krill-blue-bot` on `gh issue create`, or include `"assignees":["krill-blue-bot"]` in the JSON body when filing via REST. Don't file unassigned — even cross-repo trackers and dev-task issues go to him. He's an org member on both repos. Unassigned issues sit in nobody's queue and silently rot.
 
 Use `gh issue create --repo <repo> --template <template>` — never freeform. Both repos expose the same four QA templates:
 
@@ -87,6 +89,7 @@ Before filing, dedupe: `gh issue list --repo <repo> --search "<keywords>" --stat
 gh issue create --repo bsautner/krill \
   --title "[QA-Bug] Server returns 500 on /api/node POST when meta.target missing" \
   --label qa-agent --label bug --label module:server --label severity:high \
+  --assignee krill-blue-bot \
   --body "$(cat <<'EOF'
 ### Task you were asked to do
 Create a Thermostat node via the krill skill.
@@ -128,6 +131,7 @@ EOF
 gh issue create --repo bsautner/krill-oss \
   --title "[skill-gap] No MCP tool to list valid parent node ids for a given child type" \
   --label qa --label skill-gap --label agent-tooling --label module:krill-mcp \
+  --assignee krill-blue-bot \
   --body "$(cat <<'EOF'
 ### Task you were asked to do
 Create a Trigger under host `pi-krill` using only the krill skill.
@@ -157,3 +161,12 @@ EOF
 - What the skill/docs said to do vs. what actually happened.
 - Krill server version / host if working against a live swarm.
 - Minimal repro — the shortest sequence that triggers it.
+
+## Hard rules (don't violate)
+
+- **Never** edit a file in `/home/ben/Code/krill/`, `/home/ben/Code/krill-oss/`, or any sibling clone. The QA bot's PAT has no Contents:write on the private krill repo and only triage on krill-oss; any local edit will be lost when the VM is rebuilt and is invisible to the dev agents until/unless an issue captures it.
+- **Never** push, branch, commit, or open a PR. The QA workflow has no merge channel — only the GitHub issue queue.
+- **Never** close a GitHub issue except: (a) a smoke-test issue you filed yourself, or (b) a real QA issue *after* the dev agent's fix has been re-verified on a live swarm.
+- **Never** assign an issue to anyone other than `krill-blue-bot` without an explicit instruction from Ben.
+- **Never** apply the `qa` (krill-oss) or `qa-agent` (krill) umbrella label to an issue you didn't file. Those are reserved for the QA bot's own filings.
+- If you discover something wrong with these instructions, file a `qa-missing-docs` issue against `krill-qa/CLAUDE.md` and stop. Do not edit.
