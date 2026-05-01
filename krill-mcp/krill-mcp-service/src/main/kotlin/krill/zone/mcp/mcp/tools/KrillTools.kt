@@ -92,17 +92,37 @@ class GetNodeTool(private val registry: KrillRegistry) : Tool {
             putJsonObject("server") { put("type", "string") }
             putJsonObject("id") {
                 put("type", "string")
-                put("description", "The node id (UUID).")
+                put(
+                    "description",
+                    "The node id (bare UUID). Peer-prefixed ids of the form `serverId:nodeId` " +
+                        "(returned by `list_nodes type=Peer`) are not supported — krill-mcp v1 does " +
+                        "not proxy across servers. The Peer entry in `list_nodes` is itself the full " +
+                        "peer-node body; pass the bare UUID after the colon to inspect the local-side " +
+                        "Server proxy node.",
+                )
             }
         }
         putJsonArray("required") { add("id") }
     }
 
     override suspend fun execute(arguments: JsonObject): JsonElement {
-        val client = resolve(registry, arguments)
         val id = arguments["id"]?.jsonPrimitive?.contentOrNull
             ?: error("Missing required argument: id")
+        rejectPeerPrefixedId(id)
+        val client = resolve(registry, arguments)
         return client.node(id)
+    }
+
+    internal fun rejectPeerPrefixedId(id: String) {
+        if (':' !in id) return
+        val (serverPart, nodePart) = id.substringBefore(':') to id.substringAfter(':')
+        error(
+            "Peer-prefixed ids ('$serverPart:$nodePart') are not resolvable by get_node — " +
+                "krill-mcp v1 does not proxy node fetches across servers (krill-oss#49). " +
+                "The Peer entry returned by list_nodes type=Peer is already the full peer-node body; " +
+                "if you need to inspect the local-side Server proxy node for that peer, retry with " +
+                "id='$nodePart' alone (returns a KrillApp.Server, not a Peer-typed entry).",
+        )
     }
 }
 
