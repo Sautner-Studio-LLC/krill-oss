@@ -40,13 +40,15 @@ Returns every Krill server the local krill-mcp instance has registered. Use firs
 Response shape: `{"servers": [{"id": "<uuid>", "baseUrl": "https://host:port"}, ...]}`
 
 ### `list_nodes`
-Lists all nodes on a given server. Without `server`, defaults to the first registered server. Optional `type` substring filter (case-insensitive) — e.g. `"DataPoint"`, `"Trigger"`, `"Pin"`.
+Lists all nodes on a given server. Without `server`, defaults to the first registered server. Optional `type` filter — by default a case-insensitive **substring** match on the node's full FQN, so `"DataPoint"` matches both `KrillApp.DataPoint` *and* `KrillApp.DataPoint.Graph`. Pair with `typeExact: true` to suffix-match the FQN end-to-end — `type="DataPoint" typeExact=true` returns only `KrillApp.DataPoint` nodes (not `.Graph`/`.Filter`/etc. children). Accepts the bare leaf, the short `KrillApp.<X>` form, or the full FQN.
 ```json
-{"name": "list_nodes", "arguments": {"server": "<id|host|host:port>", "type": "DataPoint"}}
+{"name": "list_nodes", "arguments": {"server": "<id|host|host:port>", "type": "DataPoint", "typeExact": true}}
 ```
 Response shape: `{"server": "<id>", "count": N, "nodes": [<full node tree, each with id/parent/host/type/state/meta/timestamp>, ...]}`
 
 Each node's `type.type` is the dotted KrillApp type (e.g. `krill.zone.shared.KrillApp.DataPoint`) — strip the `krill.zone.shared.` prefix to look up that node type in `node-types/INDEX.md`.
+
+**Note on unknown args (krill-oss#51):** as of v0.0.9 (TBD), passing arguments not declared in the tool's `inputSchema` is rejected with `ERROR: Unknown argument(s) for list_nodes: <name>. Allowed: ...`. Prior to that, unknown args were silently dropped — a stale `parent: <id>` call returned the unfiltered tree.
 
 ### `get_node`
 Fetch a single node by id (bare UUID). **Peer-prefixed ids** of the form `serverId:nodeId` (the shape returned by `list_nodes type=Peer`) are **not supported** — krill-mcp v1 does not proxy node fetches across servers. The `Peer` entry returned by `list_nodes` is itself the full peer-node body, so you usually don't need a follow-up `get_node`. If you do want the local-side `KrillApp.Server` proxy for that peer, pass the bare UUID after the colon — but you'll get a `Server` node, not a `Peer`-typed entry.
@@ -213,8 +215,8 @@ Response: `{"server": "<id>", "nodeId": "<new-uuid>", "type": "KrillApp.DataPoin
 ### `record_snapshot`
 Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot becomes a new point in the time-series store and runs through the DataPoint's child Filters + Triggers.
 
-- Single value: `{"dataPointId": "<uuid>", "value": 42.5, "timestamp": 1776700000000}` (timestamp optional; defaults to now in ms).
-- Series: `{"dataPointId": "<uuid>", "snapshots": [{"timestamp": 1776700000000, "value": 22.1}, {"timestamp": 1776700060000, "value": 22.3}]}`. Required `timestamp` is epoch **milliseconds**.
+- Single value: `{"id": "<uuid>", "value": 42.5, "timestamp": 1776700000000}` (timestamp optional; defaults to now in ms).
+- Series: `{"id": "<uuid>", "snapshots": [{"timestamp": 1776700000000, "value": 22.1}, {"timestamp": 1776700060000, "value": 22.3}]}`. Required `timestamp` is epoch **milliseconds**.
 - `value` is coerced to string on the wire. **Client-side validation mirrors the server** — if any snapshot fails, **nothing is posted**:
   - TEXT → non-empty string
   - JSON → non-empty string
@@ -251,7 +253,7 @@ Server-side validation is just `value.toLong()`, so any parseable Long is accept
 {
   "name": "record_snapshot",
   "arguments": {
-    "dataPointId": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
+    "id": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
     "snapshots": [
       {"timestamp": 1776700000000, "value": 22.1},
       {"timestamp": 1776700060000, "value": 22.3},
@@ -260,7 +262,7 @@ Server-side validation is just `value.toLong()`, so any parseable Long is accept
   }
 }
 ```
-Response: `{"server": "<id>", "dataPointId": "<id>", "dataType": "DOUBLE", "submitted": 3, "snapshots": [{"timestamp": ..., "value": "..."}], "note": "..."}`
+Response: `{"server": "<id>", "id": "<id>", "dataType": "DOUBLE", "submitted": 3, "snapshots": [{"timestamp": ..., "value": "..."}], "note": "..."}`
 
 **Async ingest caveat.** Every POST returns `202 Accepted` before the server's ingest pipeline runs. Two observed behaviors:
 - **First `read_series` immediately after a POST often returns 0 snapshots, even on a bare DataPoint.** The server's `scope.launch`-based ingest isn't committed yet. **Wait ~1.5 seconds then re-read**, or retry once. The second read reliably sees the committed values. A zero-then-populated pattern is normal, not a failed write.
@@ -393,7 +395,7 @@ curl -s -X POST \
   "params": {
     "name": "record_snapshot",
     "arguments": {
-      "dataPointId": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
+      "id": "1c9dce76-ba65-48b5-b842-32ad97a96f80",
       "snapshots": [
         {"timestamp": 1776700000000, "value": 22.1},
         {"timestamp": 1776700060000, "value": 22.3}

@@ -302,7 +302,7 @@ class RecordSnapshotTool(private val registry: KrillRegistry) : Tool {
         put("type", "object")
         putJsonObject("properties") {
             putJsonObject("server") { put("type", "string") }
-            putJsonObject("dataPointId") {
+            putJsonObject("id") {
                 put("type", "string")
                 put("description", "Id of the target KrillApp.DataPoint node.")
             }
@@ -336,22 +336,22 @@ class RecordSnapshotTool(private val registry: KrillRegistry) : Tool {
                 }
             }
         }
-        putJsonArray("required") { add("dataPointId") }
+        putJsonArray("required") { add("id") }
     }
 
     override suspend fun execute(arguments: JsonObject): JsonElement {
         val client = resolve(registry, arguments)
-        val dataPointId = arguments["dataPointId"]?.jsonPrimitive?.contentOrNull
-            ?: error("Missing required argument: dataPointId")
+        val id = arguments["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: id")
 
-        val existing = client.node(dataPointId) as? JsonObject
-            ?: error("DataPoint $dataPointId not found on server ${client.serverId}.")
+        val existing = client.node(id) as? JsonObject
+            ?: error("DataPoint $id not found on server ${client.serverId}.")
         val existingType = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
         if (existingType != "krill.zone.shared.KrillApp.DataPoint") {
-            error("Node $dataPointId is not a KrillApp.DataPoint (got $existingType).")
+            error("Node $id is not a KrillApp.DataPoint (got $existingType).")
         }
         val existingMeta = existing["meta"] as? JsonObject
-            ?: error("DataPoint $dataPointId has no meta object.")
+            ?: error("DataPoint $id has no meta object.")
         val dataType = existingMeta["dataType"]?.jsonPrimitive?.contentOrNull ?: "DOUBLE"
 
         val inputs: List<RawSnapshot> = readInputs(arguments)
@@ -393,7 +393,7 @@ class RecordSnapshotTool(private val registry: KrillRegistry) : Tool {
 
         return buildJsonObject {
             put("server", client.serverId)
-            put("dataPointId", dataPointId)
+            put("id", id)
             put("dataType", dataType)
             put("submitted", postedAt.size)
             putJsonArray("snapshots") {
