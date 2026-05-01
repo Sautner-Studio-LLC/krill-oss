@@ -90,7 +90,24 @@ class McpServer(
         val tool = tools[name] ?: throw IllegalArgumentException("Unknown tool: $name")
         val args = params["arguments"] as? JsonObject ?: JsonObject(emptyMap())
 
-        val result = runCatching { tool.execute(args) }
+        // Reject arguments the tool's inputSchema doesn't declare. Pre-fix,
+        // unknown args were silently dropped (krill-oss#51) — a caller passing
+        // `parent: <id>` to list_nodes got the full unfiltered tree back, with
+        // no signal that the arg was ignored. Validating against
+        // inputSchema.properties means a typo or stale-skill call surfaces as
+        // an isError instead of a wrong-but-plausible result.
+        val knownProps = (tool.inputSchema["properties"] as? JsonObject)?.keys.orEmpty()
+        val unknownArgs = (args.keys - knownProps).sorted()
+        val result: Result<JsonElement> = if (unknownArgs.isNotEmpty()) {
+            Result.failure(
+                IllegalArgumentException(
+                    "Unknown argument(s) for $name: ${unknownArgs.joinToString(", ")}. " +
+                        "Allowed: ${knownProps.sorted().joinToString(", ").ifEmpty { "<none>" }}.",
+                ),
+            )
+        } else {
+            runCatching { tool.execute(args) }
+        }
         val text = result.fold(
             onSuccess = { it.toStringCompact() },
             onFailure = {

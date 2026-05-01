@@ -35,7 +35,7 @@ class ListServersTool(private val registry: KrillRegistry) : Tool {
 class ListNodesTool(private val registry: KrillRegistry) : Tool {
     override val name = "list_nodes"
     override val description =
-        "List nodes on a Krill server. Optionally filter client-side by `type` substring (e.g. \"Pin\", \"DataPoint\")."
+        "List nodes on a Krill server. Optionally filter client-side by `type` (substring by default; pass `typeExact: true` for end-of-FQN match — e.g. `type=DataPoint typeExact=true` excludes `DataPoint.Graph`)."
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -45,19 +45,32 @@ class ListNodesTool(private val registry: KrillRegistry) : Tool {
             }
             putJsonObject("type") {
                 put("type", "string")
-                put("description", "Case-insensitive substring match on the node type. Optional.")
+                put(
+                    "description",
+                    "Type filter. By default a case-insensitive substring match on the node's full type FQN " +
+                        "(`krill.zone.shared.KrillApp.<...>`), so `\"DataPoint\"` matches both `KrillApp.DataPoint` " +
+                        "and `KrillApp.DataPoint.Graph`. Pair with `typeExact: true` for end-of-FQN match.",
+                )
+            }
+            putJsonObject("typeExact") {
+                put("type", "boolean")
+                put(
+                    "description",
+                    "If true, `type` must match the node's FQN end-to-end. Accepts the bare leaf " +
+                        "(`\"DataPoint\"`), the short form (`\"KrillApp.DataPoint\"`), or the full FQN " +
+                        "(`\"krill.zone.shared.KrillApp.DataPoint\"`) — all three resolve via suffix-after-dot. " +
+                        "Default: false (substring behavior).",
+                )
             }
         }
     }
 
     override suspend fun execute(arguments: JsonObject): JsonElement {
         val client = resolve(registry, arguments)
-        val typeFilter = arguments["type"]?.jsonPrimitive?.contentOrNull?.lowercase()
+        val typeFilter = arguments["type"]?.jsonPrimitive?.contentOrNull
+        val typeExact = arguments["typeExact"]?.jsonPrimitive?.booleanOrNull ?: false
         val raw = client.nodes()
-        val filtered = if (typeFilter == null) raw else JsonArray(raw.filter {
-            val nodeType = (it as? JsonObject)?.get("type")?.toString()?.lowercase() ?: ""
-            typeFilter in nodeType
-        })
+        val filtered = filterByType(raw, typeFilter, typeExact)
         // Surface `meta.name` as a top-level `displayName` so agents scanning a
         // nodes array can identify a node by its human name without having to
         // dig through the per-type meta shape. Projects in particular were
@@ -79,6 +92,42 @@ class ListNodesTool(private val registry: KrillRegistry) : Tool {
             put("server", client.serverId)
             put("count", enriched.size)
             put("nodes", enriched)
+        }
+    }
+
+    companion object {
+        /**
+         * Apply the `type` / `typeExact` filter to a raw nodes array.
+         *
+         * - `typeFilter == null` → return the full list.
+         * - `typeExact == false` (default) → case-insensitive substring match
+         *   on the node's full type FQN (legacy behavior; `"DataPoint"` keeps
+         *   matching `KrillApp.DataPoint.Graph` for back-compat).
+         * - `typeExact == true` → suffix-after-dot match. The node's FQN must
+         *   either equal `typeFilter` directly or end with `".$typeFilter"`,
+         *   so `"DataPoint"` matches `KrillApp.DataPoint` but excludes
+         *   `KrillApp.DataPoint.Graph`. Same shape works for the short
+         *   (`"KrillApp.DataPoint"`) and full (`"krill.zone...DataPoint"`)
+         *   forms.
+         */
+        internal fun filterByType(raw: JsonArray, typeFilter: String?, typeExact: Boolean): JsonArray {
+            if (typeFilter.isNullOrEmpty()) return raw
+            return JsonArray(
+                raw.filter { element ->
+                    val nodeType = (element as? JsonObject)
+                        ?.get("type")
+                        ?.jsonObject
+                        ?.get("type")
+                        ?.jsonPrimitive
+                        ?.contentOrNull
+                        ?: return@filter false
+                    if (typeExact) {
+                        nodeType == typeFilter || nodeType.endsWith(".$typeFilter")
+                    } else {
+                        typeFilter.lowercase() in nodeType.lowercase()
+                    }
+                },
+            )
         }
     }
 }
