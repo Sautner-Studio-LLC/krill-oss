@@ -1,0 +1,366 @@
+name: Verify Agent Ghost
+
+# Fires whenever a PR in this repo is pushed to, reopened, or relabeled. The
+# job only runs when the PR carries `needs-qa-verify` — that label is the
+# QA-agent handoff signal (set by `dev-krill-oss` once it's ready for review).
+#
+# `opened` is intentionally NOT in the trigger list. When a PR is created with
+# a label already attached, GitHub fires both `opened` AND `labeled` webhooks
+# in quick succession; that lets both pass the `if` condition and queues two
+# identical verify runs against the same head SHA. `labeled` always fires for
+# each label present at PR creation, so dropping `opened` does not lose
+# coverage for the open-with-label case.
+#
+# Mirrors Sautner-Studio-LLC/krill's `Verify Agent Ghost.yml`. The ghost runner
+# is a long-lived workstation with the three working copies under
+# /home/ben/Code/. We never `actions/checkout` — instead we sync the local
+# clones with the helpers in `krill-agents/scripts/lib.sh` and check the PR's
+# head SHA into the krill-oss clone in detached mode. krill + krill-agents
+# stay on main as read-only siblings.
+on:
+  pull_request:
+    types: [synchronize, reopened, labeled]
+
+# One verification at a time on the ghost runner — each run wipes the local
+# krill DB and reinstalls system packages, so concurrent PRs would clobber
+# each other. Queue rather than cancel; a verify run is cheap to wait for and
+# we do not want a half-installed mid-run state.
+concurrency:
+  group: verify-agent-ghost
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: "QA verify — PR #${{ github.event.pull_request.number }}"
+    if: contains(github.event.pull_request.labels.*.name, 'needs-qa-verify') && (github.event.action != 'labeled' || github.event.label.name == 'needs-qa-verify')
+    runs-on: ['self-hosted', 'Linux', 'ghost']
+    timeout-minutes: 120
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    env:
+      KRILL_REPO_DIR:    /home/ben/Code/krill
+      KRILL_OSS_DIR:     /home/ben/Code/krill-oss
+      KRILL_AGENTS_ROOT: /home/ben/Code/krill-agents
+      PR_NUMBER:         ${{ github.event.pull_request.number }}
+      PR_HEAD_SHA:       ${{ github.event.pull_request.head.sha }}
+      PR_REPO:           ${{ github.event.pull_request.head.repo.full_name }}
+      RUN_NUMBER:        ${{ github.run_number }}
+
+    steps:
+      # ── 0. Preflight: passwordless sudo must be configured on the runner ────
+      # Several later steps install .debs, restart krill.service, wipe the
+      # local DB, and read journal output — all via sudo. The ghost runner's
+      # `ben` user MUST have NOPASSWD configured for those commands; without
+      # it `sudo` silently waits 5 min for tty input and then exits with
+      # `sudo-rs: timed out`. Fail in seconds with a clear error so we don't
+      # burn ~30 min building JARs first.
+      - name: Preflight — verify passwordless sudo
+        run: |
+          set -euo pipefail
+          if ! sudo -n true 2>/dev/null; then
+            echo "::error::Passwordless sudo is not configured for $(id -un) on $(hostname)."
+            echo "::error::Add a NOPASSWD entry to /etc/sudoers.d/krill-ghost-runner covering"
+            echo "::error::at minimum: apt-get, systemctl, rm /srv/krill/data/*.db, journalctl."
+            exit 1
+          fi
+          echo "✅ sudo -n true passed on $(hostname) as $(id -un)"
+
+      # ── 1. Sync sibling working copies (krill + krill-agents on main) ───────
+      - name: Update sibling working copies
+        run: |
+          set -euo pipefail
+          for dir in "$KRILL_REPO_DIR" "$KRILL_OSS_DIR" "$KRILL_AGENTS_ROOT"; do
+            if [[ ! -d "$dir/.git" ]]; then
+              echo "❌ $dir is not a git working copy" >&2
+              exit 1
+            fi
+          done
+          # shellcheck source=/dev/null
+          source "$KRILL_AGENTS_ROOT/scripts/lib.sh"
+          update_repo "$KRILL_REPO_DIR"
+          update_repo "$KRILL_AGENTS_ROOT"
+          for dir in "$KRILL_REPO_DIR" "$KRILL_AGENTS_ROOT"; do
+            branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
+            sha="$(git -C "$dir" rev-parse --short HEAD)"
+            echo "  $dir → $branch @ $sha"
+          done
+
+      # ── 2. Reset the krill-oss clone, then check out the PR head detached ───
+      # Prior verification runs may have left the clone in detached HEAD with
+      # version-stamp edits to DEBIAN/control files. `restore` undoes those;
+      # then we bounce to main, fetch the PR's head ref, and detach there. We
+      # never push from this clone — detached HEAD is the right shape.
+      - name: Check out PR head into local krill-oss clone
+        working-directory: ${{ env.KRILL_OSS_DIR }}
+        run: |
+          set -euo pipefail
+          git restore --staged --worktree . 2>/dev/null || true
+          git checkout --quiet main
+          git fetch --quiet origin
+          git pull --ff-only --quiet || true
+          git fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/origin/pr-${PR_NUMBER}"
+          git checkout --detach "$PR_HEAD_SHA"
+          echo "✅ Checked out PR #${PR_NUMBER} @ $(git rev-parse --short HEAD)"
+          git log -1 --format="    %s%n    %an <%ae>"
+
+      # ── 3. Stamp a unique version on every deb so dpkg always reinstalls ─────
+      # dpkg refuses to "reinstall the same version" without --force-confnew /
+      # --reinstall. Suffix each control file's Version with `+qaPR<n>.r<m>` so
+      # successive verify runs sort strictly higher than both the base release
+      # version and any prior verify run. Format: 1.0.894+qaPR213.r42.
+      - name: Stamp build number on deb control files
+        run: |
+          set -euo pipefail
+          STAMP="qaPR${PR_NUMBER}.r${RUN_NUMBER}"
+
+          stamp_control() {
+            local ctrl="$1"
+            local base
+            base="$(awk -F': ' '/^Version: /{print $2; exit}' "$ctrl")"
+            sed -i "s/^Version: .*/Version: ${base}+${STAMP}/" "$ctrl"
+            echo "  $(awk '/^Package: /{print $2}' "$ctrl"): ${base} → ${base}+${STAMP}"
+          }
+
+          echo "📌 Stamping deb packages with +${STAMP}"
+          stamp_control "$KRILL_REPO_DIR/server/package/DEBIAN/control"
+          stamp_control "$KRILL_REPO_DIR/composeApp/package/DEBIAN/control"
+          stamp_control "$KRILL_OSS_DIR/pi4j-ktx-service/krill-pi4j-service/package/DEBIAN/control"
+          stamp_control "$KRILL_OSS_DIR/krill-mcp/krill-mcp-service/package/DEBIAN/control"
+
+      # ── 4. Build the four artifacts (server, desktop, krill-pi4j, krill-mcp) ─
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Stop stale Gradle daemons
+        working-directory: ${{ env.KRILL_REPO_DIR }}
+        run: |
+          ./gradlew --stop || true
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+
+      - name: Build WASM
+        working-directory: ${{ env.KRILL_REPO_DIR }}
+        timeout-minutes: 15
+        run: ./gradlew :composeApp:wasmZip -PfastWasm=false
+
+      - name: Build server JAR with ProGuard
+        working-directory: ${{ env.KRILL_REPO_DIR }}
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          ./gradlew :server:proguard -PfastWasm=false --no-configuration-cache
+          if [[ ! -f ./server/build/libs/server-min.jar ]]; then
+            echo "❌ ERROR: server ProGuard output (server-min.jar) not found"
+            exit 1
+          fi
+          MIN=$(wc -c < ./server/build/libs/server-min.jar | tr -d ' ')
+          ALL=$(wc -c < ./server/build/libs/server-all.jar | tr -d ' ')
+          echo "✅ server-all.jar $((ALL/1024/1024))MB → server-min.jar $((MIN/1024/1024))MB"
+
+      - name: Build desktop fat JAR with ProGuard
+        working-directory: ${{ env.KRILL_REPO_DIR }}
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          ./gradlew :composeApp:packageReleaseUberJarForCurrentOS -PfastWasm=false
+          DESKTOP_JAR=$(find ./composeApp/build/compose/jars -name "krill-desktop-*.jar" -type f | head -1)
+          if [[ -z "$DESKTOP_JAR" || ! -f "$DESKTOP_JAR" ]]; then
+            echo "❌ ERROR: desktop JAR not found under composeApp/build/compose/jars"
+            find ./composeApp/build/compose/jars -name "*.jar" 2>/dev/null || true
+            exit 1
+          fi
+          mkdir -p ./composeApp/build/libs
+          cp "$DESKTOP_JAR" ./composeApp/build/libs/krill-desktop.jar
+          echo "✅ desktop: $(basename "$DESKTOP_JAR") → composeApp/build/libs/krill-desktop.jar"
+
+      # krill-pi4j (and only krill-pi4j) needs JDK 25 for Pi4J v4's Foreign FFM.
+      # Switch the toolchain after all JDK-21 builds; krill-mcp pins JDK 21 via
+      # its own gradle toolchain config so it builds fine under JDK 25 too.
+      - name: Set up JDK 25 for krill-pi4j
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: Build krill-pi4j fat JAR
+        working-directory: ${{ env.KRILL_OSS_DIR }}/pi4j-ktx-service
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          ./gradlew :krill-pi4j-service:shadowJar --no-configuration-cache
+          JAR="./krill-pi4j-service/build/libs/krill-pi4j-all.jar"
+          [[ -f "$JAR" ]] || { echo "❌ $JAR missing" >&2; exit 1; }
+          echo "✅ $(basename "$JAR") $(du -h "$JAR" | cut -f1)"
+
+      - name: Build krill-mcp fat JAR
+        working-directory: ${{ env.KRILL_OSS_DIR }}/krill-mcp
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          ./gradlew :krill-mcp-service:shadowJar --no-configuration-cache
+          JAR="./krill-mcp-service/build/libs/krill-mcp-all.jar"
+          [[ -f "$JAR" ]] || { echo "❌ $JAR missing" >&2; exit 1; }
+          echo "✅ $(basename "$JAR") $(du -h "$JAR" | cut -f1)"
+
+      # ── 5. Assemble the .deb packages ────────────────────────────────────────
+      - name: Build krill server .deb
+        working-directory: ${{ env.KRILL_REPO_DIR }}
+        run: |
+          set -euo pipefail
+          rm -f server/package/usr/local/bin/krill.jar
+          mkdir -p server/package/usr/local/bin server/package/var/lib/krill/wasm
+          cp composeApp/build/wasm/wasm-archive.zip server/package/var/lib/krill/wasm/
+          cp server/build/libs/server-min.jar       server/package/usr/local/bin/krill.jar
+          chmod 755 server/package/DEBIAN/*
+          chmod 755 server/package/usr/local/bin/krill.jar
+          chmod 755 server/package/usr/local/bin/krill_kiosk_install.sh
+          mkdir -p server/build
+          dpkg-deb --build server/package server/build/krill.deb
+          echo "📦 $(dpkg-deb --field server/build/krill.deb Package Version)"
+
+      - name: Build krill-desktop .deb
+        working-directory: ${{ env.KRILL_REPO_DIR }}
+        run: |
+          set -euo pipefail
+          mkdir -p composeApp/package/usr/local/lib/krill-desktop
+          cp composeApp/build/libs/krill-desktop.jar composeApp/package/usr/local/lib/krill-desktop/
+          chmod 755 composeApp/package/DEBIAN/*
+          chmod 755 composeApp/package/usr/bin/krill-desktop
+          mkdir -p composeApp/build
+          dpkg-deb --build composeApp/package composeApp/build/krill-desktop.deb
+          echo "📦 $(dpkg-deb --field composeApp/build/krill-desktop.deb Package Version)"
+
+      - name: Build krill-pi4j .deb
+        working-directory: ${{ env.KRILL_OSS_DIR }}/pi4j-ktx-service
+        run: |
+          set -euo pipefail
+          mkdir -p krill-pi4j-service/package/usr/local/bin
+          cp krill-pi4j-service/build/libs/krill-pi4j-all.jar krill-pi4j-service/package/usr/local/bin/krill-pi4j.jar
+          chmod 755 krill-pi4j-service/package/DEBIAN/preinst \
+                    krill-pi4j-service/package/DEBIAN/postinst \
+                    krill-pi4j-service/package/DEBIAN/prerm \
+                    krill-pi4j-service/package/DEBIAN/postrm
+          chmod 755 krill-pi4j-service/package/usr/local/bin/krill-pi4j.jar
+          mkdir -p krill-pi4j-service/build
+          dpkg-deb --build krill-pi4j-service/package krill-pi4j-service/build/krill-pi4j.deb
+          echo "📦 $(dpkg-deb --field krill-pi4j-service/build/krill-pi4j.deb Package Version)"
+
+      - name: Build krill-mcp .deb
+        working-directory: ${{ env.KRILL_OSS_DIR }}/krill-mcp
+        run: |
+          set -euo pipefail
+          mkdir -p krill-mcp-service/package/usr/local/bin
+          cp krill-mcp-service/build/libs/krill-mcp-all.jar krill-mcp-service/package/usr/local/bin/krill-mcp.jar
+          chmod 755 krill-mcp-service/package/DEBIAN/preinst \
+                    krill-mcp-service/package/DEBIAN/postinst \
+                    krill-mcp-service/package/DEBIAN/prerm \
+                    krill-mcp-service/package/DEBIAN/postrm
+          chmod 755 krill-mcp-service/package/usr/local/bin/krill-mcp.jar
+          mkdir -p krill-mcp-service/build
+          dpkg-deb --build krill-mcp-service/package krill-mcp-service/build/krill-mcp.deb
+          echo "📦 $(dpkg-deb --field krill-mcp-service/build/krill-mcp.deb Package Version)"
+
+      # ── 6. Install + smoke-test the four packages on the runner ──────────────
+      # All sudo calls below pass `-n` (non-interactive). The preflight step
+      # at the top already proves NOPASSWD is configured; `-n` here means any
+      # later regression in the runner's sudoers file fails fast with a clear
+      # message instead of hitting the 5-min passwd_timeout.
+      - name: Install built packages
+        run: |
+          set -euo pipefail
+          sudo -n apt-get install -y \
+            "$KRILL_REPO_DIR/server/build/krill.deb" \
+            "$KRILL_REPO_DIR/composeApp/build/krill-desktop.deb" \
+            "$KRILL_OSS_DIR/pi4j-ktx-service/krill-pi4j-service/build/krill-pi4j.deb" \
+            "$KRILL_OSS_DIR/krill-mcp/krill-mcp-service/build/krill-mcp.deb"
+          dpkg-query -W -f='  ${Package} ${Version}\n' krill krill-pi4j krill-mcp krill-desktop || true
+
+      - name: Wipe local krill DB and restart krill.service
+        run: |
+          set -euo pipefail
+          sudo -n rm -f /srv/krill/data/*.db
+          sudo -n systemctl restart krill
+          for i in $(seq 1 60); do
+            if sudo -n systemctl is-active --quiet krill; then
+              echo "✅ krill.service active after ${i}s"; break
+            fi
+            sleep 1
+          done
+          if ! sudo -n systemctl is-active --quiet krill; then
+            sudo -n systemctl status krill --no-pager || true
+            sudo -n journalctl -u krill --no-pager -n 200 || true
+            exit 1
+          fi
+          for i in $(seq 1 30); do
+            sudo -n systemctl is-active --quiet krill-mcp && { echo "✅ krill-mcp active after ${i}s"; break; }
+            sleep 1
+          done
+
+      - name: Smoke-test installed services
+        run: |
+          set -euo pipefail
+          FAILED=0
+          for svc in krill krill-pi4j krill-mcp; do
+            if sudo -n systemctl is-active --quiet "$svc"; then
+              echo "✅ $svc active"
+            else
+              echo "❌ $svc not active"
+              sudo -n systemctl status "$svc" --no-pager || true
+              FAILED=1
+            fi
+          done
+          [[ "$FAILED" -eq 0 ]] || exit 1
+
+      # ── 7. Hand off to the ghost QA agent (krill-ghost-bot) ──────────────────
+      # The launch-tester.sh script (in krill-agents) materialises a tester
+      # CLAUDE.md, runs `claude --print` as krill-ghost-bot to drive the swarm
+      # via the krill skill + MCP, and posts PASS / FAIL on the PR. PATs live
+      # in /etc/environment on the ghost runner — sourced inline so the
+      # claude sub-process inherits gh / git push credentials without
+      # threading secrets through workflow YAML.
+      - name: Run ghost QA tester
+        env:
+          ISSUE_REPO: ${{ github.repository }}
+          PR_NUMBER:  ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          set -a
+          # shellcheck disable=SC1091
+          source /etc/environment || true
+          set +a
+
+          TESTER="$KRILL_AGENTS_ROOT/scripts/launch-tester.sh"
+          if [[ ! -x "$TESTER" ]]; then
+            echo "❌ tester launcher not found at $TESTER" >&2
+            echo "   Expected krill-agents to ship scripts/launch-tester.sh." >&2
+            exit 1
+          fi
+
+          echo "👻 ghost QA verifying ${ISSUE_REPO}#${PR_NUMBER}"
+          "$TESTER" "$ISSUE_REPO" "$PR_NUMBER"
+
+      # ── 8. Restore the local krill-oss clone so the next run starts clean ───
+      # Always-run: even on tester failure (which is a legitimate outcome —
+      # the QA agent reports FAIL and we want the workflow to surface that),
+      # we still need to undo the version-stamp edits and bounce back to main.
+      # The krill clone gets the same restore so its DEBIAN/control edits from
+      # step 3 don't linger.
+      - name: Restore local clones
+        if: always()
+        working-directory: ${{ env.KRILL_OSS_DIR }}
+        run: |
+          set -euo pipefail
+          git restore --staged --worktree . 2>/dev/null || true
+          git checkout --quiet main 2>/dev/null || true
+          git -C "$KRILL_REPO_DIR" restore --staged --worktree . 2>/dev/null || true
