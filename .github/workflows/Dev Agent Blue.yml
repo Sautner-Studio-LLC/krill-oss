@@ -1,0 +1,99 @@
+name: Dev Agent Blue
+
+# Fires whenever an issue in this repo is assigned. The job only runs when the
+# assignee is krill-blue-bot; all other assignments fall through without doing
+# anything.
+#
+# Mirrors Sautner-Studio-LLC/krill's `Dev Agent Blue.yml`. The blue runner is a
+# long-lived workstation with the three working copies (krill, krill-oss,
+# krill-agents) under /home/ben/Code/. We never `actions/checkout` — instead we
+# fetch + ff-pull main on each clone via krill-agents/scripts/lib.sh, build a
+# CLAUDE.md for the `dev-krill-oss` role, and hand off to claude in this repo's
+# working copy.
+on:
+  issues:
+    types: [assigned]
+
+# Prevent two agent runs from racing on the same issue.
+concurrency:
+  group: dev-agent-blue-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false   # queue rather than cancel — avoid dropped work
+
+jobs:
+  dev-agent:
+    name: "Dev agent — issue #${{ github.event.issue.number }}"
+    if: github.event.assignee.login == 'krill-blue-bot'
+    runs-on: ['self-hosted', 'Linux', 'X64', 'blue']
+    timeout-minutes: 120
+
+    env:
+      KRILL_REPO_DIR:    /home/ben/Code/krill
+      KRILL_OSS_DIR:     /home/ben/Code/krill-oss
+      KRILL_AGENTS_ROOT: /home/ben/Code/krill-agents
+
+    steps:
+      # ── 1. Sync the three working copies (fetch always; ff-pull main if safe) ─
+      - name: Update working copies
+        run: |
+          set -euo pipefail
+
+          for dir in "$KRILL_REPO_DIR" "$KRILL_OSS_DIR" "$KRILL_AGENTS_ROOT"; do
+            if [[ ! -d "$dir/.git" ]]; then
+              echo "❌ $dir is not a git working copy" >&2
+              exit 1
+            fi
+          done
+
+          # shellcheck source=/dev/null
+          source "$KRILL_AGENTS_ROOT/scripts/lib.sh"
+
+          update_repo "$KRILL_REPO_DIR"
+          update_repo "$KRILL_OSS_DIR"
+          update_repo "$KRILL_AGENTS_ROOT"
+
+          for dir in "$KRILL_REPO_DIR" "$KRILL_OSS_DIR" "$KRILL_AGENTS_ROOT"; do
+            branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
+            sha="$(git -C "$dir" rev-parse --short HEAD)"
+            echo "  $dir → $branch @ $sha"
+          done
+
+      # ── 2. Materialise CLAUDE.md for the dev-krill-oss role ─────────────────
+      - name: Build CLAUDE.md (dev-krill-oss role)
+        run: |
+          set -euo pipefail
+          chmod +x "$KRILL_AGENTS_ROOT/scripts/build-claude-md.sh"
+          "$KRILL_AGENTS_ROOT/scripts/build-claude-md.sh" dev-krill-oss "$KRILL_OSS_DIR"
+          head -5 "$KRILL_OSS_DIR/CLAUDE.md"
+
+      # ── 3. Run the dev agent ─────────────────────────────────────────────────
+      # PATs (GH_TOKEN, etc.) live in /etc/environment on this runner. Source
+      # them so the claude sub-processes (gh, git push) inherit credentials
+      # without threading secrets through the workflow YAML.
+      - name: Run claude dev agent on issue
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE:  ${{ github.event.issue.title }}
+          ISSUE_REPO:   ${{ github.repository }}
+        working-directory: /home/ben/Code/krill-oss
+        run: |
+          set -euo pipefail
+
+          set -a
+          # shellcheck disable=SC1091
+          source /etc/environment || true
+          set +a
+
+          CLAUDE_BIN="${CLAUDE_BIN:-/home/ben/.local/bin/claude}"
+          if [[ ! -x "$CLAUDE_BIN" ]]; then
+            echo "❌ claude not found at $CLAUDE_BIN" >&2
+            exit 1
+          fi
+
+          echo "🦐 dev-krill-oss picking up ${ISSUE_REPO}#${ISSUE_NUMBER}: ${ISSUE_TITLE}"
+          echo "   Working dir : $KRILL_OSS_DIR"
+          echo "   krill (ref) : $KRILL_REPO_DIR"
+          echo "   krill-agents: $KRILL_AGENTS_ROOT"
+          echo "   claude      : $CLAUDE_BIN"
+
+          "$CLAUDE_BIN" --print --dangerously-skip-permissions \
+            "You are acting as the developer krill-blue-bot (identity: krill-dev-oss). Pick up issue #${ISSUE_NUMBER} in ${ISSUE_REPO} and implement the required changes per CLAUDE.md. When the work is complete, push your branch and open a pull request against main. Apply the label 'needs-qa-verify' to the PR before finishing. Do not ask for clarification — use your best judgement and proceed."
