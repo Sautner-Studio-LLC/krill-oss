@@ -276,10 +276,20 @@ jobs:
       # at the top already proves NOPASSWD is configured; `-n` here means any
       # later regression in the runner's sudoers file fails fast with a clear
       # message instead of hitting the 5-min passwd_timeout.
+      #
+      # `--allow-downgrades` is required because the ghost runner has the four
+      # packages pre-installed from the production apt repo (so the krill +
+      # krill-mcp postinst PIN prompt gets answered once, manually, by Ben —
+      # see issue #60). The production version is typically higher than the
+      # source-tree base version that step 3 stamps `+qaPR<n>.r<m>` onto, so
+      # apt sees the verify-time install as a downgrade and refuses unless
+      # explicitly allowed. The postinst scripts detect the existing
+      # `/etc/krill-mcp/credentials/pin_derived_key` (and the krill server's
+      # equivalent) and reuse them, so no PIN prompt fires on reinstall.
       - name: Install built packages
         run: |
           set -euo pipefail
-          sudo -n apt-get install -y \
+          sudo -n apt-get install -y --allow-downgrades \
             "$KRILL_REPO_DIR/server/build/krill.deb" \
             "$KRILL_REPO_DIR/composeApp/build/krill-desktop.deb" \
             "$KRILL_OSS_DIR/pi4j-ktx-service/krill-pi4j-service/build/krill-pi4j.deb" \
