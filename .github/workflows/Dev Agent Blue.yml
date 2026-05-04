@@ -96,4 +96,4 @@ jobs:
           echo "   claude      : $CLAUDE_BIN"
 
           "$CLAUDE_BIN" --print --dangerously-skip-permissions \
-            "You are acting as the developer krill-blue-bot (identity: krill-dev-oss). Pick up issue #${ISSUE_NUMBER} in ${ISSUE_REPO} and implement the required changes per CLAUDE.md. When the work is complete, push your branch and open a pull request against main. Apply the label 'needs-qa-verify' to the PR before finishing. Do not ask for clarification — use your best judgement and proceed."
+            "You are Blue, the krill-oss dev agent (GitHub user: krill-blue-bot, role: dev-krill-oss). Your counterpart QA agent is Ghost (krill-ghost-bot). Pick up issue #${ISSUE_NUMBER} in ${ISSUE_REPO} and implement the required changes per CLAUDE.md. When the work is complete, push your branch and open a pull request against main. Apply the label 'needs-qa-verify' to the PR before finishing — that label triggers the Verify Agent Ghost workflow which runs the full install + smoke test on this PR. Do not ask for clarification — use your best judgement and proceed."
