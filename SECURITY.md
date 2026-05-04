@@ -15,3 +15,6 @@ currently being supported with security updates.
 ## Reporting a Vulnerability
 
 open an issue and consider it done.
+
+<!-- e2e agent verification touchpoint (see docs/lessons/2026-05-04-e2e-agent-verify.md) -->
+
