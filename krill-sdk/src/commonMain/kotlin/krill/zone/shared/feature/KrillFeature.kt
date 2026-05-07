@@ -125,6 +125,15 @@ data class KrillFeature(
     @SerialName("nodeCommandBehavior")
     val nodeCommandBehavior: String,
 
+    /**
+     * `true` if this node type depends on a Krill server runtime
+     * (DataPoint, Trigger, Executor, MQTT, Server.* …) — `false` for
+     * fully client-side types (Project, Project.Journal, Project.TaskList,
+     * Project.Diagram). Drives recipe gating and FTUE prompts.
+     */
+    @SerialName("requiresServer")
+    val requiresServer: Boolean,
+
     /** Short description used in the node palette tile. */
     @SerialName("shortDescription")
     val shortDescription: String,
