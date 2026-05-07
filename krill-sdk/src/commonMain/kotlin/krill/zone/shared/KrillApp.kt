@@ -33,6 +33,7 @@ sealed class MenuCommand : KrillApp() {
     @Serializable data object Delete : MenuCommand()
     @Serializable data object Expand : MenuCommand()
     @Serializable data object Focus : MenuCommand()
+    @Serializable data object KeepBuildingSwarm : MenuCommand()
 }
 
 /**
