@@ -4,6 +4,7 @@
     "description": "Represents a single measurable value that stores time-series data. Receives snapshot updates containing a value and timestamp, validates them against child filter nodes, stores validated snapshots in the data store, and triggers downstream execution. Supports configurable data types (text, JSON, digital, double), precision, units, and manual entry. Child nodes can include filters, graphs, triggers, and executors.",
     "shortDescription": "Stores time-series snapshot values and triggers downstream nodes on data updates.",
     "state": "ROADMAP",
+    "requiresServer": false,
     "nodeClickBehavior": "NONE",
     "nodeCommandBehavior": "CREATE_NODE",
     "category": "Krill Server",
