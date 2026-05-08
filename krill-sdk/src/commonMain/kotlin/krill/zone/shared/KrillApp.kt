@@ -148,6 +148,9 @@ fun lookup(name: String): KrillApp? = krillAppLookupMap[name]
 sealed class KrillApp {
 
     @Serializable
+    data object Avatar : KrillApp()
+
+    @Serializable
     data object Client : KrillApp() {
         @Serializable
         data object About : KrillApp()

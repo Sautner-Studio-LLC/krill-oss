@@ -3,6 +3,7 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.SourcesJar
+import org.gradle.internal.execution.caching.CachingState.enabled
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -17,7 +18,7 @@ plugins {
 }
 
 group = "com.krillforge"
-version = "0.0.19"
+version = "0.0.20"
 
 kotlin {
     jvmToolchain(21)
