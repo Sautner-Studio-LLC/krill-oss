@@ -7,7 +7,10 @@
 package krill.zone.shared.krillapp.project.tasklist
 
 import kotlinx.serialization.*
+import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeIdentity
 import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
  * Payload for a `Project.TaskList` node.
@@ -27,4 +30,7 @@ data class TaskListMetaData(
     /** Epoch millis of the most recent edit (any task add/remove/edit or metadata change). */
     val updatedAt: Long = 0L,
     override val error: String = "",
-) : NodeMetaData
+    override val sources: List<NodeIdentity>,
+    override val targets: List<NodeIdentity>,
+    override val executionSource: List<ExecutionSource>,
+) : TargetingNodeMetaData
