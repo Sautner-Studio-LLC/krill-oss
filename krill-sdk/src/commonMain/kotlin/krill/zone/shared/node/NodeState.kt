@@ -111,4 +111,10 @@ enum class NodeState {
      * editors can see a `Someone else is editing this` hint.
      */
     EDITING,
+
+    /**
+     * The node was reset to its initial / cleared state by a [krill.zone.shared.node.NodeAction.RESET]
+     * action; parallel to [EXECUTED] for the reset execution path.
+     */
+    RESET,
 }

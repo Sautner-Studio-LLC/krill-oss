@@ -8,8 +8,8 @@ package krill.zone.shared.krillapp.project.tasklist
 
 import kotlinx.serialization.*
 import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.NodeMetaData
 import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
@@ -33,4 +33,5 @@ data class TaskListMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
     override val targets: List<NodeIdentity> = emptyList(),
     override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
 ) : TargetingNodeMetaData

@@ -7,11 +7,13 @@
 package krill.zone.shared.krillapp.trigger.button
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ActionNodeMetaData
+import krill.zone.shared.node.NodeAction
 
 /** Payload for a `Button` trigger — display name plus the standard error field. */
 @Serializable
 data class ButtonMetaData(
     val name: String = "button",
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : NodeMetaData
+) : ActionNodeMetaData

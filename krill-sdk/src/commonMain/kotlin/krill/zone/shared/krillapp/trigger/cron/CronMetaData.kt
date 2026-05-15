@@ -7,7 +7,8 @@
 package krill.zone.shared.krillapp.trigger.cron
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ActionNodeMetaData
+import krill.zone.shared.node.NodeAction
 
 /**
  * Payload for a `CronTimer` trigger node.
@@ -20,5 +21,6 @@ data class CronMetaData(
     val timestamp: Long = 0L,
     /** Quartz-style cron expression evaluated by the server scheduler. */
     val expression: String = "",
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : NodeMetaData
+) : ActionNodeMetaData
