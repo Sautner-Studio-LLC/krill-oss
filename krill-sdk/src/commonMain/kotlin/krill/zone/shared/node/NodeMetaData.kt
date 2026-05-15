@@ -1,10 +1,10 @@
 /**
  * Public contracts for the per-node payload (`meta`) that every Krill node
  * carries. The interface ([NodeMetaData]) and the cross-node addressing types
- * ([NodeIdentity], [TargetingNodeMetaData], [ExecutionSource]) live in the SDK
- * so external integrators can implement their own node types and link them
- * into a Krill swarm without depending on the proprietary metadata
- * implementations that ship with the reference server.
+ * ([NodeIdentity], [TargetingNodeMetaData], [ExecutionSource], [NodeAction],
+ * [ActionNodeMetaData]) live in the SDK so external integrators can implement
+ * their own node types and link them into a Krill swarm without depending on
+ * the proprietary metadata implementations that ship with the reference server.
  *
  * The concrete `MetaData` data classes (e.g. `ServerMetaData`, `PinMetaData`,
  * `TriggerMetaData`, ...) and the `updateMetaWithError(...)` helper that
@@ -85,16 +85,59 @@ enum class ExecutionSource(val displayLabel: String) {
 }
 
 /**
+ * The verb a trigger or executor node performs when it fires.
+ *
+ * Stored on [ActionNodeMetaData] so the swarm processor knows whether to run
+ * the normal forward execution path ([EXECUTE]) or to undo / clear the target
+ * node back to its initial state ([RESET]).
+ *
+ * The [displayLabel] is the human-readable string shown in the editor's action
+ * picker. Declared `@Serializable` so it travels in the node payload; enum
+ * names are the wire form — do not rename without a coordinated migration.
+ */
+@Serializable
+enum class NodeAction(val displayLabel: String) {
+    /** Run the node's primary execution path — the default behaviour. */
+    EXECUTE("Execute"),
+
+    /** Revert the target node(s) to their initial / cleared state. */
+    RESET("Reset"),
+}
+
+/**
+ * Extended contract for trigger and executor metadata that carries an explicit
+ * [nodeAction] discriminator.
+ *
+ * Applying this interface to the trigger-family and [TargetingNodeMetaData]
+ * hierarchy lets the server processor and the editor UI branch on action
+ * without per-type `when` arms. The default on every concrete implementation
+ * is [NodeAction.EXECUTE], preserving wire-compatibility with pre-0.0.23
+ * payloads that lack the field.
+ */
+interface ActionNodeMetaData : NodeMetaData {
+    /**
+     * The action this node performs when it fires. Defaults to [NodeAction.EXECUTE]
+     * on every concrete implementation so that deserialising a payload that
+     * predates this field yields the original behaviour unchanged.
+     */
+    val nodeAction: NodeAction
+}
+
+/**
  * Common contract for nodes that read from upstream `sources` and write to
  * downstream `targets` — the executor / filter / trigger family.
  *
- * Lifting these three properties out of the individual `MetaData` data classes
- * lets the editor UI render a single "wire your sources and targets" panel
+ * Extends [ActionNodeMetaData] so that every targeting node also carries an
+ * explicit [nodeAction] discriminator, letting the processor branch on
+ * execute-vs-reset without per-type `when` arms.
+ *
+ * Lifting these properties out of the individual `MetaData` data classes lets
+ * the editor UI render a single "wire your sources and targets" panel
  * regardless of the concrete node type, and lets cross-cutting machinery
  * (cycle detection, dependency graphing, propagation) walk the swarm without
  * caring which subtype it is on.
  */
-interface TargetingNodeMetaData : NodeMetaData {
+interface TargetingNodeMetaData : ActionNodeMetaData {
     /**
      * Upstream nodes whose values feed this one. For a filter or executor this
      * is the data being read; for a trigger it is the value being watched.
