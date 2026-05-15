@@ -30,7 +30,7 @@ data class TaskListMetaData(
     /** Epoch millis of the most recent edit (any task add/remove/edit or metadata change). */
     val updatedAt: Long = 0L,
     override val error: String = "",
-    override val sources: List<NodeIdentity>,
-    override val targets: List<NodeIdentity>,
-    override val executionSource: List<ExecutionSource>,
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
 ) : TargetingNodeMetaData
