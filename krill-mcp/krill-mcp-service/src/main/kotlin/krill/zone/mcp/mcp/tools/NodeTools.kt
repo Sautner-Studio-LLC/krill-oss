@@ -540,6 +540,107 @@ class DeleteNodeTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
+/**
+ * Updates the [NodeAction] verb on an existing action-capable node.
+ *
+ * Fetches the node, validates it is an action-capable type (one whose MetaData
+ * carries `nodeAction` — Triggers, Executors, TaskList, etc.), patches
+ * `meta.nodeAction`, and POSTs back with `state=USER_EDIT` so the server
+ * persists the change through the normal edit pipeline.
+ *
+ * Reading the current action back is already covered by `get_node` — the full
+ * node body including `meta.nodeAction` is returned verbatim.
+ */
+class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
+    override val name = "set_node_action"
+    override val description =
+        "Set the action verb a trigger or executor node applies when it fires. " +
+            "`EXECUTE` (default) runs the target's primary logic; `RESET` reverts the target(s) to " +
+            "initial/cleared state — TaskList: marks all tasks complete and reopens repeatables; " +
+            "Trigger family: clears alarm WARN→NONE without re-evaluating the threshold condition. " +
+            "Applies to all nodes whose meta implements ActionNodeMetaData: Triggers (Button, " +
+            "HighThreshold, LowThreshold, SilentAlarmMs, CronTimer, Color, IncomingWebHook) and " +
+            "Executors (LogicGate, OutgoingWebHook, Lambda, Calculation, Compute, SMTP, MQTT), " +
+            "plus TaskList. Use `get_node` to read the current `meta.nodeAction` before calling."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("server") {
+                put("type", "string")
+                put("description", "Krill server id, host, or host:port. Defaults to the first registered server.")
+            }
+            putJsonObject("id") {
+                put("type", "string")
+                put("description", "Id of the node to update.")
+            }
+            putJsonObject("action") {
+                put("type", "string")
+                put("description", "Action verb: EXECUTE (default) or RESET.")
+            }
+        }
+        putJsonArray("required") {
+            add("id")
+            add("action")
+        }
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val id = arguments["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: id")
+        val action = arguments["action"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: action")
+
+        if (action !in VALID_ACTIONS) {
+            error("Invalid action '$action'. Must be one of: ${VALID_ACTIONS.joinToString()}.")
+        }
+
+        val client = resolve(registry, arguments)
+        val existing = client.node(id) as? JsonObject
+            ?: error("Node $id not found on server ${client.serverId}.")
+
+        val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+        val spec = typeFqn?.let { KrillNodeTypes.byTypeFqn[it] }
+
+        // Reject known non-action types up front; for unknown types, attempt
+        // the update (server ignoreUnknownKeys will drop the field gracefully).
+        if (spec != null && "nodeAction" !in spec.defaultMeta) {
+            error(
+                "Node type ${spec.shortName} does not carry a nodeAction field. " +
+                    "Only Triggers, Executors, TaskList, and similar action-capable nodes support this verb. " +
+                    "Call `list_node_types` to confirm which types expose nodeAction.",
+            )
+        }
+
+        val existingMeta = existing["meta"] as? JsonObject
+            ?: error("Node $id has no meta object.")
+
+        val updatedMeta = JsonObject(existingMeta.toMutableMap().apply { put("nodeAction", JsonPrimitive(action)) })
+        val updatedNode = JsonObject(
+            existing.toMutableMap().apply {
+                put("meta", updatedMeta)
+                put("state", JsonPrimitive("USER_EDIT"))
+            },
+        )
+        client.postNode(updatedNode)
+
+        return buildJsonObject {
+            put("server", client.serverId)
+            put("id", id)
+            put("type", spec?.shortName ?: typeFqn ?: "unknown")
+            put("nodeAction", action)
+            put(
+                "note",
+                "Posted with state=USER_EDIT. Verify via `get_node` — the server persists meta " +
+                    "asynchronously; allow ~500ms before reading back.",
+            )
+        }
+    }
+
+    companion object {
+        val VALID_ACTIONS = setOf("EXECUTE", "RESET")
+    }
+}
+
 private fun resolve(registry: KrillRegistry, arguments: JsonObject): KrillClient {
     val selector = arguments["server"]?.jsonPrimitive?.contentOrNull
     return registry.resolve(selector)
