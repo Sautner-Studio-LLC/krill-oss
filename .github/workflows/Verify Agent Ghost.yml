@@ -343,6 +343,11 @@ jobs:
         env:
           ISSUE_REPO: ${{ github.repository }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
+          # Org-wide secret: long-lived OAuth token for `claude --print`
+          # in headless CI. Without this, launch-tester.sh's claude
+          # sub-process falls back to ~/.claude/.credentials.json on
+          # ghost whose 8h subscription token expires between runs.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           set -euo pipefail
           set -a

@@ -7,6 +7,7 @@ package krill.zone.shared.krillapp.executor.smtp
 
 import kotlinx.serialization.*
 import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
 import krill.zone.shared.node.TargetingNodeMetaData
 
@@ -30,5 +31,6 @@ data class SMTPMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
     override val targets: List<NodeIdentity> = emptyList(),
     override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
 ) : TargetingNodeMetaData

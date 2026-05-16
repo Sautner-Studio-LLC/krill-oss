@@ -33,6 +33,7 @@ sealed class MenuCommand : KrillApp() {
     @Serializable data object Delete : MenuCommand()
     @Serializable data object Expand : MenuCommand()
     @Serializable data object Focus : MenuCommand()
+    @Serializable data object KeepBuildingSwarm : MenuCommand()
 }
 
 /**
@@ -145,6 +146,9 @@ fun lookup(name: String): KrillApp? = krillAppLookupMap[name]
  */
 @Serializable
 sealed class KrillApp {
+
+    @Serializable
+    data object Avatar : KrillApp()
 
     @Serializable
     data object Client : KrillApp() {

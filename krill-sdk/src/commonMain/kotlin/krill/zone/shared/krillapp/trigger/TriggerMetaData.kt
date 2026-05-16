@@ -7,7 +7,8 @@
 package krill.zone.shared.krillapp.trigger
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ActionNodeMetaData
+import krill.zone.shared.node.NodeAction
 
 /**
  * Payload for the simple-threshold trigger family.
@@ -24,5 +25,6 @@ import krill.zone.shared.node.NodeMetaData
 data class TriggerMetaData(
     val name: String = this::class.simpleName!!,
     val value: Double = 0.0,
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : NodeMetaData
+) : ActionNodeMetaData

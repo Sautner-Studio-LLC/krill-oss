@@ -1,9 +1,10 @@
 {
     "name": "KrillApp.Project.TaskList",
     "title": "Task List",
-    "description": "Stores a list of tasks with checkboxes, priority levels, optional due dates, and optional cron recurrence. Acts as a stateful scheduled trigger: when any task's due date passes without being completed, fires executeChildren on the TaskList exactly once per expiry (dedup via per-task expiredExecuted flag). Recurring tasks advance their due date to the next cron occurrence automatically. The TaskList's NodeState escalates (INFO / WARN / SEVERE) with overdue duration; a HIGH-priority list short-circuits to SEVERE the moment any task is overdue. Tasks can be used to document processes, track project progress, or drive maintenance workflows with automated consequences.",
+    "description": "Stores a list of tasks with checkboxes, priority levels, optional due dates, and optional cron recurrence. Acts as a stateful scheduled trigger: when any task's due date passes without being completed, fires executeChildren on the TaskList exactly once per expiry (dedup via per-task expiredExecuted flag). Recurring tasks advance their due date to the next cron occurrence automatically. The TaskList's NodeState escalates (INFO / WARN / SEVERE) with overdue duration; a HIGH-priority list short-circuits to SEVERE the moment any task is overdue. Tasks can be used to document processes, track project progress, or drive maintenance workflows with automated consequences. Locally-hosted task lists do not fire executors or send notifications. Move the list to a Krill server for those behaviors.",
     "shortDescription": "Stateful checklist that fires child executors when tasks become overdue; supports recurring tasks via cron.",
     "state": "ROADMAP",
+    "requiresServer": false,
     "nodeClickBehavior": "SHOW_EDITOR",
     "nodeCommandBehavior": "CREATE_NODE",
     "category": "Projects",

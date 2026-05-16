@@ -74,6 +74,11 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE:  ${{ github.event.issue.title }}
           ISSUE_REPO:   ${{ github.repository }}
+          # Org-wide secret: long-lived OAuth token for `claude --print`
+          # in headless CI. Without this, the CLI falls back to
+          # ~/.claude/.credentials.json on the runner whose 8h subscription
+          # token expires between runs and refresh has been unreliable.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         working-directory: /home/ben/Code/krill-oss
         run: |
           set -euo pipefail

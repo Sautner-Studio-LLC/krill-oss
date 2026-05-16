@@ -4,6 +4,7 @@
     "description": "Stores chronological journal entries within a project. Entries can include text and photos to document progress, milestones, decisions, and observations over time. Useful for keeping a running log of project activity.",
     "shortDescription": "Chronological journal for documenting project progress and observations.",
     "state": "ROADMAP",
+    "requiresServer": false,
     "nodeClickBehavior": "SHOW_EDITOR",
     "nodeCommandBehavior": "CREATE_NODE",
     "category": "Projects",

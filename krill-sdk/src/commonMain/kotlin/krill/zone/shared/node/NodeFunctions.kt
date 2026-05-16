@@ -12,6 +12,7 @@ import io.ktor.http.Url
 import kotlinx.coroutines.flow.StateFlow
 import krill.zone.shared.KrillApp
 import krill.zone.shared.MenuCommand
+import krill.zone.shared.krillapp.client.ClientMetaData
 import krill.zone.shared.krillapp.datapoint.DataPointMetaData
 import krill.zone.shared.krillapp.datapoint.DataType
 import krill.zone.shared.krillapp.datapoint.graph.GraphMetaData
@@ -70,7 +71,7 @@ fun Node.name(): String {
         KrillApp.DataPoint -> (this.meta as DataPointMetaData).name
         KrillApp.Server.SerialDevice -> (this.meta as SerialDeviceMetaData).hardwareId
         KrillApp.Server, KrillApp.Server.Peer -> (this.meta as ServerMetaData).name
-        KrillApp.Client -> (this.meta as krill.zone.shared.krillapp.client.ClientMetaData).name
+        KrillApp.Client -> (this.meta as ClientMetaData).name
         KrillApp.Server.Pin -> (this.meta as PinMetaData).name
         KrillApp.DataPoint.Graph -> (this.meta as GraphMetaData).name.ifEmpty { "Graph" }
         KrillApp.Project.TaskList -> (this.meta as TaskListMetaData).name

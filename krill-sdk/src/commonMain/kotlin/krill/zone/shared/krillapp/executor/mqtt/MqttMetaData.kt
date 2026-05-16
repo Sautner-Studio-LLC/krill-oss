@@ -7,6 +7,7 @@ package krill.zone.shared.krillapp.executor.mqtt
 
 import kotlinx.serialization.*
 import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
 import krill.zone.shared.node.TargetingNodeMetaData
 
@@ -36,5 +37,6 @@ data class MqttMetaData(
     /** Whether this node is in publish or subscribe mode. */
     val action: MqttAction = MqttAction.PUB,
     override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
 ) : TargetingNodeMetaData
