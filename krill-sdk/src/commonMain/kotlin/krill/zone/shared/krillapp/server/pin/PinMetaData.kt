@@ -10,7 +10,10 @@ package krill.zone.shared.krillapp.server.pin
 import kotlinx.serialization.*
 import krill.zone.shared.krillapp.server.*
 import krill.zone.shared.node.DigitalState
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
+import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
  * Payload for a `Server.Pin` node.
@@ -40,7 +43,11 @@ data class PinMetaData(
     /** Optional CSS colour hint shown on the pin tile. */
     val color: String? = null,
     override val error: String = "",
-) : NodeMetaData {
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
+) : TargetingNodeMetaData {
     /**
      * `true` when the pin has been assigned a real header position and a
      * non-default hardware id. Unconfigured defaults (`pinNumber == 0` and

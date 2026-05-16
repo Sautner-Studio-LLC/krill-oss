@@ -7,7 +7,10 @@
 package krill.zone.shared.krillapp.client
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
+import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
  * Payload for a `Client` node.
@@ -23,4 +26,8 @@ data class ClientMetaData(
     /** `true` when verbose logging has been opted into. */
     val logging: Boolean = false,
     override val error: String = "",
-) : NodeMetaData
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
+) : TargetingNodeMetaData

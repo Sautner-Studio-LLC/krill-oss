@@ -7,8 +7,10 @@
 package krill.zone.shared.krillapp.trigger.cron
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.ActionNodeMetaData
+import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
+import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
  * Payload for a `CronTimer` trigger node.
@@ -23,4 +25,7 @@ data class CronMetaData(
     val expression: String = "",
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : ActionNodeMetaData
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
+) : TargetingNodeMetaData

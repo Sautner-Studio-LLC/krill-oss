@@ -10,8 +10,10 @@
 package krill.zone.shared.krillapp.trigger.color
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.ActionNodeMetaData
+import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
+import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
  * Payload for a `Color` trigger.
@@ -34,7 +36,10 @@ data class ColorTriggerMetaData(
     val bMax: Int = 255,
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : ActionNodeMetaData {
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
+) : TargetingNodeMetaData {
     /**
      * Returns the centre of the configured RGB bounding box as a packed ARGB
      * `Long` (`0xFFRRGGBB`) suitable for use as a Compose colour. Used by the

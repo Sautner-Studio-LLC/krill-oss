@@ -15,7 +15,10 @@ package krill.zone.shared.krillapp.server
 
 import kotlinx.serialization.*
 import krill.zone.shared.Platform
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
+import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
  * Payload for a `Server` (or `Server.Peer`) node.
@@ -51,7 +54,11 @@ data class ServerMetaData(
     /** `true` if the server has a camera attached and exposes the `/camera/` routes. */
     val cameraAvailable: Boolean = false,
     override val error: String = "",
-) : NodeMetaData {
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
+) : TargetingNodeMetaData {
 
     /**
      * Returns a resolvable hostname for this server.

@@ -7,7 +7,10 @@
 package krill.zone.shared.krillapp.datapoint
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
+import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.TargetingNodeMetaData
 import kotlin.time.*
 
 /**
@@ -37,4 +40,8 @@ data class DataPointMetaData @OptIn(ExperimentalTime::class) constructor(
     /** Optional path-like address for grouping points in the editor. */
     val path: String = "",
     override val error: String = "",
-) : NodeMetaData
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
+) : TargetingNodeMetaData
