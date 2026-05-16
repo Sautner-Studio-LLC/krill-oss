@@ -49,6 +49,11 @@ data class KrillNodeType(
 private val NODE_IDENTITY_HINT =
     "List<{nodeId: String, hostId: String}> — NodeIdentity. hostId is the server UUID that owns the referenced node."
 
+private val NODE_ACTION_HINT =
+    "enum: EXECUTE | RESET — verb this node applies to its targets when it fires. " +
+        "EXECUTE (default) runs the target's primary logic; RESET reverts the target(s) to initial/cleared state " +
+        "(TaskList: reopens all tasks; Trigger: clears alarm WARN→NONE). Use `set_node_action` to update an existing node."
+
 object KrillNodeTypes {
 
     /** `meta.type` polymorphic discriminator key — kotlinx.serialization default. */
@@ -133,6 +138,7 @@ object KrillNodeTypes {
                 "priority" to JsonPrimitive("NONE"),
                 "createdAt" to JsonPrimitive(0L),
                 "updatedAt" to JsonPrimitive(0L),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "low",
@@ -142,6 +148,7 @@ object KrillNodeTypes {
             notes = "`priority` ∈ {NONE, LOW, MEDIUM, HIGH}. `tasks[]` entries carry their own cron/dueAt fields — overlay via the `meta` argument.",
             metaFieldHints = mapOf(
                 "priority" to "enum: NONE | LOW | MEDIUM | HIGH",
+                "nodeAction" to NODE_ACTION_HINT,
                 "tasks" to "List<Task> — each entry is the shape Krill's TaskList stores; consult the Krill source or an existing TaskList node via `get_node` for the full Task shape before authoring.",
             ),
         ),
@@ -312,6 +319,7 @@ object KrillNodeTypes {
                 "targets" to nodeIdentityArray(),
                 "timeRange" to JsonPrimitive("HOUR"),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "display",
             sideEffect = "none",
@@ -326,6 +334,7 @@ object KrillNodeTypes {
                 "targets" to NODE_IDENTITY_HINT + " Unused for Graph — leave empty.",
                 "timeRange" to "enum: NONE | HOUR | DAY | WEEK | MONTH | YEAR",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
 
@@ -338,6 +347,7 @@ object KrillNodeTypes {
                 "krill.zone.shared.krillapp.trigger.TriggerMetaData",
                 "name" to JsonPrimitive("Trigger"),
                 "value" to JsonPrimitive(0.0),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "container",
             sideEffect = "none",
@@ -352,6 +362,9 @@ object KrillNodeTypes {
                 "KrillApp.Trigger.IncomingWebHook",
                 "KrillApp.Trigger.Color",
             ),
+            metaFieldHints = mapOf(
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Trigger.HighThreshold",
@@ -361,6 +374,7 @@ object KrillNodeTypes {
                 "krill.zone.shared.krillapp.trigger.TriggerMetaData",
                 "name" to JsonPrimitive("HighThreshold"),
                 "value" to JsonPrimitive(0.0),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "low",
@@ -372,6 +386,9 @@ object KrillNodeTypes {
                 "KrillApp.Executor.OutgoingWebHook",
                 "KrillApp.Executor.Lambda",
             ),
+            metaFieldHints = mapOf(
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Trigger.LowThreshold",
@@ -381,6 +398,7 @@ object KrillNodeTypes {
                 "krill.zone.shared.krillapp.trigger.TriggerMetaData",
                 "name" to JsonPrimitive("LowThreshold"),
                 "value" to JsonPrimitive(0.0),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "low",
@@ -392,6 +410,9 @@ object KrillNodeTypes {
                 "KrillApp.Executor.OutgoingWebHook",
                 "KrillApp.Executor.Lambda",
             ),
+            metaFieldHints = mapOf(
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Trigger.SilentAlarmMs",
@@ -401,12 +422,16 @@ object KrillNodeTypes {
                 "krill.zone.shared.krillapp.trigger.TriggerMetaData",
                 "name" to JsonPrimitive("SilentAlarm"),
                 "value" to JsonPrimitive(0.0),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "low",
             description = "Fires when no snapshot arrives within `meta.value` ms.",
             validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
             validChildTypes = listOf("KrillApp.Executor"),
+            metaFieldHints = mapOf(
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Trigger.Button",
@@ -415,12 +440,16 @@ object KrillNodeTypes {
             defaultMeta = meta(
                 "krill.zone.shared.krillapp.trigger.button.ButtonMetaData",
                 "name" to JsonPrimitive("button"),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "none",
             description = "Executes child nodes on user click.",
             validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
             validChildTypes = listOf("KrillApp.Executor"),
+            metaFieldHints = mapOf(
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Trigger.CronTimer",
@@ -431,6 +460,7 @@ object KrillNodeTypes {
                 "name" to JsonPrimitive("CronTimer"),
                 "timestamp" to JsonPrimitive(0L),
                 "expression" to JsonPrimitive(""),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "low",
@@ -438,6 +468,9 @@ object KrillNodeTypes {
             validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
             validChildTypes = listOf("KrillApp.Executor"),
             notes = "`expression` is a 5-field cron string (e.g. `*/5 * * * *`).",
+            metaFieldHints = mapOf(
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
         ),
         KrillNodeType(
             shortName = "KrillApp.Trigger.IncomingWebHook",
@@ -451,6 +484,7 @@ object KrillNodeTypes {
                 "sources" to nodeIdentityArray(),
                 "targets" to nodeIdentityArray(),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "low",
@@ -462,6 +496,7 @@ object KrillNodeTypes {
                 "sources" to NODE_IDENTITY_HINT,
                 "targets" to NODE_IDENTITY_HINT + " DataPoint(s) that receive the incoming request body.",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
         KrillNodeType(
@@ -477,12 +512,16 @@ object KrillNodeTypes {
                 "gMax" to JsonPrimitive(255),
                 "bMin" to JsonPrimitive(0),
                 "bMax" to JsonPrimitive(255),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "trigger",
             sideEffect = "low",
             description = "Fires when the parent DataPoint color falls inside the configured RGB range.",
             validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
             validChildTypes = listOf("KrillApp.Executor"),
+            metaFieldHints = mapOf(
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
         ),
 
         // ── Executor ───────────────────────────────────────────────────────
@@ -530,6 +569,7 @@ object KrillNodeTypes {
                 "sources" to nodeIdentityArray("" to ""),
                 "targets" to nodeIdentityArray(),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "logic",
             sideEffect = "medium",
@@ -542,6 +582,7 @@ object KrillNodeTypes {
                 "sources" to NODE_IDENTITY_HINT,
                 "targets" to NODE_IDENTITY_HINT,
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
         KrillNodeType(
@@ -558,6 +599,7 @@ object KrillNodeTypes {
                 "params" to JsonArray(emptyList()),
                 "headers" to JsonArray(emptyList()),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "action",
             sideEffect = "high",
@@ -571,6 +613,7 @@ object KrillNodeTypes {
                 "params" to "List<{first: String, second: String}> — query-string pairs.",
                 "headers" to "List<{first: String, second: String}> — request-header pairs.",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
         KrillNodeType(
@@ -585,6 +628,7 @@ object KrillNodeTypes {
                 "filename" to JsonPrimitive(""),
                 "timestamp" to JsonPrimitive(0L),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "action",
             sideEffect = "high",
@@ -597,6 +641,7 @@ object KrillNodeTypes {
                 "targets" to NODE_IDENTITY_HINT + " DataPoints the script writes to.",
                 "tags" to "Map<String, String> — arbitrary key/value pairs the script can read from its context.",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
         KrillNodeType(
@@ -610,6 +655,7 @@ object KrillNodeTypes {
                 "targets" to nodeIdentityArray(),
                 "formula" to JsonPrimitive(""),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "transform",
             sideEffect = "low",
@@ -621,6 +667,7 @@ object KrillNodeTypes {
                 "targets" to NODE_IDENTITY_HINT + " DataPoint(s) receiving the computed result.",
                 "formula" to "Infix math expression referencing source values by index (e.g. `s0 * 1.8 + 32`).",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
         KrillNodeType(
@@ -634,6 +681,7 @@ object KrillNodeTypes {
                 "range" to JsonPrimitive("NONE"),
                 "operation" to JsonPrimitive("AVERAGE"),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "transform",
             sideEffect = "low",
@@ -647,6 +695,7 @@ object KrillNodeTypes {
                 "range" to "enum: NONE | HOUR | DAY | WEEK | MONTH | YEAR",
                 "operation" to "enum: AVERAGE | MIN | MAX | SUM | COUNT | MEDIAN",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
         KrillNodeType(
@@ -664,6 +713,7 @@ object KrillNodeTypes {
                 "sources" to nodeIdentityArray(),
                 "targets" to nodeIdentityArray(),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "action",
             sideEffect = "high",
@@ -674,6 +724,7 @@ object KrillNodeTypes {
                 "sources" to NODE_IDENTITY_HINT + " DataPoints whose values can be interpolated into the email.",
                 "targets" to NODE_IDENTITY_HINT + " Usually empty — SMTP side-effects go to an external mailbox, not a target DataPoint.",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
 
@@ -690,6 +741,7 @@ object KrillNodeTypes {
                 "topic" to JsonPrimitive(""),
                 "action" to JsonPrimitive("PUB"),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "action",
             sideEffect = "high",
@@ -702,6 +754,7 @@ object KrillNodeTypes {
                 "sources" to NODE_IDENTITY_HINT + " For PUB: DataPoints whose values are published to `topic`.",
                 "targets" to NODE_IDENTITY_HINT + " For SUB: DataPoints that receive messages from `topic`.",
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
 
@@ -761,6 +814,7 @@ object KrillNodeTypes {
                 "sources" to nodeIdentityArray("" to ""),
                 "targets" to nodeIdentityArray(),
                 "executionSource" to JsonArray(emptyList()),
+                "nodeAction" to JsonPrimitive("EXECUTE"),
             ),
             role = "target",
             sideEffect = "high",
@@ -780,6 +834,7 @@ object KrillNodeTypes {
                 "sources" to NODE_IDENTITY_HINT,
                 "targets" to NODE_IDENTITY_HINT,
                 "executionSource" to "List<enum: PARENT_EXECUTE_SUCCESS | SOURCE_VALUE_MODIFIED | ON_CLICK>",
+                "nodeAction" to NODE_ACTION_HINT,
             ),
         ),
         KrillNodeType(

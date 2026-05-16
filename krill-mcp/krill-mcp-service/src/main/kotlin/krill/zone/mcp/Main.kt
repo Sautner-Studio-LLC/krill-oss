@@ -49,6 +49,7 @@ fun main() {
         ListNodeTypesTool(registry),
         RecordSnapshotTool(registry),
         DeleteNodeTool(registry),
+        SetNodeActionTool(registry),
     )
 
     val mcp = McpServer(
