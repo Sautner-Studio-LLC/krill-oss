@@ -212,27 +212,45 @@ Response: `{"server": "<id>", "nodeId": "<new-uuid>", "type": "KrillApp.DataPoin
 3. `create_node type=KrillApp.Executor.OutgoingWebHook parent=<tId> name="Page me" meta={url:"https://...",method:"POST"}`.
 4. `get_node` each new id to confirm persistence — the create response echoes what was sent, not what the server stored.
 
+### `set_node_wiring`
+Set source/target wiring and action verb on **any** Krill node. Since v0.0.10, every MetaData type implements `TargetingNodeMetaData`, so `sources`, `targets`, `executionSource`, and `nodeAction` are universal. Supply one or more fields; omitted fields are left unchanged on the existing node.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sources` | `[{nodeId, hostId}]` | Upstream nodes whose value changes can wake this node. Pass `[]` to clear. |
+| `targets` | `[{nodeId, hostId}]` | Downstream nodes this node actuates or writes to. Pass `[]` to clear. |
+| `executionSource` | `[string]` | Firing events: `SOURCE_VALUE_MODIFIED`, `PARENT_EXECUTE_SUCCESS`, `ON_CLICK`. Pass `[]` to disable auto-fire. |
+| `nodeAction` | `string` | Verb when fired: `EXECUTE` (default) or `RESET`. |
+
+Read current wiring via `get_node` — values at `meta.sources`, `meta.targets`, `meta.executionSource`, `meta.nodeAction`.
+
+**Example — wire Button as TaskList source with RESET verb:**
+```json
+{"name": "set_node_wiring", "arguments": {"id": "<button-uuid>", "nodeAction": "RESET"}}
+{"name": "set_node_wiring", "arguments": {"id": "<tasklist-uuid>", "sources": [{"nodeId": "<button-uuid>", "hostId": "<server-uuid>"}], "executionSource": ["SOURCE_VALUE_MODIFIED"]}}
+```
+Then `get_node` the TaskList to confirm `meta.sources` contains the Button identity.
+
+Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.Button", "nodeAction": "RESET", "sources": [...], "note": "..."}`
+
+The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
+
 ### `set_node_action`
-Set the action verb a trigger or executor node applies when it fires. Two values are supported:
+Set only the action verb on any Krill node. Prefer `set_node_wiring` when also setting `sources`/`targets`/`executionSource`. Two values are supported:
 
 | `action` | Meaning |
 |----------|---------|
-| `EXECUTE` | (default) Run the target's primary execution logic — unchanged from pre-v0.0.23 behavior. |
-| `RESET` | Revert the target(s) to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, SilentAlarmMs, Color) transitions WARN→NONE without re-evaluating the threshold or firing children. |
+| `EXECUTE` | (default) Run the node's primary execution logic. |
+| `RESET` | Revert the target(s) to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, SilentAlarmMs, Color) transitions WARN→NONE without re-evaluating the threshold. |
 
-Applies to all nodes whose MetaData implements `ActionNodeMetaData`:
-- **Triggers:** Button, HighThreshold, LowThreshold, SilentAlarmMs, CronTimer, Color, IncomingWebHook
-- **Executors:** LogicGate, OutgoingWebHook, Lambda, Calculation, Compute, SMTP, MQTT
-- **TaskList** (`KrillApp.Project.TaskList`)
-
-Read the current action via `get_node` — the value is at `meta.nodeAction`. Creating a node via `create_node` can also set `nodeAction` in the `meta` overlay.
+Since v0.0.10, every node type carries `nodeAction` (all MetaData implements `ActionNodeMetaData`). Read via `get_node` → `meta.nodeAction`.
 
 ```json
 {"name": "set_node_action", "arguments": {"server": "<optional>", "id": "<node-uuid>", "action": "RESET"}}
 ```
 Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.Button", "nodeAction": "RESET", "note": "..."}`
 
-The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms; the server persists meta asynchronously.
+The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
 
 ### `record_snapshot`
 Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot becomes a new point in the time-series store and runs through the DataPoint's child Filters + Triggers.

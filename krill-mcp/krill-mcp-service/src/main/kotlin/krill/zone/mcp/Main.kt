@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("krill-mcp")
 
-private const val SERVER_VERSION = "0.0.8"
+private const val SERVER_VERSION = "0.0.10"
 
 fun main() {
     log.info("Starting krill-mcp version={}", SERVER_VERSION)
@@ -50,6 +50,7 @@ fun main() {
         RecordSnapshotTool(registry),
         DeleteNodeTool(registry),
         SetNodeActionTool(registry),
+        SetNodeWiringTool(registry),
     )
 
     val mcp = McpServer(
