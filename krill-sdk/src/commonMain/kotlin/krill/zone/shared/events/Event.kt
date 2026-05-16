@@ -51,6 +51,12 @@ enum class EventType {
 
     /** Server acknowledgement of a client message. */
     ACK,
+
+    /**
+     * One of a node's configured `sources` changed; the receiver is woken
+     * with the originating node's identity and verb. See [SourceTriggerPayload].
+     */
+    SOURCE_TRIGGERED,
 }
 
 /**

@@ -6,11 +6,21 @@
 package krill.zone.shared.krillapp.spacer
 
 import kotlinx.serialization.*
-import krill.zone.shared.node.NodeMetaData
+import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.NodeAction
+import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.TargetingNodeMetaData
 
 /**
  * Payload for a `Spacer` node. Carries only a display [name] (so the user
  * can label the gap) and the standard error field.
  */
 @Serializable
-data class SpacerMetaData(val name: String = "spacer", override val error: String = "") : NodeMetaData
+data class SpacerMetaData(
+    val name: String = "spacer",
+    override val error: String = "",
+    override val sources: List<NodeIdentity> = emptyList(),
+    override val targets: List<NodeIdentity> = emptyList(),
+    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val nodeAction: NodeAction = NodeAction.EXECUTE,
+) : TargetingNodeMetaData
