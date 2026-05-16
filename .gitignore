@@ -32,3 +32,5 @@ krill-sdk/.gradle/
 krill-sdk/.idea/
 krill-sdk/*.iml
 !krill-sdk/gradle/wrapper/gradle-wrapper.jar
+.idea/
+.idea/**
