@@ -541,27 +541,25 @@ class DeleteNodeTool(private val registry: KrillRegistry) : Tool {
 }
 
 /**
- * Updates the [NodeAction] verb on an existing action-capable node.
+ * Updates the [NodeAction] verb on any node.
  *
- * Fetches the node, validates it is an action-capable type (one whose MetaData
- * carries `nodeAction` — Triggers, Executors, TaskList, etc.), patches
- * `meta.nodeAction`, and POSTs back with `state=USER_EDIT` so the server
- * persists the change through the normal edit pipeline.
+ * Post-unify-source-verb-wiring every MetaData type implements [ActionNodeMetaData],
+ * so nodeAction is universal. Patches `meta.nodeAction` and POSTs back with
+ * `state=USER_EDIT`. Reading the current action is covered by `get_node`.
  *
- * Reading the current action back is already covered by `get_node` — the full
- * node body including `meta.nodeAction` is returned verbatim.
+ * For updating sources/targets/executionSource alongside nodeAction in one
+ * call, prefer [SetNodeWiringTool].
  */
 class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
     override val name = "set_node_action"
     override val description =
-        "Set the action verb a trigger or executor node applies when it fires. " +
-            "`EXECUTE` (default) runs the target's primary logic; `RESET` reverts the target(s) to " +
+        "Set the action verb any Krill node applies when it fires. Post-unify-source-verb-wiring " +
+            "every node type carries `nodeAction` (all MetaData implements ActionNodeMetaData). " +
+            "`EXECUTE` (default) runs the node's primary logic; `RESET` reverts the target(s) to " +
             "initial/cleared state — TaskList: marks all tasks complete and reopens repeatables; " +
             "Trigger family: clears alarm WARN→NONE without re-evaluating the threshold condition. " +
-            "Applies to all nodes whose meta implements ActionNodeMetaData: Triggers (Button, " +
-            "HighThreshold, LowThreshold, SilentAlarmMs, CronTimer, Color, IncomingWebHook) and " +
-            "Executors (LogicGate, OutgoingWebHook, Lambda, Calculation, Compute, SMTP, MQTT), " +
-            "plus TaskList. Use `get_node` to read the current `meta.nodeAction` before calling."
+            "To also set sources/targets/executionSource in one call, use `set_node_wiring`. " +
+            "Use `get_node` to read the current `meta.nodeAction` before calling."
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -601,16 +599,6 @@ class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
         val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
         val spec = typeFqn?.let { KrillNodeTypes.byTypeFqn[it] }
 
-        // Reject known non-action types up front; for unknown types, attempt
-        // the update (server ignoreUnknownKeys will drop the field gracefully).
-        if (spec != null && "nodeAction" !in spec.defaultMeta) {
-            error(
-                "Node type ${spec.shortName} does not carry a nodeAction field. " +
-                    "Only Triggers, Executors, TaskList, and similar action-capable nodes support this verb. " +
-                    "Call `list_node_types` to confirm which types expose nodeAction.",
-            )
-        }
-
         val existingMeta = existing["meta"] as? JsonObject
             ?: error("Node $id has no meta object.")
 
@@ -638,6 +626,166 @@ class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
 
     companion object {
         val VALID_ACTIONS = setOf("EXECUTE", "RESET")
+    }
+}
+
+/**
+ * Sets source/target wiring and action verb on any Krill node.
+ *
+ * Post-unify-source-verb-wiring every MetaData type implements
+ * [krill.zone.shared.node.TargetingNodeMetaData], so sources, targets,
+ * executionSource, and nodeAction are universal. Supply one or more of the
+ * four fields; unset fields are left unchanged on the existing node.
+ *
+ * Reading the current wiring is handled by `get_node` — meta.sources /
+ * meta.targets / meta.executionSource / meta.nodeAction are returned verbatim.
+ */
+class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
+    override val name = "set_node_wiring"
+    override val description =
+        "Set source/target wiring and action verb on any Krill node. Every node type now carries " +
+            "sources, targets, executionSource, and nodeAction (all MetaData implements " +
+            "TargetingNodeMetaData). Supply one or more fields; omitted fields are left unchanged. " +
+            "`sources` / `targets` are arrays of {nodeId, hostId} identity pairs. " +
+            "`executionSource` controls auto-firing: SOURCE_VALUE_MODIFIED (fires when a listed " +
+            "source changes), PARENT_EXECUTE_SUCCESS (fires when the parent node succeeds), " +
+            "ON_CLICK (fires on manual user tap). Pass [] to disable auto-fire. " +
+            "`nodeAction` is EXECUTE (default) or RESET. " +
+            "Read current wiring via `get_node`. Posted with state=USER_EDIT; allow ~500ms for " +
+            "the server to persist before reading back."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("server") {
+                put("type", "string")
+                put("description", "Krill server id, host, or host:port. Defaults to the first registered server.")
+            }
+            putJsonObject("id") {
+                put("type", "string")
+                put("description", "Id of the node to update.")
+            }
+            putJsonObject("sources") {
+                put("type", "array")
+                put(
+                    "description",
+                    "Upstream nodes whose value changes can wake this node. " +
+                        "Each entry: {nodeId: string, hostId: string}. Pass [] to clear.",
+                )
+                putJsonObject("items") {
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("nodeId") {
+                            put("type", "string")
+                            put("description", "UUID of the source node.")
+                        }
+                        putJsonObject("hostId") {
+                            put("type", "string")
+                            put("description", "Server UUID that owns the source node.")
+                        }
+                    }
+                    putJsonArray("required") { add("nodeId"); add("hostId") }
+                }
+            }
+            putJsonObject("targets") {
+                put("type", "array")
+                put(
+                    "description",
+                    "Downstream nodes this node actuates or writes to. " +
+                        "Each entry: {nodeId: string, hostId: string}. Pass [] to clear.",
+                )
+                putJsonObject("items") {
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("nodeId") { put("type", "string") }
+                        putJsonObject("hostId") { put("type", "string") }
+                    }
+                    putJsonArray("required") { add("nodeId"); add("hostId") }
+                }
+            }
+            putJsonObject("executionSource") {
+                put("type", "array")
+                put(
+                    "description",
+                    "Events that trigger this node to fire. Valid values: " +
+                        "SOURCE_VALUE_MODIFIED, PARENT_EXECUTE_SUCCESS, ON_CLICK. Pass [] to disable auto-fire.",
+                )
+                putJsonObject("items") { put("type", "string") }
+            }
+            putJsonObject("nodeAction") {
+                put("type", "string")
+                put("description", "Verb applied when this node fires: EXECUTE (default) or RESET.")
+            }
+        }
+        putJsonArray("required") { add("id") }
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val id = arguments["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: id")
+
+        val nodeAction = arguments["nodeAction"]?.jsonPrimitive?.contentOrNull
+        if (nodeAction != null && nodeAction !in VALID_ACTIONS) {
+            error("Invalid nodeAction '$nodeAction'. Must be one of: ${VALID_ACTIONS.joinToString()}.")
+        }
+
+        val execSources = arguments["executionSource"] as? JsonArray
+        if (execSources != null) {
+            val invalid = execSources
+                .mapNotNull { it.jsonPrimitive.contentOrNull }
+                .filter { it !in VALID_EXECUTION_SOURCES }
+            if (invalid.isNotEmpty()) {
+                error(
+                    "Invalid executionSource value(s): ${invalid.joinToString()}. " +
+                        "Valid values: ${VALID_EXECUTION_SOURCES.joinToString()}.",
+                )
+            }
+        }
+
+        val updates = mutableMapOf<String, JsonElement>()
+        arguments["sources"]?.let { updates["sources"] = it }
+        arguments["targets"]?.let { updates["targets"] = it }
+        execSources?.let { updates["executionSource"] = it }
+        nodeAction?.let { updates["nodeAction"] = JsonPrimitive(it) }
+
+        if (updates.isEmpty()) {
+            error("Provide at least one of: sources, targets, executionSource, nodeAction.")
+        }
+
+        val client = resolve(registry, arguments)
+        val existing = client.node(id) as? JsonObject
+            ?: error("Node $id not found on server ${client.serverId}.")
+
+        val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+        val shortName = typeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName } ?: typeFqn ?: "unknown"
+
+        val existingMeta = existing["meta"] as? JsonObject
+            ?: error("Node $id has no meta object.")
+
+        val updatedMeta = JsonObject(existingMeta.toMutableMap().also { it.putAll(updates) })
+        val updatedNode = JsonObject(
+            existing.toMutableMap().also {
+                it["meta"] = updatedMeta
+                it["state"] = JsonPrimitive("USER_EDIT")
+            },
+        )
+        client.postNode(updatedNode)
+
+        return buildJsonObject {
+            put("server", client.serverId)
+            put("id", id)
+            put("type", shortName)
+            updates.forEach { (k, v) -> put(k, v) }
+            put(
+                "note",
+                "Posted with state=USER_EDIT. Verify via `get_node` — the server persists meta " +
+                    "asynchronously; allow ~500ms before reading back.",
+            )
+        }
+    }
+
+    companion object {
+        val VALID_ACTIONS = setOf("EXECUTE", "RESET")
+        val VALID_EXECUTION_SOURCES = setOf("PARENT_EXECUTE_SUCCESS", "SOURCE_VALUE_MODIFIED", "ON_CLICK")
     }
 }
 

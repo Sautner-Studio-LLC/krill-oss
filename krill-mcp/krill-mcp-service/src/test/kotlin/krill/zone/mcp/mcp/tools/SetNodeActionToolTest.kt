@@ -142,19 +142,19 @@ class SetNodeActionToolTest {
     }
 
     @Test
-    fun `non-action types do not carry nodeAction in defaultMeta`() {
-        val nonActionShortNames = listOf(
+    fun `DataPoint and Pin carry nodeAction in defaultMeta after unify-source-verb-wiring`() {
+        // Post-krill-oss#87: every MetaData type implements TargetingNodeMetaData, so
+        // DataPoint and Server.Pin now expose nodeAction alongside sources/targets/executionSource.
+        val universalShortNames = listOf(
             "KrillApp.DataPoint",
-            "KrillApp.DataPoint.Filter",
-            "KrillApp.Project",
             "KrillApp.Server.Pin",
         )
-        for (shortName in nonActionShortNames) {
+        for (shortName in universalShortNames) {
             val spec = KrillNodeTypes.resolve(shortName)
                 ?: error("$shortName missing from KrillNodeTypes registry")
             assertTrue(
-                "nodeAction" !in spec.defaultMeta,
-                "$shortName should not expose nodeAction (not an action-capable type)",
+                "nodeAction" in spec.defaultMeta,
+                "$shortName defaultMeta must expose nodeAction (all types implement TargetingNodeMetaData)",
             )
         }
     }
