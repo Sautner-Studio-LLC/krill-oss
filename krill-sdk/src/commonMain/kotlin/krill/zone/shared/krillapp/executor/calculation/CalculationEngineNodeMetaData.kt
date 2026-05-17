@@ -8,6 +8,7 @@
 package krill.zone.shared.krillapp.executor.calculation
 
 import kotlinx.serialization.*
+import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
@@ -24,6 +25,17 @@ data class CalculationEngineNodeMetaData(
     val name: String = this::class.simpleName!!,
     /** Free-form formula string evaluated by the server's calculation engine. */
     val formula: String = "",
+    /**
+     * DOUBLE DataPoints referenced by [formula] (bracket tokens
+     * `[hostId:nodeId]`). Read at evaluation time only — NOT invocation
+     * sources (invocation is wired via [sources] / the Sources tab).
+     */
+    val inputs: List<NodeIdentity> = emptyList(),
+    /**
+     * Last computed value + timestamp. The readable output a DataPoint
+     * subscriber pulls when this calc wakes it. `null` until first compute.
+     */
+    val derived: Snapshot? = null,
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
