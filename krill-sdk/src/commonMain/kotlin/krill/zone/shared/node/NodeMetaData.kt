@@ -148,6 +148,7 @@ interface TargetingNodeMetaData : ActionNodeMetaData {
      * Downstream nodes this one writes to or actuates. May be empty for nodes
      * that only side-effect outside the swarm (e.g. an SMTP executor).
      */
+    @Deprecated("nodes no longer write to targets, data is pulled from sources.")
     val targets: List<NodeIdentity>
 
     /**

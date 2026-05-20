@@ -23,6 +23,8 @@ data class LLMMetaData(
     val model: String = "kimi-k2:latest",
     /** Persisted conversation history. The most recent message is at the end. */
     val chat: List<Message> = emptyList(),
+    /** user entered prompt */
+    val prompt: String = "",
     /**
      * Nodes the user has explicitly tagged as in-scope for the model — the
      * server includes their state in the prompt context so the model can
