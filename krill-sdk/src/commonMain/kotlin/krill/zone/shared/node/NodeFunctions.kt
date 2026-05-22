@@ -122,3 +122,14 @@ fun StateFlow<Node>.details(): String =
  * that only cares about real swarm nodes.
  */
 fun KrillApp.isMenuOption(): Boolean = this is MenuCommand
+
+fun Node.isDigital() : Boolean {
+    when (this.type) {
+        KrillApp.Server.Pin, KrillApp.Executor.LogicGate -> return true
+        KrillApp.DataPoint -> {
+            val meta = this.meta as DataPointMetaData
+            return (meta.dataType == DataType.DIGITAL)
+        }
+        else -> return false
+    }
+}
