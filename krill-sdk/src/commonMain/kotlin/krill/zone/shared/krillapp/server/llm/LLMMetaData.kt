@@ -20,7 +20,7 @@ data class LLMMetaData(
     /** Port on the server hosting the upstream Ollama-compatible inference endpoint. */
     val port: Int = 11434,
     /** Model identifier sent on every request (e.g. `"kimi-k2:latest"`). */
-    val model: String = "kimi-k2:latest",
+    val model: String = "qwen3:32b",
     /** Persisted conversation history. The most recent message is at the end. */
     val chat: List<Message> = emptyList(),
     /** user entered prompt */
