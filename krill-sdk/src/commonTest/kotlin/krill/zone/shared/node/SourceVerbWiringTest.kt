@@ -118,7 +118,7 @@ class SourceVerbWiringTest {
     fun `pre-change payloads deserialise with safe wiring defaults`() {
         for ((name, meta) in preChangePayloads) {
             assertTrue(meta.sources.isEmpty(), "$name.sources should default empty")
-            assertTrue(meta.executionSource.isEmpty(), "$name.executionSource should default empty")
+            assertTrue(meta.invocationTriggers.isEmpty(), "$name.executionSource should default empty")
             assertEquals(NodeAction.EXECUTE, meta.nodeAction, "$name.nodeAction should default EXECUTE")
         }
     }
@@ -130,7 +130,7 @@ class SourceVerbWiringTest {
             name = "relay",
             sources = listOf(src),
 
-            executionSource = listOf(ExecutionSource.SOURCE_VALUE_MODIFIED),
+            invocationTriggers = listOf(InvocationTrigger.SOURCE_INVOKED),
             nodeAction = NodeAction.RESET,
         )
         val decoded = Json.decodeFromString(
@@ -138,7 +138,7 @@ class SourceVerbWiringTest {
             Json.encodeToString(PinMetaData.serializer(), meta),
         )
         assertEquals(listOf(src), decoded.sources)
-        assertEquals(listOf(ExecutionSource.SOURCE_VALUE_MODIFIED), decoded.executionSource)
+        assertEquals(listOf(InvocationTrigger.SOURCE_INVOKED), decoded.invocationTriggers)
         assertEquals(NodeAction.RESET, decoded.nodeAction)
     }
 

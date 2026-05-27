@@ -1,7 +1,7 @@
 /**
  * Public contracts for the per-node payload (`meta`) that every Krill node
  * carries. The interface ([NodeMetaData]) and the cross-node addressing types
- * ([NodeIdentity], [SourceMetaData], [ExecutionSource], [NodeAction],
+ * ([NodeIdentity], [SourceMetaData], [InvocationTrigger], [NodeAction],
  * [ActionNodeMetaData]) live in the SDK so external integrators can implement
  * their own node types and link them into a Krill swarm without depending on
  * the proprietary metadata implementations that ship with the reference server.
@@ -14,7 +14,7 @@
 package krill.zone.shared.node
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
+import krill.zone.shared.krillapp.datapoint.*
 
 /**
  * Marker interface that every node's per-type metadata payload must implement.
@@ -74,12 +74,10 @@ data class NodeIdentity(
  * The [displayLabel] is the human-readable string the editor UI shows beside
  * the matching checkbox.
  */
-enum class ExecutionSource(val displayLabel: String) {
-    /** Fire when the parent node's most recent execution completed successfully. */
-    PARENT_EXECUTE_SUCCESS("Parent Execute Success"),
+enum class InvocationTrigger(val displayLabel: String) {
 
     /** Fire when one of the configured `sources` changes its value. */
-    SOURCE_VALUE_MODIFIED("Source Value Modified"),
+    SOURCE_INVOKED("Source Value Modified"),
 
     /** Fire when the user manually clicks / taps the node in the UI. */
     ON_CLICK("On Click"),
@@ -144,15 +142,23 @@ interface SourceMetaData : ActionNodeMetaData {
      * is the data being read; for a trigger it is the value being watched.
      */
     val sources: List<NodeIdentity>
-     /**
-     * The set of [ExecutionSource]s configured to wake this node. The node
+
+    /**
+     * The set of [InvocationTrigger]s configured to wake this node. The node
      * processor checks the incoming event against this list before doing any
      * work. An empty list means "never auto-fire" — only manual execution.
      */
-    val executionSource: List<ExecutionSource>
+
+    val invocationTriggers: List<InvocationTrigger>
 
     /**
      * Stores the last result of when this node was invoked and is a source of data
      */
-    val snapshot : Snapshot
+    val snapshot: Snapshot
+
+    /**
+     * sets the nodes this node reads from to complete its work when invoked
+     */
+    val inputs: List<NodeIdentity>
+
 }
