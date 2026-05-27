@@ -17,6 +17,7 @@ import krill.zone.shared.krillapp.datapoint.DataPointMetaData
 import krill.zone.shared.krillapp.datapoint.DataType
 import krill.zone.shared.krillapp.datapoint.graph.GraphMetaData
 import krill.zone.shared.krillapp.executor.lambda.LambdaSourceMetaData
+import krill.zone.shared.krillapp.executor.logicgate.LogicGateMetaData
 import krill.zone.shared.krillapp.project.ProjectMetaData
 import krill.zone.shared.krillapp.project.camera.CameraMetaData
 import krill.zone.shared.krillapp.project.diagram.DiagramMetaData
@@ -50,7 +51,7 @@ fun Node.key(): String = "${this.timestamp}:${this.id}"
 
 /**
  * Returns this node's address pair — `(nodeId, hostId)` — as a
- * [NodeIdentity] suitable for use inside [TargetingNodeMetaData] source /
+ * [NodeIdentity] suitable for use inside [SourceMetaData] source /
  * target lists.
  */
 fun Node.id(): NodeIdentity = NodeIdentity(
@@ -80,6 +81,7 @@ fun Node.name(): String {
         KrillApp.Server.Backup -> (this.meta as BackupMetaData).name.ifEmpty { "Backup" }
         KrillApp.Project -> (this.meta as ProjectMetaData).name
         KrillApp.Project.Diagram -> (this.meta as DiagramMetaData).name
+        KrillApp.Executor.LogicGate -> (this.meta as LogicGateMetaData).name.ifEmpty { this.meta.gateType.name }
         KrillApp.Executor.Lambda -> {
             val meta = this.meta as LambdaSourceMetaData
             if (meta.filename.isNotEmpty()) meta.filename.removeSuffix(".py") else ""

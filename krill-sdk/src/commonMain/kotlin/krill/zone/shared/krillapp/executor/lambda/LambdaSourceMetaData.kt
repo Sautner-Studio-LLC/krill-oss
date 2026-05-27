@@ -9,10 +9,11 @@
 package krill.zone.shared.krillapp.executor.lambda
 
 import kotlinx.serialization.*
+import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 
 /**
  * Payload for a `Lambda` executor node.
@@ -20,7 +21,7 @@ import krill.zone.shared.node.TargetingNodeMetaData
 @Serializable
 data class LambdaSourceMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
-    override val targets: List<NodeIdentity> = emptyList(),
+    override val snapshot: Snapshot = Snapshot(),
     /** User-supplied tag/value pairs; passed through to the script as environment-style data. */
     val tags: Map<String, String> = emptyMap(),
     /** Filename of the uploaded `.py` source on the server (e.g. `"average.py"`). */
@@ -30,4 +31,4 @@ data class LambdaSourceMetaData(
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : TargetingNodeMetaData
+) : SourceMetaData

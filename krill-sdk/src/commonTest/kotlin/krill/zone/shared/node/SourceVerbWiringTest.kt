@@ -32,7 +32,7 @@ import kotlin.test.assertTrue
  * Covers:
  *  - the dispatch contract that carries the originating [NodeIdentity] +
  *    its verb to a woken receiver ([SourceTriggerPayload]);
- *  - universal [TargetingNodeMetaData] across every shipped MetaData type;
+ *  - universal [SourceMetaData] across every shipped MetaData type;
  *  - back-compat: payloads predating this change deserialise with safe
  *    defaults (empty wiring, [NodeAction.EXECUTE]).
  */
@@ -83,7 +83,7 @@ class SourceVerbWiringTest {
     // ---- D3: every shipped MetaData type is a TargetingNodeMetaData ----
 
     /** One pre-change payload per newly-targeting type (absent wiring + verb). */
-    private val preChangePayloads: Map<String, TargetingNodeMetaData> = mapOf(
+    private val preChangePayloads: Map<String, SourceMetaData> = mapOf(
         "ClientMetaData" to dec(ClientMetaData.serializer(), """{"name":"ui"}"""),
         "DataPointMetaData" to dec(DataPointMetaData.serializer(), """{"name":"dp"}"""),
         "DiagramMetaData" to dec(DiagramMetaData.serializer(), """{"name":"d"}"""),
@@ -118,7 +118,6 @@ class SourceVerbWiringTest {
     fun `pre-change payloads deserialise with safe wiring defaults`() {
         for ((name, meta) in preChangePayloads) {
             assertTrue(meta.sources.isEmpty(), "$name.sources should default empty")
-            assertTrue(meta.targets.isEmpty(), "$name.targets should default empty")
             assertTrue(meta.executionSource.isEmpty(), "$name.executionSource should default empty")
             assertEquals(NodeAction.EXECUTE, meta.nodeAction, "$name.nodeAction should default EXECUTE")
         }
@@ -130,7 +129,7 @@ class SourceVerbWiringTest {
         val meta = PinMetaData(
             name = "relay",
             sources = listOf(src),
-            targets = listOf(NodeIdentity("dp-2", "host-a")),
+
             executionSource = listOf(ExecutionSource.SOURCE_VALUE_MODIFIED),
             nodeAction = NodeAction.RESET,
         )

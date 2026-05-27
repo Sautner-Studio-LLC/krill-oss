@@ -12,7 +12,7 @@ import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 
 /**
  * Payload for a `Calculation` executor node.
@@ -20,7 +20,7 @@ import krill.zone.shared.node.TargetingNodeMetaData
 @Serializable
 data class CalculationEngineNodeMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
-    override val targets: List<NodeIdentity> = emptyList(),
+    override val snapshot: Snapshot = Snapshot(),
     /** Display name; defaults to the class's simple name on creation. */
     val name: String = this::class.simpleName!!,
     /** Free-form formula string evaluated by the server's calculation engine. */
@@ -39,4 +39,4 @@ data class CalculationEngineNodeMetaData(
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : TargetingNodeMetaData
+) : SourceMetaData
