@@ -8,7 +8,7 @@ package krill.zone.shared.krillapp.client
 
 import kotlinx.serialization.*
 import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.InvocationTrigger
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
 import krill.zone.shared.node.SourceMetaData
@@ -29,6 +29,7 @@ data class ClientMetaData(
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
-    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
+override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData

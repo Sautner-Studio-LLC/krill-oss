@@ -7,7 +7,7 @@ package krill.zone.shared.krillapp.executor.compute
 
 import kotlinx.serialization.*
 import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.ExecutionSource
+import krill.zone.shared.node.InvocationTrigger
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
 import krill.zone.shared.node.SourceMetaData
@@ -23,7 +23,8 @@ data class ComputeMetaData(
     val range: ComputeTimeRange = ComputeTimeRange.NONE,
     /** Aggregation reduction to apply to the windowed snapshots. */
     val operation: ComputeOperation = ComputeOperation.AVERAGE,
-    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData

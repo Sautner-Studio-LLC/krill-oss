@@ -7,11 +7,8 @@
 package krill.zone.shared.krillapp.executor.logicgate
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.ExecutionSource
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.node.*
 
 /**
  * Payload for a `LogicGate` executor node.
@@ -25,10 +22,10 @@ data class LogicGateMetaData(
     val name: String = "logic gate",
     /** Which boolean function to evaluate; see [LogicGate]. */
     val gateType: LogicGate = LogicGate.BUFFER,
-    val inputs: Pair<NodeIdentity?, NodeIdentity?> = Pair(null, null),
     override val sources: List<NodeIdentity> = listOf(NodeIdentity("", "")),
     override val snapshot: Snapshot = Snapshot(),
-    override val executionSource: List<ExecutionSource> = emptyList(),
+    override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData
