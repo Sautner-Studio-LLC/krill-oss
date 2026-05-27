@@ -1,7 +1,7 @@
 /**
  * Public contracts for the per-node payload (`meta`) that every Krill node
  * carries. The interface ([NodeMetaData]) and the cross-node addressing types
- * ([NodeIdentity], [TargetingNodeMetaData], [ExecutionSource], [NodeAction],
+ * ([NodeIdentity], [SourceMetaData], [ExecutionSource], [NodeAction],
  * [ActionNodeMetaData]) live in the SDK so external integrators can implement
  * their own node types and link them into a Krill swarm without depending on
  * the proprietary metadata implementations that ship with the reference server.
@@ -14,6 +14,7 @@
 package krill.zone.shared.node
 
 import kotlinx.serialization.*
+import krill.zone.shared.krillapp.datapoint.Snapshot
 
 /**
  * Marker interface that every node's per-type metadata payload must implement.
@@ -40,7 +41,7 @@ interface NodeMetaData {
 /**
  * Address pair that uniquely identifies a node in a multi-server Krill swarm.
  *
- * Used inside [TargetingNodeMetaData.sources] / [TargetingNodeMetaData.targets]
+ * Used inside [SourceMetaData.sources] / [SourceMetaData.targets]
  * so callers never have to parse a `"host:id"` string back into its components.
  *
  * `@Serializable` because the type rides inside polymorphic node payloads and
@@ -66,7 +67,7 @@ data class NodeIdentity(
  * The set of events that can cause an executor / filter / trigger node to
  * fire its work.
  *
- * Stored as a `List<ExecutionSource>` on [TargetingNodeMetaData] so a single
+ * Stored as a `List<ExecutionSource>` on [SourceMetaData] so a single
  * node can opt into multiple firing modes simultaneously (e.g. fire when the
  * source DataPoint changes **and** when the user clicks the node chip).
  *
@@ -108,7 +109,7 @@ enum class NodeAction(val displayLabel: String) {
  * Extended contract for trigger and executor metadata that carries an explicit
  * [nodeAction] discriminator.
  *
- * Applying this interface to the trigger-family and [TargetingNodeMetaData]
+ * Applying this interface to the trigger-family and [SourceMetaData]
  * hierarchy lets the server processor and the editor UI branch on action
  * without per-type `when` arms. The default on every concrete implementation
  * is [NodeAction.EXECUTE], preserving wire-compatibility with pre-0.0.23
@@ -137,24 +138,21 @@ interface ActionNodeMetaData : NodeMetaData {
  * (cycle detection, dependency graphing, propagation) walk the swarm without
  * caring which subtype it is on.
  */
-interface TargetingNodeMetaData : ActionNodeMetaData {
+interface SourceMetaData : ActionNodeMetaData {
     /**
      * Upstream nodes whose values feed this one. For a filter or executor this
      * is the data being read; for a trigger it is the value being watched.
      */
     val sources: List<NodeIdentity>
-
-    /**
-     * Downstream nodes this one writes to or actuates. May be empty for nodes
-     * that only side-effect outside the swarm (e.g. an SMTP executor).
-     */
-    @Deprecated("nodes no longer write to targets, data is pulled from sources.")
-    val targets: List<NodeIdentity>
-
-    /**
+     /**
      * The set of [ExecutionSource]s configured to wake this node. The node
      * processor checks the incoming event against this list before doing any
      * work. An empty list means "never auto-fire" — only manual execution.
      */
     val executionSource: List<ExecutionSource>
+
+    /**
+     * Stores the last result of when this node was invoked and is a source of data
+     */
+    val snapshot : Snapshot
 }

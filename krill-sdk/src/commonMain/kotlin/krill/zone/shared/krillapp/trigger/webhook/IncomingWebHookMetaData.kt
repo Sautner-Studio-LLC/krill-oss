@@ -7,10 +7,11 @@ package krill.zone.shared.krillapp.trigger.webhook
 
 import kotlinx.serialization.*
 import krill.zone.shared.io.HttpMethod
+import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 
 /**
  * Payload for an `IncomingWebHook` trigger node.
@@ -26,26 +27,12 @@ data class IncomingWebHookMetaData(
     val name: String = "",
     /** URL path the server exposes for this hook (e.g. `"/webhook/garage-open"`). */
     val path: String = "",
-    @Deprecated(
-        "Use targets instead",
-        replaceWith = ReplaceWith("targets.firstOrNull()?.nodeId ?: \"\""),
-    )
-    val target: String = "",
+
     /** HTTP verb the trigger accepts — defaults to `GET`. */
     val method: HttpMethod = HttpMethod.GET,
     override val sources: List<NodeIdentity> = emptyList(),
-    @Suppress("DEPRECATION")
-    override val targets: List<NodeIdentity> = if (target.isNotEmpty()) {
-        if (target.contains(":")) {
-            val parts = target.split(":")
-            listOf(NodeIdentity(parts.last(), parts.first()))
-        } else {
-            listOf(NodeIdentity(target, ""))
-        }
-    } else {
-        emptyList()
-    },
+    override val snapshot: Snapshot = Snapshot(),
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : TargetingNodeMetaData
+) : SourceMetaData

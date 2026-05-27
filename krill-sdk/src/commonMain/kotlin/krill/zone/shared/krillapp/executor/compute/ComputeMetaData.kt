@@ -6,10 +6,11 @@
 package krill.zone.shared.krillapp.executor.compute
 
 import kotlinx.serialization.*
+import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 
 /**
  * Payload for a `Compute` executor node.
@@ -17,7 +18,7 @@ import krill.zone.shared.node.TargetingNodeMetaData
 @Serializable
 data class ComputeMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
-    override val targets: List<NodeIdentity> = emptyList(),
+    override val snapshot: Snapshot = Snapshot(),
     /** Lookback window the operation applies over. `NONE` means "use the whole series". */
     val range: ComputeTimeRange = ComputeTimeRange.NONE,
     /** Aggregation reduction to apply to the windowed snapshots. */
@@ -25,4 +26,4 @@ data class ComputeMetaData(
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : TargetingNodeMetaData
+) : SourceMetaData

@@ -8,16 +8,17 @@
 package krill.zone.shared.krillapp.datapoint.graph
 
 import kotlinx.serialization.*
+import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.krillapp.executor.compute.ComputeTimeRange
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 
 /**
  * Payload for a `DataPoint.Graph` node.
  *
- * Implements [TargetingNodeMetaData] for consistency with the other
+ * Implements [SourceMetaData] for consistency with the other
  * source-bound node types, but only [sources] is meaningful — graphs read
  * data, they don't write it. [targets] is kept empty.
  */
@@ -31,11 +32,11 @@ data class GraphMetaData(
      */
     val name: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
-    /** Not used for graphs but required by the [TargetingNodeMetaData] contract. */
-    override val targets: List<NodeIdentity> = emptyList(),
+    /** Not used for graphs but required by the [SourceMetaData] contract. */
+    override val snapshot: Snapshot = Snapshot(),
     /** Lookback window the graph displays — drives the X-axis range. */
     val timeRange: ComputeTimeRange = ComputeTimeRange.HOUR,
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : TargetingNodeMetaData
+) : SourceMetaData

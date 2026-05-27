@@ -8,12 +8,13 @@
 package krill.zone.shared.krillapp.server.serialdevice
 
 import kotlinx.serialization.*
+import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.krillapp.server.HardwareType
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
 import krill.zone.shared.node.NodeState
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 
 /**
  * Payload for a `Server.SerialDevice` node.
@@ -28,7 +29,7 @@ data class SerialDeviceMetaData(
     /** Hardware classification — always `SERIAL` for this node type. */
     val hardwareType: HardwareType = HardwareType.SERIAL,
     /** Lifecycle state of the underlying jSerialComm port. */
-    val status: NodeState = NodeState.CREATED,
+    val status: NodeState = NodeState.CREATE_OR_OVERWRITE,
 
     /** Polling interval for `READ` operations, in milliseconds. */
     val interval: Long = 5000L,
@@ -65,8 +66,8 @@ data class SerialDeviceMetaData(
     val sendCommand: String = "R",
 
     override val sources: List<NodeIdentity> = listOf(NodeIdentity("", "")),
-    override val targets: List<NodeIdentity> = emptyList(),
+    override val snapshot: Snapshot = Snapshot(),
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : TargetingNodeMetaData
+) : SourceMetaData

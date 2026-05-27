@@ -10,7 +10,7 @@ import kotlinx.serialization.*
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 import kotlin.time.*
 
 /**
@@ -26,7 +26,7 @@ data class DataPointMetaData @OptIn(ExperimentalTime::class) constructor(
      */
     val sourceId: String = "",
     /** Most recent observation. Defaults to a "now, 0.0" placeholder so graphs render cleanly. */
-    val snapshot: Snapshot = Snapshot(Clock.System.now().epochSeconds, 0.0),
+
     /** Number of decimal places the editor renders [Snapshot.value] with. */
     val precision: Int = 2,
     /** Free-form units string (`"°C"`, `"%"`, `"V"`) appended to display values. */
@@ -41,7 +41,7 @@ data class DataPointMetaData @OptIn(ExperimentalTime::class) constructor(
     val path: String = "",
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
-    override val targets: List<NodeIdentity> = emptyList(),
+    override val snapshot: Snapshot = Snapshot(Clock.System.now().epochSeconds, 0.0),
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
-) : TargetingNodeMetaData
+) : SourceMetaData

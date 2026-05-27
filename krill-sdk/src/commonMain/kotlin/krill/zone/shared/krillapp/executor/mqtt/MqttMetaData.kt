@@ -6,10 +6,11 @@
 package krill.zone.shared.krillapp.executor.mqtt
 
 import kotlinx.serialization.*
+import krill.zone.shared.krillapp.datapoint.Snapshot
 import krill.zone.shared.node.ExecutionSource
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.TargetingNodeMetaData
+import krill.zone.shared.node.SourceMetaData
 
 /**
  * Direction of the MQTT executor.
@@ -28,7 +29,7 @@ enum class MqttAction {
 @Serializable
 data class MqttMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
-    override val targets: List<NodeIdentity> = emptyList(),
+    override val snapshot: Snapshot = Snapshot(),
     /** Broker address (host:port or URI). */
     val address: String = "",
     /** Topic pattern to publish to or subscribe from. */
@@ -39,4 +40,4 @@ data class MqttMetaData(
     override val executionSource: List<ExecutionSource> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-) : TargetingNodeMetaData
+) : SourceMetaData

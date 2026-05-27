@@ -88,8 +88,8 @@ enum class NodeState {
     /** The node is in the middle of being deleted; shown briefly so clients can animate the removal. */
     DELETING,
 
-    /** The node was just created; shown briefly to allow the UI to fade it in. */
-    CREATED,
+    /** The node was just created; shown briefly to allow the UI to fade it in, or it changed in a way where it needs to be completely refreshed */
+    CREATE_OR_OVERWRITE,
 
     /** The user has opened the node in the editor but has not yet submitted changes. */
     USER_EDIT,

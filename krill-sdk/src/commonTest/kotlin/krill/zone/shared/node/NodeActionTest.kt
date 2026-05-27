@@ -33,14 +33,14 @@ class NodeActionTest {
 
     @Test
     fun `SMTPMetaData without nodeAction field deserialises as EXECUTE`() {
-        val json = """{"host":"smtp.example.com","port":587,"username":"","token":"","fromAddress":"","toAddress":"","sources":[],"targets":[],"executionSource":[],"error":""}"""
+        val json = """{"host":"smtp.example.com","port":587,"username":"","token":"","fromAddress":"","toAddress":"","sources":[],"executionSource":[],"error":""}"""
         val meta = Json.decodeFromString(SMTPMetaData.serializer(), json)
         assertEquals(NodeAction.EXECUTE, meta.nodeAction)
     }
 
     @Test
     fun `LogicGateMetaData without nodeAction field deserialises as EXECUTE`() {
-        val json = """{"name":"logic gate","gateType":"BUFFER","sources":[{"nodeId":"","hostId":""}],"targets":[],"executionSource":[],"error":""}"""
+        val json = """{"name":"logic gate","gateType":"BUFFER","sources":[{"nodeId":"","hostId":""}],"executionSource":[],"error":""}"""
         val meta = Json.decodeFromString(LogicGateMetaData.serializer(), json)
         assertEquals(NodeAction.EXECUTE, meta.nodeAction)
     }
