@@ -7,11 +7,8 @@
 package krill.zone.shared.krillapp.server.llm
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.node.*
 
 /**
  * Payload for a `Server.LLM` node.
@@ -21,21 +18,16 @@ data class LLMMetaData(
     /** Port on the server hosting the upstream Ollama-compatible inference endpoint. */
     val port: Int = 11434,
     /** Model identifier sent on every request (e.g. `"kimi-k2:latest"`). */
-    val model: String = "qwen3:32b",
+    val model: String = "qwen2.5-coder:32b-instruct-q8_0",
     /** Persisted conversation history. The most recent message is at the end. */
     val chat: List<Message> = emptyList(),
     /** user entered prompt */
     val prompt: String = "",
-    /**
-     * Nodes the user has explicitly tagged as in-scope for the model — the
-     * server includes their state in the prompt context so the model can
-     * reason about them.
-     */
-    val selectedNodes: List<NodeIdentity> = emptyList(),
+
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData
