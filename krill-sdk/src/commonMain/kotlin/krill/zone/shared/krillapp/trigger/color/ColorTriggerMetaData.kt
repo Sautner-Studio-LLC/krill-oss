@@ -10,11 +10,8 @@
 package krill.zone.shared.krillapp.trigger.color
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.node.*
 
 /**
  * Payload for a `Color` trigger.
@@ -40,7 +37,7 @@ data class ColorTriggerMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     /**
      * Returns the centre of the configured RGB bounding box as a packed ARGB

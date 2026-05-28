@@ -17,7 +17,7 @@ import krill.zone.shared.node.*
 @Serializable
 data class CalculationEngineNodeMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
-    override val snapshot: Snapshot = Snapshot(),
+
     /** Display name; defaults to the class's simple name on creation. */
     val name: String = this::class.simpleName!!,
     /** Free-form formula string evaluated by the server's calculation engine. */
@@ -32,7 +32,7 @@ data class CalculationEngineNodeMetaData(
      * Last computed value + timestamp. The readable output a DataPoint
      * subscriber pulls when this calc wakes it. `null` until first compute.
      */
-    val derived: Snapshot? = null,
+    override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",

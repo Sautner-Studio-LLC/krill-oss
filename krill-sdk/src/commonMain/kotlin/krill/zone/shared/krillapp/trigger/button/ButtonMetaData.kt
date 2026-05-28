@@ -7,11 +7,8 @@
 package krill.zone.shared.krillapp.trigger.button
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.node.*
 
 /** Payload for a `Button` trigger — display name plus the standard error field. */
 @Serializable
@@ -22,5 +19,5 @@ data class ButtonMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData

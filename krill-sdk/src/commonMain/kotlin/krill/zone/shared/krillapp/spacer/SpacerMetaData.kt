@@ -6,11 +6,8 @@
 package krill.zone.shared.krillapp.spacer
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.node.*
 
 /**
  * Payload for a `Spacer` node. Carries only a display [name] (so the user
@@ -24,5 +21,5 @@ data class SpacerMetaData(
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData

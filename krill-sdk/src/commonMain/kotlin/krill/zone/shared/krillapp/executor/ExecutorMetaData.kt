@@ -12,12 +12,9 @@
 package krill.zone.shared.krillapp.executor
 
 import kotlinx.serialization.*
-import krill.zone.shared.KrillApp
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.*
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.node.*
 
 /**
  * Payload for the generic `Executor` node.
@@ -27,12 +24,11 @@ data class ExecuteMetaData(
     val name: String,
     /** Optional [KrillApp] discriminator used by the editor to filter wireable source types. */
     val sourceType: KrillApp? = null,
-    /** Free-form source identifier — typically a node id, but may be a path or scheme-specific string. */
-    val source: String = "",
+
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData

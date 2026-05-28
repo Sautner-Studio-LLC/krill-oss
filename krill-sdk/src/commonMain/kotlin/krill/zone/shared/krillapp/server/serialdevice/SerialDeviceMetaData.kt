@@ -8,13 +8,9 @@
 package krill.zone.shared.krillapp.server.serialdevice
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.krillapp.server.HardwareType
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.NodeState
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.krillapp.server.*
+import krill.zone.shared.node.*
 
 /**
  * Payload for a `Server.SerialDevice` node.
@@ -70,5 +66,5 @@ data class SerialDeviceMetaData(
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData
