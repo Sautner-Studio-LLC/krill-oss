@@ -14,6 +14,7 @@ kotlinxSerializationJSON = "1.11.0"
 [libraries]
 # Kotlinx
 kotlinx-coroutines-core       = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",       version.ref = "coroutines" }
+kotlinx-coroutines-test       = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",       version.ref = "coroutines" }
 kotlinx-serialization-core    = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core",    version.ref = "serializationCore" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }
 # Ktor — HTTP primitives + the cross-platform client core. Engine-specific
