@@ -1,6 +1,6 @@
 /**
- * Payload for a `SOURCE_TRIGGERED` [Event] — the dispatch contract that wakes
- * a receiver when one of its configured `sources` changes.
+ * Payload for a `SOURCE_TRIGGERED` [Event] — the cross-server SSE transport
+ * contract that carries a source-change notification to a remote receiver.
  *
  * Under the unified source-owned-verb model the verb applied is the
  * *originating* node's [krill.zone.shared.node.NodeAction], not the
@@ -9,6 +9,17 @@
  * this payload; the receiver's processor reads the source's current value
  * (locally, or from the value-bearing `PIN_CHANGED` / `SNAPSHOT_UPDATE`
  * event that accompanies the change) and decides what to do.
+ *
+ * ## Local dispatch rule
+ *
+ * [SourceTriggerPayload] is **reserved for cross-server SSE transport only**.
+ * Local (same-server) invocations SHALL use
+ * `ServerNodeManager.invoke(target, by, verb)` instead, which routes through
+ * [krill.zone.shared.node.ServerNodeProcessor.onInvoke].
+ *
+ * The [triggeringSource] field carries a full [krill.zone.shared.node.NodeIdentity]
+ * (`nodeId` + `hostId`) so the originator's host identity survives the
+ * cross-server hop intact.
  */
 package krill.zone.shared.events
 
