@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "com.krillforge"
-version = "0.0.35"
+version = "0.0.36"
 
 kotlin {
     jvmToolchain(21)
@@ -89,9 +89,20 @@ dokka {
 
 // ── Maven Central publishing ───────────────────────────────────────────────────
 
+// Signing is only required for the real Maven Central publish (run upstream in the
+// private `krill` repo, where the GPG creds live). Locally there's no signatory, so
+// guard it — otherwise `publishToMavenLocal` fails on `signJvmPublication`.
+val isSigningConfigured: Boolean =
+    providers.gradleProperty("signingInMemoryKey").isPresent ||
+        providers.environmentVariable("ORG_GRADLE_PROJECT_signingInMemoryKey").isPresent ||
+        providers.gradleProperty("signing.keyId").isPresent ||
+        providers.gradleProperty("signing.gnupg.keyName").isPresent
+
 mavenPublishing {
     publishToMavenCentral()
-    signAllPublications()
+    if (isSigningConfigured) {
+        signAllPublications()
+    }
 
     configure(
         KotlinMultiplatform(
