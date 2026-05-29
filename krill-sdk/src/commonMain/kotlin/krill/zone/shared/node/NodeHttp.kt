@@ -158,6 +158,51 @@ class NodeHttp(
         }
     }
 
+    /**
+     * Deliberate invocation. POSTs an [InvokeRequest] body to
+     * `${baseUrl(host)}/node/${target.id}/invoke` — the explicit replacement
+     * for the legacy state-stamp click pattern (clients posting a node with
+     * `state = NodeState.EXECUTED`). Under Phase 4 the server's `update()`
+     * does not wake a processor; this endpoint is how clicks (and any other
+     * app-side deliberate fire) reach a node's processor.
+     *
+     * @param host   The Krill server hosting [target].
+     * @param target The node to invoke.
+     * @param by     Identity of the originating node or actor. For a UI
+     *               click the convention is `by = target.id()` (modelling
+     *               the click as a self-EXECUTE).
+     * @param verb   [NodeAction.EXECUTE] (default) or [NodeAction.RESET].
+     */
+    suspend fun invokeNode(
+        host: Node,
+        target: Node,
+        by: NodeIdentity,
+        verb: NodeAction = NodeAction.EXECUTE,
+    ) {
+        logger.i("${host.details()}: invoke ${target.details()} by=$by verb=$verb")
+        if (target.type == KrillApp.Client) return
+
+        val meta = host.meta as ServerMetaData
+        val url = "${baseUrl(meta)}/node/${target.id}/invoke"
+
+        try {
+            val response = httpClient.post(url) {
+                contentType(ContentType.Application.Json)
+                withAuth()
+                setBody(InvokeRequest(by = by, verb = verb))
+            }
+            if (!response.status.isSuccess()) {
+                logger.e("error invoking node ${target.id} on ${host.details()}: ${response.status.value}")
+                throw Exception("Failed to invoke node ${target.id}: ${response.status.value}")
+            }
+        } catch (e: Exception) {
+            if (e.isSSLError()) {
+                trustHost.deleteCert(host)
+            }
+            throw e
+        }
+    }
+
     suspend fun deleteNode(host: Node, node: Node) {
         if (node.type == KrillApp.Client) return
         val meta = host.meta as ServerMetaData
