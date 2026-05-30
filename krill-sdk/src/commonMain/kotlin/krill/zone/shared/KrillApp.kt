@@ -88,6 +88,7 @@ val krillAppChildren: Map<KrillApp?, List<KrillApp>> = mapOf(
     KrillApp.Trigger to listOf(
         KrillApp.Trigger.Button,
         KrillApp.Trigger.CronTimer,
+        KrillApp.Trigger.Timer,
         KrillApp.Trigger.SilentAlarmMs,
         KrillApp.Trigger.HighThreshold,
         KrillApp.Trigger.LowThreshold,
