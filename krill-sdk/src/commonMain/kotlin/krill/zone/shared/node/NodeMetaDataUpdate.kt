@@ -27,6 +27,7 @@ import krill.zone.shared.krillapp.trigger.*
 import krill.zone.shared.krillapp.trigger.button.*
 import krill.zone.shared.krillapp.trigger.color.*
 import krill.zone.shared.krillapp.trigger.cron.*
+import krill.zone.shared.krillapp.trigger.timer.TimerMetaData
 import krill.zone.shared.krillapp.trigger.webhook.*
 
 /**
@@ -68,6 +69,7 @@ fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData {
         is CameraMetaData -> meta.copy(error = error)
         is BackupMetaData -> meta.copy(error = error)
         is ColorTriggerMetaData -> meta.copy(error = error)
+        is TimerMetaData -> meta.copy(error = error)
         else -> meta
     }
 }

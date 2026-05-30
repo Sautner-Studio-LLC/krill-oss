@@ -249,6 +249,10 @@ sealed class KrillApp {
         data object CronTimer : KrillApp()
 
         @Serializable
+        data object Timer : KrillApp()
+
+
+        @Serializable
         data object SilentAlarmMs : KrillApp()
 
         @Serializable
