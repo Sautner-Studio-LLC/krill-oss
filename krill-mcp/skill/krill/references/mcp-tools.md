@@ -213,21 +213,21 @@ Response: `{"server": "<id>", "nodeId": "<new-uuid>", "type": "KrillApp.DataPoin
 4. `get_node` each new id to confirm persistence — the create response echoes what was sent, not what the server stored.
 
 ### `set_node_wiring`
-Set source/target wiring and action verb on **any** Krill node. Since v0.0.10, every MetaData type implements `TargetingNodeMetaData`, so `sources`, `targets`, `executionSource`, and `nodeAction` are universal. Supply one or more fields; omitted fields are left unchanged on the existing node.
+Set source/target wiring and action verb on **any** Krill node. Since v0.0.10, every MetaData type implements `SourceMetaData`, so `sources`, `targets`, `invocationTriggers`, and `nodeAction` are universal. Supply one or more fields; omitted fields are left unchanged on the existing node.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `sources` | `[{nodeId, hostId}]` | Upstream nodes whose value changes can wake this node. Pass `[]` to clear. |
 | `targets` | `[{nodeId, hostId}]` | Downstream nodes this node actuates or writes to. Pass `[]` to clear. |
-| `executionSource` | `[string]` | Firing events: `SOURCE_VALUE_MODIFIED`, `PARENT_EXECUTE_SUCCESS`, `ON_CLICK`. Pass `[]` to disable auto-fire. |
+| `invocationTriggers` | `[string]` | Firing events: `SOURCE_INVOKED` (fires when a listed source changes its value), `ON_CLICK` (fires on manual user tap). Pass `[]` to disable auto-fire. |
 | `nodeAction` | `string` | Verb when fired: `EXECUTE` (default) or `RESET`. |
 
-Read current wiring via `get_node` — values at `meta.sources`, `meta.targets`, `meta.executionSource`, `meta.nodeAction`.
+Read current wiring via `get_node` — values at `meta.sources`, `meta.targets`, `meta.invocationTriggers`, `meta.nodeAction`.
 
 **Example — wire Button as TaskList source with RESET verb:**
 ```json
 {"name": "set_node_wiring", "arguments": {"id": "<button-uuid>", "nodeAction": "RESET"}}
-{"name": "set_node_wiring", "arguments": {"id": "<tasklist-uuid>", "sources": [{"nodeId": "<button-uuid>", "hostId": "<server-uuid>"}], "executionSource": ["SOURCE_VALUE_MODIFIED"]}}
+{"name": "set_node_wiring", "arguments": {"id": "<tasklist-uuid>", "sources": [{"nodeId": "<button-uuid>", "hostId": "<server-uuid>"}], "invocationTriggers": ["SOURCE_INVOKED"]}}
 ```
 Then `get_node` the TaskList to confirm `meta.sources` contains the Button identity.
 
@@ -236,7 +236,7 @@ Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.Button", "
 The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
 
 ### `set_node_action`
-Set only the action verb on any Krill node. Prefer `set_node_wiring` when also setting `sources`/`targets`/`executionSource`. Two values are supported:
+Set only the action verb on any Krill node. Prefer `set_node_wiring` when also setting `sources`/`targets`/`invocationTriggers`. Two values are supported:
 
 | `action` | Meaning |
 |----------|---------|
@@ -251,6 +251,30 @@ Since v0.0.10, every node type carries `nodeAction` (all MetaData implements `Ac
 Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.Button", "nodeAction": "RESET", "note": "..."}`
 
 The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
+
+### `invoke_node`
+Explicitly invoke a node via `POST /node/{id}/invoke` with a `NodeAction` verb. This hits the server's deliberate-invocation path (`ServerNodeManager.invoke → processor.onInvoke`) rather than the state-persistence path used by node upserts. Use this to trigger a RESET or EXECUTE without waiting for a source trigger to fire.
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `id` | yes | Node UUID to invoke. |
+| `verb` | no | `EXECUTE` (default) or `RESET`. |
+| `byNodeId` | no (pair) | NodeIdentity.nodeId attributing the invocation. Must be supplied together with `byHostId`. Defaults to `"mcp-agent"`. |
+| `byHostId` | no (pair) | NodeIdentity.hostId of the server owning `byNodeId`. |
+
+**Example — RESET a TaskList directly:**
+```json
+{"name": "invoke_node", "arguments": {"id": "<tasklist-uuid>", "verb": "RESET"}}
+```
+
+**Example — EXECUTE a Button node as if it were tapped:**
+```json
+{"name": "invoke_node", "arguments": {"id": "<button-uuid>", "verb": "EXECUTE", "byNodeId": "<some-node-id>", "byHostId": "<server-uuid>"}}
+```
+
+Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.TaskList", "verb": "RESET", "by": {"nodeId": "mcp-agent", "hostId": "<id>"}, "note": "Invocation accepted (202). ..."}`
+
+The invocation is processed asynchronously. Call `get_node` after ~500 ms to verify the resulting state change.
 
 ### `record_snapshot`
 Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot becomes a new point in the time-series store and runs through the DataPoint's child Filters + Triggers.
@@ -543,6 +567,5 @@ To derive the JSON shape for a different type, fetch an existing node of that ty
 
 ## What's NOT here yet
 
-- **Delete.** No `delete_node` tool. Point the user at the Krill app's delete UI. The server supports `DELETE /node/{id}` with the full Node in the body, but this MCP doesn't wrap it.
 - **Update in place.** `create_node` is for brand-new nodes (posts `state=CREATED`). Updating an existing non-Diagram node means fetching it, mutating meta, and POSTing back — no high-level helper for that yet. `update_diagram` is the one exception.
 - **Server-side join / bulk create.** Each `create_node` is a single HTTP POST. Large trees are N posts; no transactional "create this subtree" primitive.

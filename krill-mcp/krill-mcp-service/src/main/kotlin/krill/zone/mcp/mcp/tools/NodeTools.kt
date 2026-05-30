@@ -558,7 +558,7 @@ class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
             "`EXECUTE` (default) runs the node's primary logic; `RESET` reverts the target(s) to " +
             "initial/cleared state — TaskList: marks all tasks complete and reopens repeatables; " +
             "Trigger family: clears alarm WARN→NONE without re-evaluating the threshold condition. " +
-            "To also set sources/targets/executionSource in one call, use `set_node_wiring`. " +
+            "To also set sources/targets/invocationTriggers in one call, use `set_node_wiring`. " +
             "Use `get_node` to read the current `meta.nodeAction` before calling."
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
@@ -638,18 +638,18 @@ class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
  * four fields; unset fields are left unchanged on the existing node.
  *
  * Reading the current wiring is handled by `get_node` — meta.sources /
- * meta.targets / meta.executionSource / meta.nodeAction are returned verbatim.
+ * meta.targets / meta.invocationTriggers / meta.nodeAction are returned verbatim.
  */
 class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
     override val name = "set_node_wiring"
     override val description =
-        "Set source/target wiring and action verb on any Krill node. Every node type now carries " +
-            "sources, targets, executionSource, and nodeAction (all MetaData implements " +
-            "TargetingNodeMetaData). Supply one or more fields; omitted fields are left unchanged. " +
+        "Set source/target wiring and action verb on any Krill node. Every node type carries " +
+            "sources, targets, invocationTriggers, and nodeAction (all MetaData implements " +
+            "SourceMetaData). Supply one or more fields; omitted fields are left unchanged. " +
             "`sources` / `targets` are arrays of {nodeId, hostId} identity pairs. " +
-            "`executionSource` controls auto-firing: SOURCE_VALUE_MODIFIED (fires when a listed " +
-            "source changes), PARENT_EXECUTE_SUCCESS (fires when the parent node succeeds), " +
-            "ON_CLICK (fires on manual user tap). Pass [] to disable auto-fire. " +
+            "`invocationTriggers` controls auto-firing: SOURCE_INVOKED (fires when a listed " +
+            "source changes its value), ON_CLICK (fires on manual user tap). " +
+            "Pass [] to disable auto-fire. " +
             "`nodeAction` is EXECUTE (default) or RESET. " +
             "Read current wiring via `get_node`. Posted with state=USER_EDIT; allow ~500ms for " +
             "the server to persist before reading back."
@@ -702,12 +702,13 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
                     putJsonArray("required") { add("nodeId"); add("hostId") }
                 }
             }
-            putJsonObject("executionSource") {
+            putJsonObject("invocationTriggers") {
                 put("type", "array")
                 put(
                     "description",
                     "Events that trigger this node to fire. Valid values: " +
-                        "SOURCE_VALUE_MODIFIED, PARENT_EXECUTE_SUCCESS, ON_CLICK. Pass [] to disable auto-fire.",
+                        "SOURCE_INVOKED (fires when a listed source changes), " +
+                        "ON_CLICK (fires on manual user tap). Pass [] to disable auto-fire.",
                 )
                 putJsonObject("items") { put("type", "string") }
             }
@@ -728,15 +729,15 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
             error("Invalid nodeAction '$nodeAction'. Must be one of: ${VALID_ACTIONS.joinToString()}.")
         }
 
-        val execSources = arguments["executionSource"] as? JsonArray
-        if (execSources != null) {
-            val invalid = execSources
+        val invocationTriggers = arguments["invocationTriggers"] as? JsonArray
+        if (invocationTriggers != null) {
+            val invalid = invocationTriggers
                 .mapNotNull { it.jsonPrimitive.contentOrNull }
-                .filter { it !in VALID_EXECUTION_SOURCES }
+                .filter { it !in VALID_INVOCATION_TRIGGERS }
             if (invalid.isNotEmpty()) {
                 error(
-                    "Invalid executionSource value(s): ${invalid.joinToString()}. " +
-                        "Valid values: ${VALID_EXECUTION_SOURCES.joinToString()}.",
+                    "Invalid invocationTriggers value(s): ${invalid.joinToString()}. " +
+                        "Valid values: ${VALID_INVOCATION_TRIGGERS.joinToString()}.",
                 )
             }
         }
@@ -744,11 +745,11 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
         val updates = mutableMapOf<String, JsonElement>()
         arguments["sources"]?.let { updates["sources"] = it }
         arguments["targets"]?.let { updates["targets"] = it }
-        execSources?.let { updates["executionSource"] = it }
+        invocationTriggers?.let { updates["invocationTriggers"] = it }
         nodeAction?.let { updates["nodeAction"] = JsonPrimitive(it) }
 
         if (updates.isEmpty()) {
-            error("Provide at least one of: sources, targets, executionSource, nodeAction.")
+            error("Provide at least one of: sources, targets, invocationTriggers, nodeAction.")
         }
 
         val client = resolve(registry, arguments)
@@ -785,7 +786,117 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
 
     companion object {
         val VALID_ACTIONS = setOf("EXECUTE", "RESET")
-        val VALID_EXECUTION_SOURCES = setOf("PARENT_EXECUTE_SUCCESS", "SOURCE_VALUE_MODIFIED", "ON_CLICK")
+        val VALID_INVOCATION_TRIGGERS = setOf("SOURCE_INVOKED", "ON_CLICK")
+    }
+}
+
+/**
+ * Invokes a node explicitly via `POST /node/{id}/invoke` with a [NodeAction]
+ * verb. Unlike `record_snapshot` or `set_node_wiring` (which only persist
+ * state), this hits the server's deliberate-invocation path:
+ * `ServerNodeManager.invoke(target, by, verb)` → processor.onInvoke().
+ *
+ * Use-cases:
+ * - Trigger a TaskList RESET end-to-end (clears completion state + reopens
+ *   repeatables) without touching the source-trigger graph.
+ * - Force-EXECUTE a node from the MCP layer without waiting for its source
+ *   trigger to fire.
+ * - QA verification that the RESET verb propagates correctly through the swarm.
+ *
+ * `by` identity: pass any node's nodeId + the server's hostId to attribute the
+ * invocation. If omitted, the tool substitutes a sentinel identity so the server
+ * can still log and broadcast the event.
+ */
+class InvokeNodeTool(private val registry: KrillRegistry) : Tool {
+    override val name = "invoke_node"
+    override val description =
+        "Explicitly invoke a Krill node with a NodeAction verb via `POST /node/{id}/invoke`. " +
+            "Unlike posting a node update, this triggers the server's deliberate-invocation path " +
+            "(`ServerNodeManager.invoke → processor.onInvoke`). " +
+            "Verbs: EXECUTE (run the node's primary logic, default) or RESET (revert to cleared " +
+            "state — TaskList: marks all tasks complete and reopens repeatables; Trigger family: " +
+            "clears WARN→NONE without re-evaluating the threshold condition). " +
+            "Use `get_node` before calling to read current state; use `get_node` after to verify " +
+            "the verb was applied."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("server") {
+                put("type", "string")
+                put("description", "Krill server id, host, or host:port. Defaults to the first registered server.")
+            }
+            putJsonObject("id") {
+                put("type", "string")
+                put("description", "Id of the node to invoke.")
+            }
+            putJsonObject("verb") {
+                put("type", "string")
+                put("description", "Action verb: EXECUTE (default) or RESET.")
+            }
+            putJsonObject("byNodeId") {
+                put("type", "string")
+                put(
+                    "description",
+                    "NodeIdentity.nodeId attributing the invocation. Required together with `byHostId`. " +
+                        "If omitted a sentinel id is used and the server still processes the invocation.",
+                )
+            }
+            putJsonObject("byHostId") {
+                put("type", "string")
+                put(
+                    "description",
+                    "NodeIdentity.hostId of the server that owns the `byNodeId` node. " +
+                        "Required together with `byNodeId`.",
+                )
+            }
+        }
+        putJsonArray("required") { add("id") }
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val id = arguments["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: id")
+        val verb = arguments["verb"]?.jsonPrimitive?.contentOrNull ?: "EXECUTE"
+        if (verb !in VALID_VERBS) {
+            error("Invalid verb '$verb'. Must be one of: ${VALID_VERBS.joinToString()}.")
+        }
+
+        val byNodeId = arguments["byNodeId"]?.jsonPrimitive?.contentOrNull
+        val byHostId = arguments["byHostId"]?.jsonPrimitive?.contentOrNull
+        if ((byNodeId == null) != (byHostId == null)) {
+            error("Provide both `byNodeId` and `byHostId` together, or omit both.")
+        }
+
+        val client = resolve(registry, arguments)
+        val existing = client.node(id) as? JsonObject
+            ?: error("Node $id not found on server ${client.serverId}.")
+        val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+        val shortName = typeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName } ?: typeFqn ?: "unknown"
+
+        val resolvedByNodeId = byNodeId ?: "mcp-agent"
+        val resolvedByHostId = byHostId ?: client.serverId
+
+        client.invokeNode(id, resolvedByNodeId, resolvedByHostId, verb)
+
+        return buildJsonObject {
+            put("server", client.serverId)
+            put("id", id)
+            put("type", shortName)
+            put("verb", verb)
+            putJsonObject("by") {
+                put("nodeId", resolvedByNodeId)
+                put("hostId", resolvedByHostId)
+            }
+            put(
+                "note",
+                "Invocation accepted (202). The server processes onInvoke asynchronously. " +
+                    "Call `get_node` after ~500ms to verify state change.",
+            )
+        }
+    }
+
+    companion object {
+        val VALID_VERBS = setOf("EXECUTE", "RESET")
     }
 }
 

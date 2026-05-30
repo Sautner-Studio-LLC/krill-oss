@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 
 /**
  * Unit tests for [SetNodeWiringTool] — pins the schema contract and the
- * pre-HTTP validation paths (invalid nodeAction, invalid executionSource,
+ * pre-HTTP validation paths (invalid nodeAction, invalid invocationTriggers,
  * no-field-provided).
  *
  * The full execute() path requires a live registry + HTTP, so these tests
@@ -48,7 +48,7 @@ class SetNodeWiringToolTest {
         assertTrue("id" in props)
         assertTrue("sources" in props)
         assertTrue("targets" in props)
-        assertTrue("executionSource" in props)
+        assertTrue("invocationTriggers" in props)
         assertTrue("nodeAction" in props)
     }
 
@@ -73,25 +73,38 @@ class SetNodeWiringToolTest {
         assertTrue("EXECUTE" in (ex.message ?: "") || "RESET" in (ex.message ?: ""), "Error should name valid options")
     }
 
-    // ── executionSource validation ───────────────────────────────────────────
+    // ── invocationTriggers validation ────────────────────────────────────────
 
     @Test
-    fun `all three ExecutionSource values are accepted`() {
-        assertTrue("SOURCE_VALUE_MODIFIED" in SetNodeWiringTool.VALID_EXECUTION_SOURCES)
-        assertTrue("PARENT_EXECUTE_SUCCESS" in SetNodeWiringTool.VALID_EXECUTION_SOURCES)
-        assertTrue("ON_CLICK" in SetNodeWiringTool.VALID_EXECUTION_SOURCES)
+    fun `SOURCE_INVOKED and ON_CLICK are valid invocationTriggers values`() {
+        assertTrue("SOURCE_INVOKED" in SetNodeWiringTool.VALID_INVOCATION_TRIGGERS)
+        assertTrue("ON_CLICK" in SetNodeWiringTool.VALID_INVOCATION_TRIGGERS)
     }
 
     @Test
-    fun `invalid executionSource is rejected before any HTTP call`() {
+    fun `invalid invocationTriggers value is rejected before any HTTP call`() {
         val args = buildJsonObject {
             put("id", "some-uuid")
-            put("executionSource", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("ON_HOVER")) })
+            put("invocationTriggers", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("ON_HOVER")) })
         }
         val ex = assertFailsWith<IllegalStateException> {
             runBlocking { tool.execute(args) }
         }
         assertTrue("ON_HOVER" in (ex.message ?: ""), "Error should cite the bad value")
+    }
+
+    @Test
+    fun `stale SOURCE_VALUE_MODIFIED is rejected`() {
+        val args = buildJsonObject {
+            put("id", "some-uuid")
+            put("invocationTriggers", kotlinx.serialization.json.buildJsonArray {
+                add(kotlinx.serialization.json.JsonPrimitive("SOURCE_VALUE_MODIFIED"))
+            })
+        }
+        val ex = assertFailsWith<IllegalStateException> {
+            runBlocking { tool.execute(args) }
+        }
+        assertTrue("SOURCE_VALUE_MODIFIED" in (ex.message ?: ""), "Error should cite the stale value")
     }
 
     // ── No-fields guard ──────────────────────────────────────────────────────
@@ -104,31 +117,31 @@ class SetNodeWiringToolTest {
         }
         val msg = ex.message ?: ""
         assertTrue(
-            "sources" in msg || "targets" in msg || "executionSource" in msg || "nodeAction" in msg,
+            "sources" in msg || "targets" in msg || "invocationTriggers" in msg || "nodeAction" in msg,
             "Error should mention at least one accepted field: $msg",
         )
     }
 
-    // ── KrillNodeTypes: sources/targets/executionSource/nodeAction now universal ──
+    // ── KrillNodeTypes: sources/targets/invocationTriggers/nodeAction now universal ──
 
     @Test
-    fun `DataPoint carries sources targets executionSource and nodeAction after unify-source-verb-wiring`() {
+    fun `DataPoint carries sources targets invocationTriggers and nodeAction after unify-source-verb-wiring`() {
         val spec = KrillNodeTypes.resolve("KrillApp.DataPoint")
             ?: error("KrillApp.DataPoint missing from KrillNodeTypes registry")
         assertTrue("sources" in spec.defaultMeta, "DataPoint.defaultMeta must expose sources")
         assertTrue("targets" in spec.defaultMeta, "DataPoint.defaultMeta must expose targets")
-        assertTrue("executionSource" in spec.defaultMeta, "DataPoint.defaultMeta must expose executionSource")
+        assertTrue("invocationTriggers" in spec.defaultMeta, "DataPoint.defaultMeta must expose invocationTriggers")
         assertTrue("nodeAction" in spec.defaultMeta, "DataPoint.defaultMeta must expose nodeAction")
         assertEquals("EXECUTE", spec.defaultMeta["nodeAction"]?.jsonPrimitive?.content)
     }
 
     @Test
-    fun `Server_Pin carries sources targets executionSource and nodeAction after unify-source-verb-wiring`() {
+    fun `Server_Pin carries sources targets invocationTriggers and nodeAction after unify-source-verb-wiring`() {
         val spec = KrillNodeTypes.resolve("KrillApp.Server.Pin")
             ?: error("KrillApp.Server.Pin missing from KrillNodeTypes registry")
         assertTrue("sources" in spec.defaultMeta, "Server.Pin.defaultMeta must expose sources")
         assertTrue("targets" in spec.defaultMeta, "Server.Pin.defaultMeta must expose targets")
-        assertTrue("executionSource" in spec.defaultMeta, "Server.Pin.defaultMeta must expose executionSource")
+        assertTrue("invocationTriggers" in spec.defaultMeta, "Server.Pin.defaultMeta must expose invocationTriggers")
         assertTrue("nodeAction" in spec.defaultMeta, "Server.Pin.defaultMeta must expose nodeAction")
         assertEquals("EXECUTE", spec.defaultMeta["nodeAction"]?.jsonPrimitive?.content)
     }

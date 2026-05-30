@@ -100,6 +100,22 @@ class KrillClient(
     suspend fun downloadDiagramFile(projectId: String, fileName: String): String =
         getText("/project/$projectId/diagram/$fileName")
 
+    /**
+     * POST /node/{id}/invoke — hits the server's deliberate-invocation path
+     * (`ServerNodeManager.invoke → processor.onInvoke`). Wire body matches
+     * `krill.zone.shared.io.InvokeRequest`.
+     */
+    suspend fun invokeNode(id: String, byNodeId: String, byHostId: String, verb: String) {
+        val body = buildJsonObject {
+            putJsonObject("by") {
+                put("nodeId", byNodeId)
+                put("hostId", byHostId)
+            }
+            put("verb", verb)
+        }
+        postJson("/node/$id/invoke", body)
+    }
+
     private suspend fun get(path: String): JsonElement {
         val text = getText(path)
         return if (text.isBlank()) JsonNull else Json.parseToJsonElement(text)
