@@ -80,6 +80,32 @@ class SourceVerbWiringTest {
         assertEquals(NodeAction.EXECUTE, decoded.nodeAction)
     }
 
+    // ---- Phase 5 (observer-flow-collector-dispatch): propagation metadata ----
+
+    @Test
+    fun `SourceTriggerPayload defaults epoch 0 and full hop TTL when absent`() {
+        // A payload predating the propagation-metadata fields must deserialise
+        // to "fresh propagation, full budget" so cross-server delivery is safe.
+        val json = """{"triggeringSource":{"nodeId":"n","hostId":"h"}}"""
+        val decoded = Json.decodeFromString(SourceTriggerPayload.serializer(), json)
+        assertEquals(0L, decoded.epoch)
+        assertEquals(SourceTriggerPayload.DEFAULT_HOP_TTL, decoded.hopTtl)
+    }
+
+    @Test
+    fun `SourceTriggerPayload carries epoch and hop TTL when present`() {
+        val origin = NodeIdentity(nodeId = "n", hostId = "h")
+        val payload = SourceTriggerPayload(origin, NodeAction.EXECUTE, epoch = 42L, hopTtl = 3)
+        val decoded = Json.decodeFromString(
+            SourceTriggerPayload.serializer(),
+            Json.encodeToString(SourceTriggerPayload.serializer(), payload),
+        )
+        assertEquals(42L, decoded.epoch)
+        assertEquals(3, decoded.hopTtl)
+        assertEquals(origin, decoded.triggeringSource)
+        assertEquals(NodeAction.EXECUTE, decoded.nodeAction)
+    }
+
     // ---- D3: every shipped MetaData type is a TargetingNodeMetaData ----
 
     /** One pre-change payload per newly-targeting type (absent wiring + verb). */
