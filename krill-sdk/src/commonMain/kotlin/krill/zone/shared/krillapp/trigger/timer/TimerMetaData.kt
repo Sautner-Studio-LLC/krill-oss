@@ -27,4 +27,4 @@ data class TimerMetaData(
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val inputs: List<NodeIdentity> = emptyList(),
-) : SourceMetaData
+) :  SourceMetaData
