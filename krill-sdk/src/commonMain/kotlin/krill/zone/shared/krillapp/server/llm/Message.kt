@@ -29,7 +29,4 @@ data class Message(
     /** Raw chain-of-thought emitted by the model; surfaced for debugging only. */
     @SerialName("thinking")
     val thinking: String = "",
-    /** Tool invocations the model wants the server to perform. Empty for normal replies. */
-    @SerialName("tool_calls")
-    val toolCalls: List<ToolCall> = emptyList(),
 )
