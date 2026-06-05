@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for dir in "$KRILL_REPO_DIR" "$KRILL_OSS_DIR" "$KRILL_AGENTS_ROOT" "KRILL_KRAKEN_ROOT"; do
+          for dir in "$KRILL_REPO_DIR" "$KRILL_OSS_DIR" "$KRILL_AGENTS_ROOT" "$KRILL_KRAKEN_ROOT"; do
             if [[ ! -d "$dir/.git" ]]; then
               echo "❌ $dir is not a git working copy" >&2
               exit 1
@@ -53,7 +53,7 @@ jobs:
           update_repo "$KRILL_AGENTS_ROOT"
           update_repo "$KRILL_KRAKEN_ROOT"
 
-          for dir in "$KRILL_REPO_DIR" "$KRILL_OSS_DIR" "$KRILL_AGENTS_ROOT" "KRILL_KRAKEN_ROOT"; do
+          for dir in "$KRILL_REPO_DIR" "$KRILL_OSS_DIR" "$KRILL_AGENTS_ROOT" "$KRILL_KRAKEN_ROOT"; do
             branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
             sha="$(git -C "$dir" rev-parse --short HEAD)"
             echo "  $dir → $branch @ $sha"
