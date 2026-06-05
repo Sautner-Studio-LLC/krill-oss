@@ -65,7 +65,8 @@ private fun Routing.mcpRoutes(mcp: McpServer, pin: PinProvider) {
         }
 
         val text = call.receiveText()
-        val parsed = runCatching { Json.parseToJsonElement(text) }.getOrElse {
+        val parsed = runCatching { Json.parseToJsonElement(text) }.getOrElse { e ->
+            call.application.environment.log.debug("JSON parse error on /mcp: ${e.message}")
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid JSON"))
             return@post
         }
