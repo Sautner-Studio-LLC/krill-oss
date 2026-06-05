@@ -220,6 +220,10 @@ class NodeHttp(
                 throw Exception("Failed to delete node ${node.host}: ${response.status.value}")
             }
         } catch (e: Exception) {
+            if (e.isSSLError()) {
+                trustHost.deleteCert(host)
+            }
+            logger.e(e) { "${host.details()}: Exception while deleting node ${node.details()}" }
             throw e
         }
     }
@@ -229,19 +233,24 @@ class NodeHttp(
     @OptIn(ExperimentalUuidApi::class)
     suspend fun chart(host: Node, id: String, startTime: Long, endTime: Long): ByteArray {
         logger.i("${host.details()}: read chart")
-        val meta = host.meta as ServerMetaData
-        val url = "${baseUrl(meta)}/node/$id/data/plot"
+        try {
+            val meta = host.meta as ServerMetaData
+            val url = "${baseUrl(meta)}/node/$id/data/plot"
 
-        val response = httpClient.get(url) {
-            contentType(ContentType.Application.Xml)
-            withAuth()
-        }
-        return if (response.status.isSuccess()) {
-            val channel: ByteReadChannel = response.body()
-            channel.readRemaining().readByteArray()
-        } else {
-            logger.e { "cannot connect to trusted url: ${response.status.description}" }
-            byteArrayOf()
+            val response = httpClient.get(url) {
+                contentType(ContentType.Application.Xml)
+                withAuth()
+            }
+            return if (response.status.isSuccess()) {
+                val channel: ByteReadChannel = response.body()
+                channel.readRemaining().readByteArray()
+            } else {
+                logger.e { "cannot connect to trusted url: ${response.status.description}" }
+                byteArrayOf()
+            }
+        } catch (e: Exception) {
+            logger.e(e) { "${host.details()}: Exception while fetching chart for $id" }
+            return byteArrayOf()
         }
     }
 
