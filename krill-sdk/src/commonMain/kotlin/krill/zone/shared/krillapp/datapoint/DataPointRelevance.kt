@@ -40,25 +40,27 @@ object DataPointRelevance {
 
     /**
      * Returns the [KrillApp] trigger subtypes that are meaningful for a
-     * DataPoint of the given [dataType]. `SilentAlarmMs` shows up across
+     * DataPoint of the given [dataType]. `Timer` shows up across
      * most types because "haven't seen a value in X ms" is a universally
-     * useful health check.
+     * useful health check using it as a countdown timer to fire if not reset.
      */
     fun relevantTriggers(dataType: DataType): List<KrillApp> = when (dataType) {
         DataType.DOUBLE -> listOf(
             KrillApp.Trigger.HighThreshold,
             KrillApp.Trigger.LowThreshold,
-            KrillApp.Trigger.SilentAlarmMs,
+            KrillApp.Trigger.Timer
         )
         DataType.COLOR -> listOf(
             KrillApp.Trigger.Color,
-            KrillApp.Trigger.SilentAlarmMs,
+            KrillApp.Trigger.Timer
         )
         DataType.DIGITAL -> listOf(
-            KrillApp.Trigger.SilentAlarmMs,
+            KrillApp.Trigger.Timer
         )
         DataType.TEXT,
-        DataType.JSON -> emptyList()
+        DataType.JSON -> listOf(
+            KrillApp.Trigger.Timer
+        )
     }
 
     /** `true` if [app] appears in [relevantFilters] for [dataType]. */

@@ -1,6 +1,6 @@
 /**
  * Default metadata for generic numeric-threshold triggers
- * (`SilentAlarmMs`, `HighThreshold`, `LowThreshold`). Each subtype shares the
+ * (`HighThreshold`, `LowThreshold`). Each subtype shares the
  * same shape — a name and a configured threshold value — so a single
  * data class powers all of them.
  */
@@ -15,8 +15,7 @@ import krill.zone.shared.node.*
  *
  * The interpretation of [value] depends on the [krill.zone.shared.KrillApp]
  * subclass the node is wearing: for `HighThreshold` it is the upper bound,
- * for `LowThreshold` the lower bound, for `SilentAlarmMs` the silence
- * duration in milliseconds.
+ * for `LowThreshold` the lower bound
  *
  * Default [name] uses the class's `simpleName` so a brand-new node already
  * has a sensible label without the user editing anything.
