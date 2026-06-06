@@ -89,7 +89,6 @@ val krillAppChildren: Map<KrillApp?, List<KrillApp>> = mapOf(
         KrillApp.Trigger.Button,
         KrillApp.Trigger.CronTimer,
         KrillApp.Trigger.Timer,
-        KrillApp.Trigger.SilentAlarmMs,
         KrillApp.Trigger.HighThreshold,
         KrillApp.Trigger.LowThreshold,
         KrillApp.Trigger.IncomingWebHook,
@@ -251,10 +250,6 @@ sealed class KrillApp {
 
         @Serializable
         data object Timer : KrillApp()
-
-
-        @Serializable
-        data object SilentAlarmMs : KrillApp()
 
         @Serializable
         data object HighThreshold : KrillApp()
