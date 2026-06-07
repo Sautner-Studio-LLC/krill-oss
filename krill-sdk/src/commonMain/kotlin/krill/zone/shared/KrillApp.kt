@@ -20,6 +20,7 @@
 package krill.zone.shared
 
 import kotlinx.serialization.*
+import krill.zone.shared.node.DataSource
 
 /**
  * Menu-command discriminators — used as `KrillApp` subtypes when emitting
@@ -159,16 +160,16 @@ sealed class KrillApp {
     @Serializable
     data object Server : KrillApp() {
 
-        @Serializable
+        @Serializable @DataSource
         data object Pin : KrillApp()
 
         @Serializable
         data object Peer : KrillApp()
 
-        @Serializable
+        @Serializable @DataSource
         data object LLM : KrillApp()
 
-        @Serializable
+        @Serializable @DataSource
         data object SerialDevice : KrillApp()
 
         @Serializable
@@ -181,7 +182,7 @@ sealed class KrillApp {
         @Serializable
         data object Diagram : KrillApp()
 
-        @Serializable
+        @Serializable @DataSource
         data object TaskList : KrillApp()
 
         @Serializable
@@ -191,10 +192,10 @@ sealed class KrillApp {
         data object Camera : KrillApp()
     }
 
-    @Serializable
+    @Serializable @DataSource
     data object MQTT : KrillApp()
 
-    @Serializable
+    @Serializable @DataSource
     data object DataPoint : KrillApp() {
 
         @Serializable
@@ -220,19 +221,19 @@ sealed class KrillApp {
     @Serializable
     data object Executor : KrillApp() {
 
-        @Serializable
+        @Serializable @DataSource
         data object LogicGate : KrillApp()
 
-        @Serializable
+        @Serializable @DataSource
         data object OutgoingWebHook : KrillApp()
 
-        @Serializable
+        @Serializable @DataSource
         data object Lambda : KrillApp()
 
-        @Serializable
+        @Serializable @DataSource
         data object Calculation : KrillApp()
 
-        @Serializable
+        @Serializable @DataSource
         data object Compute : KrillApp()
 
         @Serializable
