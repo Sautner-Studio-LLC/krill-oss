@@ -25,28 +25,6 @@ actual object PinDerivation {
         return hmac.take(4).toByteArray().toHex()
     }
 
-    private fun pbkdf2(password: String, salt: String, iterations: Int, keyLength: Int): ByteArray {
-        val result = ByteArray(keyLength)
-        val saltBytes = salt.encodeToByteArray()
-
-        result.usePinned { resultPinned ->
-            saltBytes.usePinned { saltPinned ->
-                CCKeyDerivationPBKDF(
-                    kCCPBKDF2,
-                    password,
-                    password.length.toULong(),
-                    saltPinned.addressOf(0).reinterpret<UByteVar>(),
-                    saltBytes.size.toULong(),
-                    kCCPRFHmacAlgSHA256,
-                    iterations.toUInt(),
-                    resultPinned.addressOf(0).reinterpret<UByteVar>(),
-                    keyLength.toULong()
-                )
-            }
-        }
-        return result
-    }
-
     private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
         val result = ByteArray(CC_SHA256_DIGEST_LENGTH.toInt())
         key.usePinned { keyPinned ->

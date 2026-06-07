@@ -1,7 +1,7 @@
 /**
  * Cross-platform PIN-derivation primitives used by Krill's authentication
- * layer. The user's setup PIN is fed through PBKDF2-HMAC-SHA256 to produce two
- * distinct credentials:
+ * layer. The user's setup PIN is fed through a single HMAC-SHA256 call to
+ * produce two distinct credentials:
  *
  *  * a stable [PinDerivation.deriveBearerToken] that is sent on every HTTP/SSE
  *    request as a `Bearer` token, and

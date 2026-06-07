@@ -41,29 +41,6 @@ private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
     return sha256(opad + sha256(ipad + data))
 }
 
-private fun pbkdf2HmacSha256(password: ByteArray, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
-    val hashLength = 32
-    val blocks = (keyLength + hashLength - 1) / hashLength
-    val result = ByteArray(blocks * hashLength)
-
-    for (block in 1..blocks) {
-        val blockBytes = byteArrayOf(
-            (block shr 24 and 0xFF).toByte(),
-            (block shr 16 and 0xFF).toByte(),
-            (block shr 8 and 0xFF).toByte(),
-            (block and 0xFF).toByte()
-        )
-        var u = hmacSha256(password, salt + blockBytes)
-        var t = u.copyOf()
-        for (i in 1 until iterations) {
-            u = hmacSha256(password, u)
-            for (j in t.indices) t[j] = (t[j].toInt() xor u[j].toInt()).toByte()
-        }
-        t.copyInto(result, (block - 1) * hashLength)
-    }
-    return result.copyOf(keyLength)
-}
-
 // SHA-256 pure Kotlin implementation
 private fun sha256(input: ByteArray): ByteArray {
     val k = intArrayOf(
