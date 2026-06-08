@@ -116,7 +116,7 @@ class SourceVerbWiringTest {
         "ExecuteMetaData" to dec(ExecuteMetaData.serializer(), """{"name":"ex"}"""),
         "LLMMetaData" to dec(LLMMetaData.serializer(), """{"model":"m"}"""),
         "ProjectMetaData" to dec(ProjectMetaData.serializer(), """{"name":"p"}"""),
-        "FilterMetaData" to dec(FilterMetaData.serializer(), """{"name":"f","value":1.0}"""),
+        "FilterMetaData" to dec(FilterMetaData.serializer(), """{"name":"f","snapshot":{"timestamp":"0", "value":"1.0"}}"""),
         "SerialDeviceTargetMetaData" to dec(SerialDeviceTargetMetaData.serializer(), """{"name":"t"}"""),
         "BackupMetaData" to dec(BackupMetaData.serializer(), """{"name":"b"}"""),
         "SpacerMetaData" to dec(SpacerMetaData.serializer(), """{"name":"s"}"""),
@@ -126,7 +126,7 @@ class SourceVerbWiringTest {
         "PinMetaData" to dec(PinMetaData.serializer(), """{"name":"pin"}"""),
         "ButtonMetaData" to dec(ButtonMetaData.serializer(), """{"name":"btn"}"""),
         "ColorTriggerMetaData" to dec(ColorTriggerMetaData.serializer(), """{"name":"col"}"""),
-        "TriggerMetaData" to dec(TriggerMetaData.serializer(), """{"name":"HighThreshold","value":42.0}"""),
+        "TriggerMetaData" to dec(TriggerMetaData.serializer(), """{"name":"HighThreshold","snapshot":{"timestamp":"0", "value":"1.0"}}"""),
         "CronMetaData" to dec(CronMetaData.serializer(), """{"name":"cron"}"""),
     )
 
