@@ -21,7 +21,7 @@ import krill.zone.shared.node.SourceMetaData
  */
 @Serializable
 data class FilterMetaData(
-    val name: String = this::class.simpleName!!,
+    val name: String = "Filter",
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),

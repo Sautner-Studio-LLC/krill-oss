@@ -22,8 +22,7 @@ import krill.zone.shared.node.*
  */
 @Serializable
 data class TriggerMetaData(
-    val name: String = this::class.simpleName!!,
-    val value: Double = 0.0,
+    val name: String = "Trigger",
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
