@@ -127,7 +127,7 @@ fun KrillApp.isMenuOption(): Boolean = this is MenuCommand
 
 fun Node.isDigital() : Boolean {
     when (this.type) {
-        KrillApp.Server.Pin, KrillApp.Executor.LogicGate -> return true
+        KrillApp.Server.Pin, KrillApp.Executor.LogicGate, KrillApp.Project.TaskList -> return true
         KrillApp.DataPoint -> {
             val meta = this.meta as DataPointMetaData
             return (meta.dataType == DataType.DIGITAL)
