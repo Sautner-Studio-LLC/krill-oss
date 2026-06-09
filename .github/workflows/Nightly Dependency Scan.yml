@@ -1,0 +1,95 @@
+name: Nightly Dependency Scan
+
+# Spends a few minutes of overnight GPU triaging THIS repo's open Dependabot alerts into a SMALL
+# number of actionable SECURITY leads with the LOCAL model (no frontier API spend), and files up
+# to TWO — authored by Kraken (krill-kraken-bot) and assigned to krill-blue-bot — each a LOCATED
+# HYPOTHESIS (which dependency, which bump, shippable-or-not, the alert evidence) so the existing
+# Blue → needs-qa-verify → Ghost loop produces a tested PR for Ben to review the next morning.
+#
+# The security sibling of "Nightly Bug Hunt": same runner, same identity model, same ≤2 cap and
+# decision-log discipline. The scan reads the repo's OPEN Dependabot alerts via `gh` (the runner's
+# GH_TOKEN — krill-kraken-bot's PAT — needs 'Dependabot alerts: read' on this repo), and the local
+# model clusters them into root-dependency bumps + classifies shippable-runtime vs build-only.
+#
+# The scan SCRIPTS live in kraken (scripts/nightly-dep-scan.sh + scripts/ingest/ingest/depscan/),
+# invoked on the shared self-hosted runner; this workflow only triggers them, scoped to this repo
+# (--repos krill-oss). NO auto-merge — Blue fixes, Ghost verifies, Ben approves.
+on:
+  schedule:
+    # 06:30 UTC — staggered 30 min after krill's scan and well clear of the morning GPU jobs
+    # (Voice LoRA Mon 08:00, Daily Corpus Sync / Nightly Bug Hunt ~09:00). The kraken runner runs
+    # one job at a time, so the two repo scans never contend.
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Triage + compose + egress-scan payloads but do not file (gh issue create)'
+        type: boolean
+        default: false
+      max_issues:
+        description: 'Hard cap on issues filed (≤2 by design; lower to 1/0 to be conservative)'
+        type: string
+        default: '2'
+
+concurrency:
+  # Queue, don't cancel — a half-done scan filing duplicate issues is worse than waiting.
+  group: nightly-dep-scan-krill-oss
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Triage Dependabot alerts, file (≤2)
+    runs-on: ['self-hosted', 'Linux', 'X64', 'kraken']
+    # Fast (a handful of local-model calls), but keep a generous ceiling for a cold model load.
+    timeout-minutes: 60
+
+    env:
+      KRAKEN_DIR:        /home/ben/Code/kraken
+      KRILL_AGENTS_ROOT: /home/ben/Code/krill-agents
+      # Local judge model — Ollama's OpenAI endpoint, NOT the :8900 shim. No Anthropic/frontier
+      # calls anywhere in this job. gh authenticates from the runner's GH_TOKEN (krill-kraken-bot
+      # PAT, NOT the Actions GITHUB_TOKEN — a PAT is required so the `assigned` event triggers
+      # Blue, and so Dependabot alerts are readable). Without a valid token the job runs dry.
+      LOCAL_LLM_ENDPOINT: http://127.0.0.1:11434/v1
+
+    steps:
+      # Operate on the live kraken working copy (no actions/checkout), like Nightly Bug Hunt — so
+      # the scan scripts are current. The wrapper refreshes the scanned repos itself.
+      - name: Update kraken working copy
+        run: |
+          set -euo pipefail
+          [[ -d "$KRAKEN_DIR/.git" ]] || { echo "::error::$KRAKEN_DIR is not a git working copy"; exit 1; }
+          # shellcheck source=/dev/null
+          source "$KRILL_AGENTS_ROOT/scripts/lib.sh"
+          update_repo "$KRAKEN_DIR"
+          echo "kraken @ $(git -C "$KRAKEN_DIR" rev-parse --short HEAD)"
+
+      - name: Provision ingest venv
+        working-directory: /home/ben/Code/kraken/scripts/ingest
+        run: |
+          set -euo pipefail
+          uv sync   # idempotent
+
+      - name: Run nightly dependency scan (krill-oss)
+        working-directory: /home/ben/Code/kraken
+        env:
+          DRY_RUN:    ${{ inputs.dry_run == true && '1' || '0' }}
+          MAX_ISSUES: ${{ inputs.max_issues || '2' }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/nightly-dep-scan.sh
+          args=(--repos krill-oss --max-issues "$MAX_ISSUES")
+          [[ "$DRY_RUN" == "1" ]] && args+=(--dry-run)
+          scripts/nightly-dep-scan.sh "${args[@]}"
+
+      - name: Upload decision log + run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-dep-scan-${{ github.run_id }}
+          path: |
+            /home/ben/Code/kraken/logs/depscan/decision-*.json
+            /home/ben/Code/kraken/logs/depscan/depscan-*.log
+            /home/ben/Code/kraken/logs/depscan/nightly-dep-scan-*.log
+          if-no-files-found: ignore
+          retention-days: 30
