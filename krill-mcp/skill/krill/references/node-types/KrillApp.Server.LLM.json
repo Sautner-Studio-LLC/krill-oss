@@ -19,7 +19,8 @@
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Server"],
         "childTypes": [],
-        "role": "leaf action node that communicates with external LLM service"
+        "role": "leaf action node that communicates with external LLM service",
+        "wiring": "Data-source type: a DataPoint can persist LLM responses by observing this node via its own sources+inputs; chat interaction itself needs no wiring."
     },
     "llmSideEffectLevel": "medium",
     "llmCanCreateChildren": false,

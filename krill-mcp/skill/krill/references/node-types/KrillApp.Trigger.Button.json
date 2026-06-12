@@ -1,35 +1,37 @@
 {
     "name": "KrillApp.Trigger.Button",
     "title": "Button Triggers",
-    "description": "A manual trigger that executes all child nodes when clicked by the user. Has no conditions or thresholds — simply passes execution to its children on each click. Use this for on-demand actions like toggling a pin, running a script, or sending a webhook manually.",
-    "shortDescription": "Executes child nodes on user click with no conditions.",
+    "description": "A manual trigger that fires when clicked by the user (ON_CLICK). Has no conditions or thresholds — on each click the button completes and every node listing it in their sources is invoked, receiving the button's verb (nodeAction): EXECUTE runs the observers' normal action, RESET tells them to stand down/clear. The verb cascades through the observer chain, so a RESET-verbed button acts as a stand-down switch for a whole chain. Use this for on-demand actions like toggling a pin, running a script, or sending a webhook manually.",
+    "shortDescription": "Fires on user click; observing nodes are invoked with the button's verb (EXECUTE or RESET).",
     "state": "ROADMAP",
     "nodeClickBehavior": "EXECUTE",
     "nodeCommandBehavior": "CREATE_NODE",
     "category": "Krill Server",
     "subcategory": "Triggers",
-    "llmPurpose": "Executes all child nodes immediately when clicked by the user, with no conditions or scheduling.",
+    "llmPurpose": "Fires immediately when clicked by the user, invoking every node that observes it, with no conditions or scheduling.",
     "llmRole": "trigger",
-    "llmBehavior": ["executes child nodes on click", "no conditions or thresholds", "manual user-initiated trigger"],
+    "llmBehavior": ["fires on user click (ON_CLICK invocation trigger)", "no conditions or thresholds", "nodes observing the button are invoked with its nodeAction verb (EXECUTE or RESET)", "RESET cascades through the observer chain as a stand-down signal"],
     "llmInputs": ["user click event"],
-    "llmOutputs": ["executes all child nodes"],
-    "llmTypicalUseCases": ["manually trigger an automation", "toggle a GPIO pin on demand", "test an executor chain", "run a webhook manually"],
-    "llmPromptHints": ["add a button to run this", "let me click to trigger this", "manual trigger", "run this on demand"],
-    "llmCreationHints": "Create a Button when the user wants a manual, on-demand trigger with no schedule or condition. Ideal for testing or one-off actions.",
+    "llmOutputs": ["invocation of all nodes observing the button, carrying its verb"],
+    "llmTypicalUseCases": ["manually trigger an automation", "toggle a GPIO pin on demand", "test an executor chain", "run a webhook manually", "stand down an alarm chain with a RESET button"],
+    "llmPromptHints": ["add a button to run this", "let me click to trigger this", "manual trigger", "run this on demand", "stand down button"],
+    "llmCreationHints": "Create a Button when the user wants a manual, on-demand trigger with no schedule or condition. Ideal for testing or one-off actions. Wire actions to observe the button — list the button in their sources with SOURCE_INVOKED (dropping them under the button wires this by default). Set nodeAction to RESET to make a stand-down button that clears a whole chain.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Trigger", "KrillApp.DataPoint"],
         "childTypes": ["KrillApp.Executor", "KrillApp.Executor.LogicGate", "KrillApp.Executor.OutgoingWebHook", "KrillApp.Executor.Lambda", "KrillApp.Executor.Calculation", "KrillApp.Executor.Compute"],
-        "role": "root trigger node that initiates child execution on user click"
+        "role": "manual trigger whose observers are invoked on user click",
+        "wiring": "Observed-side: actions list this button in their sources with SOURCE_INVOKED (parent-default wiring covers nodes dropped under it); the button's nodeAction verb (EXECUTE or RESET) cascades to observers."
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": true,
-    "llmExecutesChildren": true,
+    "llmExecutesChildren": false,
     "llmRepresentsPersistentState": false,
     "llmActsOnExternalWorld": false,
     "llmTargetType": null,
     "llmExamples": [
         "Add a button so I can manually run this webhook.",
         "I want to click to toggle this pin.",
-        "Create a manual trigger for testing."
+        "Create a manual trigger for testing.",
+        "Make a stand-down button that resets the whole alarm chain."
     ]
 }

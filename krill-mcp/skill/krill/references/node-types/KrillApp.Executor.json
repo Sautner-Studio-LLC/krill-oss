@@ -25,7 +25,7 @@
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": true,
-    "llmExecutesChildren": true,
+    "llmExecutesChildren": false,
     "llmRepresentsPersistentState": false,
     "llmActsOnExternalWorld": false,
     "llmTargetType": null,
