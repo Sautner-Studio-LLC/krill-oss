@@ -1,19 +1,19 @@
 {
     "name": "KrillApp.Project.TaskList",
     "title": "Task List",
-    "description": "Stores a list of tasks with checkboxes, priority levels, optional due dates, and optional cron recurrence. Acts as a stateful scheduled trigger: when any task's due date passes without being completed, fires executeChildren on the TaskList exactly once per expiry (dedup via per-task expiredExecuted flag). Recurring tasks advance their due date to the next cron occurrence automatically. The TaskList's NodeState escalates (INFO / WARN / SEVERE) with overdue duration; a HIGH-priority list short-circuits to SEVERE the moment any task is overdue. Tasks can be used to document processes, track project progress, or drive maintenance workflows with automated consequences. Locally-hosted task lists do not fire executors or send notifications. Move the list to a Krill server for those behaviors.",
-    "shortDescription": "Stateful checklist that fires child executors when tasks become overdue; supports recurring tasks via cron.",
+    "description": "Stores a list of tasks with checkboxes, priority levels, optional due dates, and optional cron recurrence. Acts as a stateful scheduled trigger: when any task's due date passes without being completed, the TaskList fires exactly once per expiry (dedup via per-task expiredExecuted flag) and every node observing it as a source is invoked. Recurring tasks advance their due date to the next cron occurrence automatically. The TaskList's NodeState escalates (INFO / WARN / SEVERE) with overdue duration; a HIGH-priority list short-circuits to SEVERE the moment any task is overdue. Tasks can be used to document processes, track project progress, or drive maintenance workflows with automated consequences. Locally-hosted task lists do not fire executors or send notifications. Move the list to a Krill server for those behaviors.",
+    "shortDescription": "Stateful checklist whose observers are invoked when tasks become overdue; supports recurring tasks via cron.",
     "state": "ROADMAP",
     "requiresServer": false,
     "nodeClickBehavior": "SHOW_EDITOR",
     "nodeCommandBehavior": "CREATE_NODE",
     "category": "Projects",
     "subcategory": "Task Management",
-    "llmPurpose": "Stores tasks with priorities, due dates, and optional cron recurrence, and executes child nodes when a task's due date passes without being completed.",
+    "llmPurpose": "Stores tasks with priorities, due dates, and optional cron recurrence, and fires — invoking the nodes that observe it — when a task's due date passes without being completed.",
     "llmRole": "trigger",
     "llmBehavior": [
         "stores list of tasks with completion checkboxes, priorities, optional due dates, and optional cron recurrence",
-        "fires executeChildren on the TaskList when any task becomes overdue",
+        "fires when any task becomes overdue; nodes observing the TaskList as a source are invoked",
         "dedups expiry firings per task via the expiredExecuted flag",
         "advances recurring tasks to the next cron occurrence on expiry and re-arms",
         "escalates NodeState (NONE → INFO ≤24h → WARN 1–7d → SEVERE >7d); any overdue task on a HIGH-priority list short-circuits to SEVERE",
@@ -28,7 +28,7 @@
     ],
     "llmOutputs": [
         "persisted task list with completion state",
-        "executes all child nodes when a task expires"
+        "fires on task expiry; all nodes observing the TaskList are invoked"
     ],
     "llmTypicalUseCases": [
         "recurring maintenance checklist that emails on miss (e.g. weekly aquarium water test firing an SMTP executor)",
@@ -47,7 +47,7 @@
         "recurring checklist with alerts",
         "weekly maintenance task that emails me"
     ],
-    "llmCreationHints": "Create a TaskList when the user wants to track tasks, steps, or to-do items — especially when they also want downstream automation to fire on missed deadlines. Wire child executors (SMTP, Lambda, Pin, etc.) under the TaskList to be the consequence of expiry. For repeating tasks, enable the per-task Recurring toggle and provide a cron expression.",
+    "llmCreationHints": "Create a TaskList when the user wants to track tasks, steps, or to-do items — especially when they also want downstream automation to fire on missed deadlines. Wire executors (SMTP, Lambda, Pin, etc.) to observe the TaskList: list the TaskList in each executor's sources with SOURCE_INVOKED (dropping an executor under the TaskList wires this by default). For repeating tasks, enable the per-task Recurring toggle and provide a cron expression.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Project"],
         "childTypes": [
@@ -61,7 +61,8 @@
             "KrillApp.Project.Camera",
             "KrillApp.Server.Backup"
         ],
-        "role": "stateful trigger that executes child nodes when a task's due date passes"
+        "role": "stateful trigger whose observers are invoked when a task's due date passes",
+        "wiring": "Observed-side: executors that should react to overdue tasks list this TaskList in their sources with SOURCE_INVOKED (parent-default wiring covers executors dropped under the list); the TaskList is also a data-source type readable via inputs."
     },
     "llmSideEffectLevel": "low",
     "llmCanCreateChildren": true,

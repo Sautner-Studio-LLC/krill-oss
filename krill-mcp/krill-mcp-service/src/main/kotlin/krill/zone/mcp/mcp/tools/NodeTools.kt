@@ -11,7 +11,9 @@ import java.util.UUID
 /**
  * Generic node creation — builds a valid Node payload for any KrillApp.* type
  * in the [KrillNodeTypes] registry and POSTs it to `/node/{id}` with
- * `state="CREATED"`, which the Krill server treats as an upsert-creates.
+ * `state="CREATE_OR_OVERWRITE"`, which the Krill server treats as an
+ * upsert-creates. (`CREATED` no longer exists in the NodeState enum — posting
+ * it fails Node deserialization with a 400.)
  *
  * The MetaData layer is a passthrough: `defaultMeta` from the registry sets
  * the polymorphic `type` discriminator and fills in sensible defaults; caller
@@ -19,6 +21,13 @@ import java.util.UUID
  * `ignoreUnknownKeys = true` on its `fastJson`, so extra keys in the `meta`
  * argument are silently dropped — keys missing from a MetaData's schema don't
  * need to be filtered here.
+ *
+ * Wiring note: parent/child is visual organization only. On creation the
+ * server wires the new node's parent into `meta.sources` + SOURCE_INVOKED
+ * when `sources` is empty (and neither side is a Project/Server container),
+ * so a child observes its parent by default. Pass explicit `sources` /
+ * `inputs` / `invocationTriggers` in `meta` (or call `set_node_wiring`
+ * afterwards) to wire anything else.
  */
 class CreateNodeTool(private val registry: KrillRegistry) : Tool {
     override val name = "create_node"
@@ -27,8 +36,12 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
             "`KrillApp.DataPoint` or full FQN) and `parent` (the id of the parent node on the server). " +
             "Optional: `name` (injected into meta.name when the MetaData class supports it), `meta` (a " +
             "JsonObject whose keys overlay the type's default meta skeleton). Use `list_node_types` to " +
-            "discover valid types, their parents, and their meta fields. Prefer the specialized " +
-            "`create_project` / `create_diagram` tools for those types (diagram needs file upload)."
+            "discover valid types, their parents, and their meta fields. Parent/child is visual " +
+            "organization only — data flows through observer wiring (`meta.sources` + " +
+            "`meta.invocationTriggers`, values read via `meta.inputs`). When `sources` is left empty the " +
+            "server wires the parent in as the default source, so a child observes its parent out of the " +
+            "box; use `set_node_wiring` to rewire. Prefer the specialized `create_project` / " +
+            "`create_diagram` tools for those types (diagram needs file upload)."
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -125,7 +138,7 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
             put("parent", parentId)
             put("host", client.serverId)
             putJsonObject("type") { put("type", spec.typeFqn) }
-            put("state", "CREATED")
+            put("state", "CREATE_OR_OVERWRITE")
             put("meta", mergedMeta)
             put("timestamp", 0L)
         }
@@ -276,8 +289,9 @@ class ListNodeTypesTool(@Suppress("unused") private val registry: KrillRegistry)
  * living at `node.meta.snapshot`. Posting the DataPoint with
  * `state = USER_EDIT` routes through `ServerDataPointProcessor.post → process
  * → DataProcessor.ingestDataPointValue`, which runs filters, appends to the
- * time-series store, and fires downstream triggers. Any other state (NONE,
- * CREATED, etc.) is persisted as a node update only — no time-series point.
+ * time-series store, and invokes every node observing the DataPoint as a
+ * source. Any other state (NONE, CREATE_OR_OVERWRITE, etc.) is persisted as a
+ * node update only — no time-series point.
  *
  * Client-side validation mirrors the server's `validateDataType`: if the
  * server would silently drop a value because it doesn't match the DataPoint's
@@ -547,18 +561,19 @@ class DeleteNodeTool(private val registry: KrillRegistry) : Tool {
  * so nodeAction is universal. Patches `meta.nodeAction` and POSTs back with
  * `state=USER_EDIT`. Reading the current action is covered by `get_node`.
  *
- * For updating sources/targets/executionSource alongside nodeAction in one
+ * For updating sources/inputs/invocationTriggers alongside nodeAction in one
  * call, prefer [SetNodeWiringTool].
  */
 class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
     override val name = "set_node_action"
     override val description =
-        "Set the action verb any Krill node applies when it fires. Post-unify-source-verb-wiring " +
-            "every node type carries `nodeAction` (all MetaData implements ActionNodeMetaData). " +
-            "`EXECUTE` (default) runs the node's primary logic; `RESET` reverts the target(s) to " +
-            "initial/cleared state — TaskList: marks all tasks complete and reopens repeatables; " +
-            "Trigger family: clears alarm WARN→NONE without re-evaluating the threshold condition. " +
-            "To also set sources/targets/executionSource in one call, use `set_node_wiring`. " +
+        "Set the action verb a Krill node sends downstream when it fires. Every node type carries " +
+            "`nodeAction` (all MetaData implements ActionNodeMetaData). The verb cascades source → " +
+            "observer: `EXECUTE` (default) runs each observer's primary logic; `RESET` tells observers " +
+            "to revert to initial/cleared state — TaskList: marks all tasks complete and reopens " +
+            "repeatables; Trigger family: clears alarm WARN→NONE without re-evaluating the threshold. " +
+            "A node with no sensible response to a verb safely ignores it (best effort). " +
+            "To also set sources/inputs/invocationTriggers in one call, use `set_node_wiring`. " +
             "Use `get_node` to read the current `meta.nodeAction` before calling."
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
@@ -630,27 +645,36 @@ class SetNodeActionTool(private val registry: KrillRegistry) : Tool {
 }
 
 /**
- * Sets source/target wiring and action verb on any Krill node.
+ * Sets observer wiring (sources / inputs / invocationTriggers) and the action
+ * verb on any Krill node.
  *
  * Post-unify-source-verb-wiring every MetaData type implements
- * [krill.zone.shared.node.TargetingNodeMetaData], so sources, targets,
- * executionSource, and nodeAction are universal. Supply one or more of the
+ * [krill.zone.shared.node.SourceMetaData], so sources, inputs,
+ * invocationTriggers, and nodeAction are universal. Supply one or more of the
  * four fields; unset fields are left unchanged on the existing node.
  *
+ * There is no `targets` field and no push path — wiring lives on the node
+ * that observes (or reads), never on the node being observed. To make node B
+ * react to node A, update **B** with `sources: [A]` and
+ * `invocationTriggers: ["SOURCE_INVOKED"]`.
+ *
  * Reading the current wiring is handled by `get_node` — meta.sources /
- * meta.targets / meta.executionSource / meta.nodeAction are returned verbatim.
+ * meta.inputs / meta.invocationTriggers / meta.nodeAction are returned
+ * verbatim.
  */
 class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
     override val name = "set_node_wiring"
     override val description =
-        "Set source/target wiring and action verb on any Krill node. Every node type now carries " +
-            "sources, targets, executionSource, and nodeAction (all MetaData implements " +
-            "TargetingNodeMetaData). Supply one or more fields; omitted fields are left unchanged. " +
-            "`sources` / `targets` are arrays of {nodeId, hostId} identity pairs. " +
-            "`executionSource` controls auto-firing: SOURCE_VALUE_MODIFIED (fires when a listed " +
-            "source changes), PARENT_EXECUTE_SUCCESS (fires when the parent node succeeds), " +
-            "ON_CLICK (fires on manual user tap). Pass [] to disable auto-fire. " +
-            "`nodeAction` is EXECUTE (default) or RESET. " +
+        "Set observer wiring and action verb on any Krill node. Every node type carries sources, " +
+            "inputs, invocationTriggers, and nodeAction (all MetaData implements SourceMetaData). " +
+            "Supply one or more fields; omitted fields are left unchanged. Wiring lives on the node " +
+            "that OBSERVES: to make node B react to node A, update B with `sources: [A]` and " +
+            "`invocationTriggers: [\"SOURCE_INVOKED\"]` — there is no targets field and no push path. " +
+            "`sources` (who wakes me) and `inputs` (whose last result I read when I run) are arrays " +
+            "of {nodeId, hostId} identity pairs — a node consuming another's output usually lists it " +
+            "in BOTH. `invocationTriggers` values: SOURCE_INVOKED (a listed source completed) and " +
+            "ON_CLICK (manual tap); pass [] to disable auto-fire. `nodeAction` is EXECUTE (default) " +
+            "or RESET — the verb cascades from source to observer when the node fires. " +
             "Read current wiring via `get_node`. Posted with state=USER_EDIT; allow ~500ms for " +
             "the server to persist before reading back."
     override val inputSchema: JsonObject = buildJsonObject {
@@ -662,13 +686,14 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
             }
             putJsonObject("id") {
                 put("type", "string")
-                put("description", "Id of the node to update.")
+                put("description", "Id of the node to update — the OBSERVER side of the wiring.")
             }
             putJsonObject("sources") {
                 put("type", "array")
                 put(
                     "description",
-                    "Upstream nodes whose value changes can wake this node. " +
+                    "Nodes this node observes. When a source completes its work, this node is invoked " +
+                        "(requires SOURCE_INVOKED in invocationTriggers). " +
                         "Each entry: {nodeId: string, hostId: string}. Pass [] to clear.",
                 )
                 putJsonObject("items") {
@@ -686,11 +711,13 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
                     putJsonArray("required") { add("nodeId"); add("hostId") }
                 }
             }
-            putJsonObject("targets") {
+            putJsonObject("inputs") {
                 put("type", "array")
                 put(
                     "description",
-                    "Downstream nodes this node actuates or writes to. " +
+                    "Nodes whose last result (meta.snapshot) this node reads when it executes — e.g. a " +
+                        "Calculation's formula variables, or the node a DataPoint ingests from. Inputs " +
+                        "never wake the node; wake-up is sources + invocationTriggers. " +
                         "Each entry: {nodeId: string, hostId: string}. Pass [] to clear.",
                 )
                 putJsonObject("items") {
@@ -702,18 +729,22 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
                     putJsonArray("required") { add("nodeId"); add("hostId") }
                 }
             }
-            putJsonObject("executionSource") {
+            putJsonObject("invocationTriggers") {
                 put("type", "array")
                 put(
                     "description",
-                    "Events that trigger this node to fire. Valid values: " +
-                        "SOURCE_VALUE_MODIFIED, PARENT_EXECUTE_SUCCESS, ON_CLICK. Pass [] to disable auto-fire.",
+                    "Events that invoke this node. Valid values: SOURCE_INVOKED (a node listed in " +
+                        "sources completed its work), ON_CLICK (manual user tap). Pass [] to disable auto-fire.",
                 )
                 putJsonObject("items") { put("type", "string") }
             }
             putJsonObject("nodeAction") {
                 put("type", "string")
-                put("description", "Verb applied when this node fires: EXECUTE (default) or RESET.")
+                put(
+                    "description",
+                    "Verb this node sends downstream when it fires: EXECUTE (default) or RESET. " +
+                        "The verb cascades — observers apply the source's verb.",
+                )
             }
         }
         putJsonArray("required") { add("id") }
@@ -728,27 +759,43 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
             error("Invalid nodeAction '$nodeAction'. Must be one of: ${VALID_ACTIONS.joinToString()}.")
         }
 
-        val execSources = arguments["executionSource"] as? JsonArray
-        if (execSources != null) {
-            val invalid = execSources
+        val invocationTriggers = arguments["invocationTriggers"] as? JsonArray
+        if (invocationTriggers != null) {
+            val invalid = invocationTriggers
                 .mapNotNull { it.jsonPrimitive.contentOrNull }
-                .filter { it !in VALID_EXECUTION_SOURCES }
+                .filter { it !in VALID_INVOCATION_TRIGGERS }
             if (invalid.isNotEmpty()) {
                 error(
-                    "Invalid executionSource value(s): ${invalid.joinToString()}. " +
-                        "Valid values: ${VALID_EXECUTION_SOURCES.joinToString()}.",
+                    "Invalid invocationTriggers value(s): ${invalid.joinToString()}. " +
+                        "Valid values: ${VALID_INVOCATION_TRIGGERS.joinToString()}.",
                 )
             }
         }
 
+        // Catch callers still speaking the pre-unify schema with a pointed hint
+        // instead of a silent no-op (the server would just drop the unknown keys).
+        if (arguments.containsKey("targets")) {
+            error(
+                "`targets` no longer exists — wiring lives on the observer. To make node B react to " +
+                    "this node, call set_node_wiring on B with sources=[this node] and " +
+                    "invocationTriggers=[\"SOURCE_INVOKED\"] (add it to B's inputs too if B reads its value).",
+            )
+        }
+        if (arguments.containsKey("executionSource")) {
+            error(
+                "`executionSource` was renamed — pass `invocationTriggers` with values " +
+                    "SOURCE_INVOKED and/or ON_CLICK.",
+            )
+        }
+
         val updates = mutableMapOf<String, JsonElement>()
         arguments["sources"]?.let { updates["sources"] = it }
-        arguments["targets"]?.let { updates["targets"] = it }
-        execSources?.let { updates["executionSource"] = it }
+        arguments["inputs"]?.let { updates["inputs"] = it }
+        invocationTriggers?.let { updates["invocationTriggers"] = it }
         nodeAction?.let { updates["nodeAction"] = JsonPrimitive(it) }
 
         if (updates.isEmpty()) {
-            error("Provide at least one of: sources, targets, executionSource, nodeAction.")
+            error("Provide at least one of: sources, inputs, invocationTriggers, nodeAction.")
         }
 
         val client = resolve(registry, arguments)
@@ -785,7 +832,7 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
 
     companion object {
         val VALID_ACTIONS = setOf("EXECUTE", "RESET")
-        val VALID_EXECUTION_SOURCES = setOf("PARENT_EXECUTE_SUCCESS", "SOURCE_VALUE_MODIFIED", "ON_CLICK")
+        val VALID_INVOCATION_TRIGGERS = setOf("SOURCE_INVOKED", "ON_CLICK")
     }
 }
 

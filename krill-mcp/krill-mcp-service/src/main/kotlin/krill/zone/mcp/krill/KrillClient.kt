@@ -51,7 +51,7 @@ class KrillClient(
 
     /**
      * Post a node JSON body to /node/{id}. The server treats this as an upsert:
-     * a new id with `state="CREATED"` creates the node, an existing id updates it.
+     * a new id with `state="CREATE_OR_OVERWRITE"` creates the node, an existing id updates it.
      * Server responds 202 Accepted with empty body.
      */
     suspend fun postNode(node: JsonObject) {

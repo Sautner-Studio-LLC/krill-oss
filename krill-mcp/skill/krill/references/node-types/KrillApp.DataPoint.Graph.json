@@ -21,7 +21,8 @@
         "parentTypes": ["KrillApp.DataPoint"],
         "sourceTypes": ["KrillApp.DataPoint"],
         "childTypes": [],
-        "role": "leaf display node that reads from a source DataPoint"
+        "role": "leaf display node that reads from a source DataPoint",
+        "wiring": "Display-only: reads the historical series of the DataPoint it is linked to (defaults to its parent); it neither wakes other nodes nor needs invocationTriggers."
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": false,

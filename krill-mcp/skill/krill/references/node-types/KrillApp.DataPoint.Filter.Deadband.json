@@ -1,7 +1,7 @@
 {
     "name": "KrillApp.DataPoint.Filter.Deadband",
     "title": "Deadband",
-    "description": "Rejects DataPoint snapshots where the change from the previous value is smaller than a configured threshold. Computes |new_value - previous_value| and discards the snapshot if the change is below the deadband value. Suppresses noise from sensors by requiring a minimum change magnitude between consecutive readings.",
+    "description": "Rejects DataPoint snapshots where the change from the previous value is smaller than a configured threshold. Computes |new_value - previous_value| and discards the snapshot if the change is below the deadband value, which is stored in this filter's own meta.snapshot.value as a stringified number. Suppresses noise from sensors by requiring a minimum change magnitude between consecutive readings. The filter only takes effect when the owning DataPoint lists it in its meta.inputs — parenting alone does nothing.",
     "shortDescription": "Discards snapshots where the value change from previous is smaller than a threshold.",
     "state": "ROADMAP",
     "nodeClickBehavior": "NONE",
@@ -10,16 +10,17 @@
     "subcategory": "Filters",
     "llmPurpose": "Suppresses sensor noise by rejecting snapshots where the value change from the previous reading is below a configured minimum magnitude.",
     "llmRole": "logic",
-    "llmBehavior": ["compares |new_value - previous_value| against threshold", "discards snapshot if change is too small", "posts STATE_CHANGE event when triggered"],
-    "llmInputs": ["incoming snapshot value", "previous snapshot value", "configured deadband threshold (Double)"],
+    "llmBehavior": ["compares |new_value - previous_value| against the threshold in its own meta.snapshot.value", "discards snapshot if change is too small", "posts STATE_CHANGE event when triggered"],
+    "llmInputs": ["incoming snapshot value", "previous snapshot value", "deadband threshold stored in this filter's meta.snapshot.value (stringified number)"],
     "llmOutputs": ["accept or reject snapshot (boolean gate)"],
     "llmTypicalUseCases": ["reduce noisy sensor data", "suppress jitter in analog readings", "only log meaningful value changes"],
     "llmPromptHints": ["ignore small changes", "only record if value changes by at least", "deadband", "suppress noise", "minimum change"],
-    "llmCreationHints": "Create a Deadband filter when the user wants to suppress small fluctuations in sensor data. Requires a numeric threshold representing the minimum change magnitude.",
+    "llmCreationHints": "Create a Deadband filter when the user wants to suppress small fluctuations in sensor data. Store the minimum change magnitude as a stringified number in the filter's meta.snapshot.value (FilterMetaData has no value field), and list the filter in the owning DataPoint's meta.inputs — a filter merely parented under a DataPoint does nothing.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.DataPoint.Filter"],
         "childTypes": [],
-        "role": "leaf filter node that gates incoming snapshot values based on change magnitude"
+        "role": "leaf filter node that gates incoming snapshot values based on change magnitude",
+        "wiring": "Passive: this filter uses no sources or invocationTriggers; the owning DataPoint must list it in its meta.inputs for it to be evaluated during ingest, and the threshold lives in the filter's own meta.snapshot.value."
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": false,
