@@ -1,7 +1,7 @@
 {
     "name": "KrillApp.DataPoint.Filter.Debounce",
     "title": "Debounce",
-    "description": "Rejects DataPoint snapshots that arrive too quickly after the previous one. Compares the time delta between the new and previous snapshot timestamps against a configured minimum interval in milliseconds. Discards the snapshot if it arrives before the interval has elapsed. Rate-limits data updates to reduce storage and processing load.",
+    "description": "Rejects DataPoint snapshots that arrive too quickly after the previous one. Compares the time delta between the new and previous snapshot timestamps against a configured minimum interval in milliseconds, stored in this filter's own meta.snapshot.value as a stringified number. Discards the snapshot if it arrives before the interval has elapsed. Rate-limits data updates to reduce storage and processing load. The filter only takes effect when the owning DataPoint lists it in its meta.inputs — parenting alone does nothing.",
     "shortDescription": "Discards snapshots that arrive faster than a configured minimum time interval.",
     "state": "ROADMAP",
     "nodeClickBehavior": "NONE",
@@ -10,16 +10,17 @@
     "subcategory": "Filters",
     "llmPurpose": "Rate-limits incoming DataPoint snapshots by rejecting updates that arrive before a configured minimum time interval has elapsed since the previous snapshot.",
     "llmRole": "logic",
-    "llmBehavior": ["compares timestamp delta against minimum interval", "discards snapshot if time since previous is too short", "posts STATE_CHANGE event when triggered"],
-    "llmInputs": ["incoming snapshot timestamp", "previous snapshot timestamp", "configured minimum interval in milliseconds (Double)"],
+    "llmBehavior": ["compares timestamp delta against the minimum interval in its own meta.snapshot.value", "discards snapshot if time since previous is too short", "posts STATE_CHANGE event when triggered"],
+    "llmInputs": ["incoming snapshot timestamp", "previous snapshot timestamp", "minimum interval in milliseconds stored in this filter's meta.snapshot.value (stringified number)"],
     "llmOutputs": ["accept or reject snapshot (boolean gate)"],
     "llmTypicalUseCases": ["rate-limit sensor updates", "prevent switch bounce", "reduce data volume from fast sensors", "throttle data logging"],
     "llmPromptHints": ["only accept one reading per second", "debounce", "rate limit", "minimum interval between updates", "throttle"],
-    "llmCreationHints": "Create a Debounce filter when the user wants to limit how frequently data is recorded. Requires a time interval value in milliseconds (e.g., 1000 for one reading per second).",
+    "llmCreationHints": "Create a Debounce filter when the user wants to limit how frequently data is recorded. Store the interval in milliseconds (e.g., 1000 for one reading per second) as a stringified number in the filter's meta.snapshot.value (FilterMetaData has no value field), and list the filter in the owning DataPoint's meta.inputs — a filter merely parented under a DataPoint does nothing.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.DataPoint.Filter"],
         "childTypes": [],
-        "role": "leaf filter node that gates incoming snapshot values based on timing"
+        "role": "leaf filter node that gates incoming snapshot values based on timing",
+        "wiring": "Passive: this filter uses no sources or invocationTriggers; the owning DataPoint must list it in its meta.inputs for it to be evaluated during ingest, and the interval lives in the filter's own meta.snapshot.value."
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": false,

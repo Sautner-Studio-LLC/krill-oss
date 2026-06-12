@@ -206,42 +206,52 @@ Create a node of any registered type. Provide `type` (short name or FQN), `paren
 ```
 Response: `{"server": "<id>", "nodeId": "<new-uuid>", "type": "KrillApp.DataPoint", "parent": "<id>", "parentType": {"fqn": "...", "shortName": "..."}, "meta": {...final merged...}, "warnings"?: [...]}`
 
+**Parent/child is organization; wiring is flow.** The tree you build with `parent` is visual grouping only. Data and activity flow through observer wiring: `meta.sources` (who wakes me) + `meta.invocationTriggers` (which events wake me) + `meta.inputs` (whose values I read). When you leave `sources` empty, the server wires the parent in as the default source (with `SOURCE_INVOKED`) — so a child observes its parent out of the box, except when either side is a Project/Server container. Pass explicit wiring in `meta`, or call `set_node_wiring` after creation.
+
 **Authoring a multi-node tree (parent-first):**
 1. `create_node type=KrillApp.DataPoint parent=<serverId> name="Aquarium temp" meta={dataType:"DOUBLE",unit:"°C"}` → record the returned `nodeId` as `dpId`.
-2. `create_node type=KrillApp.Trigger.HighThreshold parent=<dpId> name="Overheat" meta={value:30.0}` → record `tId`.
-3. `create_node type=KrillApp.Executor.OutgoingWebHook parent=<tId> name="Page me" meta={url:"https://...",method:"POST"}`.
-4. `get_node` each new id to confirm persistence — the create response echoes what was sent, not what the server stored.
+2. `create_node type=KrillApp.Trigger.HighThreshold parent=<dpId> name="Overheat" meta={snapshot:{timestamp:0,value:"30"}}` → record `tId`. (Trigger thresholds live in `meta.snapshot.value` — TriggerMetaData has no separate `value` field. The server wires `dpId` into the trigger's `sources` automatically.)
+3. `create_node type=KrillApp.Executor.OutgoingWebHook parent=<tId> name="Page me" meta={url:"https://...",method:"POST"}`. (Parent default again: the webhook observes the trigger.)
+4. `get_node` each new id to confirm persistence — the create response echoes what was sent, not what the server stored. Check `meta.sources` to see the wiring the server applied.
 
 ### `set_node_wiring`
-Set source/target wiring and action verb on **any** Krill node. Since v0.0.10, every MetaData type implements `TargetingNodeMetaData`, so `sources`, `targets`, `executionSource`, and `nodeAction` are universal. Supply one or more fields; omitted fields are left unchanged on the existing node.
+Set observer wiring and action verb on **any** Krill node. Every MetaData type implements `SourceMetaData`, so `sources`, `inputs`, `invocationTriggers`, and `nodeAction` are universal. Supply one or more fields; omitted fields are left unchanged on the existing node.
+
+**Wiring lives on the observer.** There is no `targets` field and no push path — to make node B react to node A, you update **B** (never A) with `sources: [A]` and `invocationTriggers: ["SOURCE_INVOKED"]`. If B also reads A's value (not just wakes on it), add A to B's `inputs` too.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `sources` | `[{nodeId, hostId}]` | Upstream nodes whose value changes can wake this node. Pass `[]` to clear. |
-| `targets` | `[{nodeId, hostId}]` | Downstream nodes this node actuates or writes to. Pass `[]` to clear. |
-| `executionSource` | `[string]` | Firing events: `SOURCE_VALUE_MODIFIED`, `PARENT_EXECUTE_SUCCESS`, `ON_CLICK`. Pass `[]` to disable auto-fire. |
-| `nodeAction` | `string` | Verb when fired: `EXECUTE` (default) or `RESET`. |
+| `sources` | `[{nodeId, hostId}]` | Nodes this node observes — when one completes its work, this node is invoked. Pass `[]` to clear. |
+| `inputs` | `[{nodeId, hostId}]` | Nodes whose last result (`meta.snapshot`) this node reads when it executes (formula variables, ingest sources, script inputs). Inputs never wake the node. Pass `[]` to clear. |
+| `invocationTriggers` | `[string]` | Events that invoke this node: `SOURCE_INVOKED` (a listed source completed), `ON_CLICK` (manual tap). Pass `[]` to disable auto-fire. |
+| `nodeAction` | `string` | Verb sent downstream when this node fires: `EXECUTE` (default) or `RESET`. The verb cascades — observers apply the source's verb. |
 
-Read current wiring via `get_node` — values at `meta.sources`, `meta.targets`, `meta.executionSource`, `meta.nodeAction`.
+Read current wiring via `get_node` — values at `meta.sources`, `meta.inputs`, `meta.invocationTriggers`, `meta.nodeAction`. (The legacy `targets` / `executionSource` arguments are rejected with a hint; they no longer exist on the wire.)
 
-**Example — wire Button as TaskList source with RESET verb:**
+**Example — a Button that resets a TaskList:**
 ```json
 {"name": "set_node_wiring", "arguments": {"id": "<button-uuid>", "nodeAction": "RESET"}}
-{"name": "set_node_wiring", "arguments": {"id": "<tasklist-uuid>", "sources": [{"nodeId": "<button-uuid>", "hostId": "<server-uuid>"}], "executionSource": ["SOURCE_VALUE_MODIFIED"]}}
+{"name": "set_node_wiring", "arguments": {"id": "<tasklist-uuid>", "sources": [{"nodeId": "<button-uuid>", "hostId": "<server-uuid>"}], "invocationTriggers": ["SOURCE_INVOKED"]}}
 ```
-Then `get_node` the TaskList to confirm `meta.sources` contains the Button identity.
+Then `get_node` the TaskList to confirm `meta.sources` contains the Button identity. The Button's RESET verb cascades to the TaskList when clicked.
+
+**Example — a DataPoint that stores a Calculation's results (sources AND inputs):**
+```json
+{"name": "set_node_wiring", "arguments": {"id": "<datapoint-uuid>", "sources": [{"nodeId": "<calc-uuid>", "hostId": "<server-uuid>"}], "inputs": [{"nodeId": "<calc-uuid>", "hostId": "<server-uuid>"}], "invocationTriggers": ["SOURCE_INVOKED"]}}
+```
+When the calc completes, the DataPoint is invoked, pulls the calc's `meta.snapshot`, runs it through its filters, and stores it as a time-series point.
 
 Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.Button", "nodeAction": "RESET", "sources": [...], "note": "..."}`
 
 The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
 
 ### `set_node_action`
-Set only the action verb on any Krill node. Prefer `set_node_wiring` when also setting `sources`/`targets`/`executionSource`. Two values are supported:
+Set only the action verb on any Krill node. Prefer `set_node_wiring` when also setting `sources`/`inputs`/`invocationTriggers`. Two values are supported:
 
 | `action` | Meaning |
 |----------|---------|
-| `EXECUTE` | (default) Run the node's primary execution logic. |
-| `RESET` | Revert the target(s) to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, SilentAlarmMs, Color) transitions WARN→NONE without re-evaluating the threshold. |
+| `EXECUTE` | (default) Observers run their primary execution logic. |
+| `RESET` | Observers revert to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, SilentAlarmMs, Color) transitions WARN→NONE without re-evaluating the threshold. A node with no sensible response to a verb safely ignores it (best effort). |
 
 Since v0.0.10, every node type carries `nodeAction` (all MetaData implements `ActionNodeMetaData`). Read via `get_node` → `meta.nodeAction`.
 
@@ -253,7 +263,7 @@ Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.Button", "
 The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
 
 ### `record_snapshot`
-Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot becomes a new point in the time-series store and runs through the DataPoint's child Filters + Triggers.
+Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot runs through the DataPoint's Filters (read from the DataPoint's `meta.inputs`), becomes a new point in the time-series store if accepted, and invokes every node observing the DataPoint as a source.
 
 - Single value: `{"id": "<uuid>", "value": 42.5, "timestamp": 1776700000000}` (timestamp optional; defaults to now in ms).
 - Series: `{"id": "<uuid>", "snapshots": [{"timestamp": 1776700000000, "value": 22.1}, {"timestamp": 1776700060000, "value": 22.3}]}`. Required `timestamp` is epoch **milliseconds**.
@@ -495,7 +505,7 @@ When you use the fallback, tell the user so they know `krill-mcp` still needs at
 
 ### REST fallback for `create_node`
 
-Posting a brand-new node by hand is a POST to `/node/{id}` with a self-generated UUID, `state: "CREATED"`, the right polymorphic discriminators, and a meta object shaped for the target MetaData class. Example — a DataPoint directly under the server:
+Posting a brand-new node by hand is a POST to `/node/{id}` with a self-generated UUID, `state: "CREATE_OR_OVERWRITE"`, the right polymorphic discriminators, and a meta object shaped for the target MetaData class. (**Not** `"CREATED"` — that value was removed from the NodeState enum; posting it fails Node deserialization with a 400 "Failed to convert request body".) Example — a DataPoint directly under the server:
 
 ```bash
 TOKEN=$(cat ~/.krill/pin_token)
@@ -511,7 +521,7 @@ curl -sk -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application
   "parent": "$SERVER_ID",
   "host": "$SERVER_ID",
   "type": { "type": "krill.zone.shared.KrillApp.DataPoint" },
-  "state": "CREATED",
+  "state": "CREATE_OR_OVERWRITE",
   "meta": {
     "type": "krill.zone.shared.krillapp.datapoint.DataPointMetaData",
     "name": "test",
@@ -523,7 +533,11 @@ curl -sk -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application
     "maxAge": 0,
     "path": "",
     "sourceId": "",
-    "error": ""
+    "error": "",
+    "sources": [],
+    "inputs": [],
+    "invocationTriggers": [],
+    "nodeAction": "EXECUTE"
   },
   "timestamp": 0
 }
@@ -539,10 +553,9 @@ To derive the JSON shape for a different type, fetch an existing node of that ty
 - `node.type.type` — fully-qualified class name of the `KrillApp.*` data object (`krill.zone.shared.KrillApp.Trigger.HighThreshold`, etc.). Qualified name uses mixed case — `KrillApp` is the outer class.
 - `node.meta.type` — fully-qualified class name of the MetaData class (all lowercase `krill.zone.shared.krillapp.<subpath>.<Type>MetaData`). Not all KrillApp types have a uniquely-named MetaData: every Trigger uses `TriggerMetaData`, every Filter uses `FilterMetaData`. `list_node_types` (when the MCP is reachable) is authoritative; when it isn't, `references/node-types/INDEX.md` + a sample `GET /node/{id}` of the same type is the best source.
 
-**The `create_node` round-trip rule applies to the REST path too.** Always `GET /node/{id}` after a POST to see what the server actually stored — the echo of your POST is not authoritative. Same goes for `record_snapshot` / DataPoint value posts: use `GET /node/{id}/data/series?st=...&et=...` to confirm a snapshot actually landed (child Filters can drop it silently).
+**The `create_node` round-trip rule applies to the REST path too.** Always `GET /node/{id}` after a POST to see what the server actually stored — the echo of your POST is not authoritative. Same goes for `record_snapshot` / DataPoint value posts: use `GET /node/{id}/data/series?st=...&et=...` to confirm a snapshot actually landed (Filters wired into the DataPoint's `inputs` can drop it silently).
 
 ## What's NOT here yet
 
-- **Delete.** No `delete_node` tool. Point the user at the Krill app's delete UI. The server supports `DELETE /node/{id}` with the full Node in the body, but this MCP doesn't wrap it.
-- **Update in place.** `create_node` is for brand-new nodes (posts `state=CREATED`). Updating an existing non-Diagram node means fetching it, mutating meta, and POSTing back — no high-level helper for that yet. `update_diagram` is the one exception.
+- **General update in place.** `create_node` is for brand-new nodes (posts `state=CREATE_OR_OVERWRITE`). For existing nodes, `set_node_wiring` / `set_node_action` cover the wiring fields and `update_diagram` covers diagrams; updating any *other* meta field means fetching the node, mutating meta, and POSTing back — no high-level helper for that yet.
 - **Server-side join / bulk create.** Each `create_node` is a single HTTP POST. Large trees are N posts; no transactional "create this subtree" primitive.

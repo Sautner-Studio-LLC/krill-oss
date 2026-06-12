@@ -10,17 +10,18 @@
     "subcategory": "System",
     "llmPurpose": "Creates and manages server backup archives for disaster recovery.",
     "llmRole": "action",
-    "llmBehavior": ["exports all nodes to JSON", "copies selected data directories into archive", "creates timestamped ZIP with hostname and expiry", "daily cleanup deletes expired archives"],
+    "llmBehavior": ["invoked when an observed node (e.g. a CronTimer or Button) completes (SOURCE_INVOKED)", "exports all nodes to JSON", "copies selected data directories into archive", "creates timestamped ZIP with hostname and expiry", "daily cleanup deletes expired archives"],
     "llmInputs": ["backup path", "include flags", "max age days"],
     "llmOutputs": ["ZIP archive in backup directory"],
     "llmTypicalUseCases": ["nightly automated backup via Cron", "manual backup before maintenance", "backup before firmware update"],
     "llmPromptHints": ["backup the server", "create a backup", "schedule nightly backups", "restore from backup"],
-    "llmCreationHints": "Create a Backup node under a Server. Wire it to a Cron timer for scheduled backups or a Button for manual backups. Configure retention with maxAgeDays.",
+    "llmCreationHints": "Create a Backup node under a Server. Have it observe a CronTimer for scheduled backups or a Button for manual backups — list the timer or button in the Backup node's sources with SOURCE_INVOKED. Configure retention with maxAgeDays.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Server"],
         "sourceTypes": [],
-        "targetTypes": [],
-        "role": "system node that creates backup archives when triggered by executors"
+        "typicalObservers": [],
+        "role": "system node that creates backup archives when a node it observes fires",
+        "wiring": "Observer-side: list the CronTimer or Button in sources with SOURCE_INVOKED; the backup runs each time the observed node fires."
     },
     "llmSideEffectLevel": "high",
     "llmCanCreateChildren": false,

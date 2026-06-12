@@ -18,7 +18,8 @@
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Client"],
         "childTypes": ["KrillApp.Project.Diagram", "KrillApp.Project.TaskList", "KrillApp.Project.Journal"],
-        "role": "top-level organizational container for project artifacts"
+        "role": "top-level organizational container for project artifacts",
+        "wiring": "Not wired — visual container only; parent/child grouping has no execution semantics, and parent-default wiring skips Project containers."
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": true,

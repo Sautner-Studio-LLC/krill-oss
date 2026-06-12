@@ -1,7 +1,7 @@
 {
     "name": "KrillApp.Server.Pin",
     "title": "GPIO Pin",
-    "description": "Controls a GPIO pin on a Raspberry Pi via Pi4J. Supports output mode (set HIGH/LOW), input mode (read), and PWM mode. When executed in output mode, sets the pin state and triggers downstream nodes. Registers and configures the pin with Pi4J on creation or edit. Allows configuring startup and shutdown states.",
+    "description": "Controls a GPIO pin on a Raspberry Pi via Pi4J. Supports output mode (set HIGH/LOW), input mode (read), and PWM mode. When invoked in output mode, sets the pin state; nodes observing the Pin as a source are then invoked. Registers and configures the pin with Pi4J on creation or edit. Allows configuring startup and shutdown states.",
     "shortDescription": "Controls a Raspberry Pi GPIO pin with configurable mode, state, and startup/shutdown behavior.",
     "state": "ROADMAP",
     "nodeClickBehavior": "NONE",
@@ -11,16 +11,17 @@
     "order": 11,
     "llmPurpose": "Controls a physical GPIO pin on a Raspberry Pi, setting it HIGH or LOW, reading its state, or configuring PWM output.",
     "llmRole": "target",
-    "llmBehavior": ["registers pin with Pi4J on creation", "sets pin HIGH or LOW in output mode", "reads pin state in input mode", "triggers downstream nodes on state change", "configures startup and shutdown pin states", "unregisters pin on deletion"],
+    "llmBehavior": ["registers pin with Pi4J on creation", "sets pin HIGH or LOW in output mode when invoked", "applies the cascading verb (EXECUTE acts normally, RESET stands down)", "reads pin state in input mode", "on state change, nodes observing the Pin as a source are invoked", "is a data-source type — its state is readable as an input via its snapshot", "configures startup and shutdown pin states", "unregisters pin on deletion"],
     "llmInputs": ["pin number (BCM address)", "mode (OUT/IN/PWM)", "desired state (ON/OFF)", "initial and shutdown states"],
-    "llmOutputs": ["physical GPIO state change", "downstream node execution on state change"],
+    "llmOutputs": ["physical GPIO state change", "observers invoked on state change; pin state readable from its snapshot"],
     "llmTypicalUseCases": ["turn on an LED", "control a relay", "read a digital sensor", "toggle a physical switch", "set pin HIGH at startup"],
     "llmPromptHints": ["turn on this pin", "set GPIO 17 HIGH", "toggle this relay", "read this pin", "control this LED"],
-    "llmCreationHints": "Create a Pin node to control a specific GPIO pin on a Raspberry Pi. Requires a pin number (BCM address) and mode (OUT for output, IN for input). Configure initial and shutdown states as needed.",
+    "llmCreationHints": "Create a Pin node to control a specific GPIO pin on a Raspberry Pi. Requires a pin number (BCM address) and mode (OUT for output, IN for input). Configure initial and shutdown states as needed. To drive the pin from automation, list the controlling node (Button, LogicGate, trigger) in the Pin's sources with SOURCE_INVOKED.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Server"],
         "childTypes": [],
-        "role": "leaf target node that directly controls physical hardware"
+        "role": "leaf target node that directly controls physical hardware",
+        "wiring": "Observer-side: list the controller (Button, LogicGate, trigger) in sources with SOURCE_INVOKED; the Pin applies the cascading verb (EXECUTE/RESET). It is also a data-source type — a DataPoint records its state by observing it via its own sources+inputs."
     },
     "llmSideEffectLevel": "high",
     "llmCanCreateChildren": false,

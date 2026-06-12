@@ -20,7 +20,8 @@
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Project"],
         "childTypes": [],
-        "role": "leaf state node that stores journal entries"
+        "role": "leaf state node that stores journal entries",
+        "wiring": "Not wired — passive state node; no sources, inputs, or observers."
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": false,

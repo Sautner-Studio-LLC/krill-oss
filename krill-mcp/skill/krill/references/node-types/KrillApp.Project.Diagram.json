@@ -19,7 +19,8 @@
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Project"],
         "childTypes": [],
-        "role": "leaf display node that visualizes bound DataPoint states on an SVG background"
+        "role": "leaf display node that visualizes bound DataPoint states on an SVG background",
+        "wiring": "Not wired — binds SVG anchors to nodes for display only; no sources, inputs, or observers."
     },
     "llmSideEffectLevel": "none",
     "llmCanCreateChildren": false,

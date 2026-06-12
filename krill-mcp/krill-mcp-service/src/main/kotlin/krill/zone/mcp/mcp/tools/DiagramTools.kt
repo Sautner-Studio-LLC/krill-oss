@@ -70,7 +70,7 @@ class CreateProjectTool(private val registry: KrillRegistry) : Tool {
             put("parent", client.serverId)
             put("host", client.serverId)
             putJsonObject("type") { put("type", TYPE_PROJECT) }
-            put("state", "CREATED")
+            put("state", "CREATE_OR_OVERWRITE")
             putJsonObject("meta") {
                 put("type", META_PROJECT)
                 put("name", name)
@@ -209,7 +209,7 @@ class CreateDiagramTool(private val registry: KrillRegistry) : Tool {
             put("parent", projectId)
             put("host", client.serverId)
             putJsonObject("type") { put("type", TYPE_DIAGRAM) }
-            put("state", "CREATED")
+            put("state", "CREATE_OR_OVERWRITE")
             putJsonObject("meta") {
                 put("type", META_DIAGRAM)
                 put("name", name)

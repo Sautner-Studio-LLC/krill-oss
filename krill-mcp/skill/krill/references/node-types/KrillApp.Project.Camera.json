@@ -19,8 +19,9 @@
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Project"],
         "sourceTypes": [],
-        "targetTypes": [],
-        "role": "sensor node that captures video frames from camera hardware"
+        "typicalObservers": [],
+        "role": "sensor node that captures video frames from camera hardware",
+        "wiring": "Not typically wired — capture/display node; it needs no sources or inputs, and nothing typically observes it."
     },
     "llmSideEffectLevel": "low",
     "llmCanCreateChildren": false,
