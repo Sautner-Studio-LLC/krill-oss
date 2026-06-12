@@ -267,6 +267,7 @@ jobs:
                     krill-mcp-service/package/DEBIAN/prerm \
                     krill-mcp-service/package/DEBIAN/postrm
           chmod 755 krill-mcp-service/package/usr/local/bin/krill-mcp.jar
+          chmod 755 krill-mcp-service/package/usr/local/bin/krill-mcp-token
           mkdir -p krill-mcp-service/build
           dpkg-deb --build krill-mcp-service/package krill-mcp-service/build/krill-mcp.deb
           echo "📦 $(dpkg-deb --field krill-mcp-service/build/krill-mcp.deb Package Version)"

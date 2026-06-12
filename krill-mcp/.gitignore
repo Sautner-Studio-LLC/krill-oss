@@ -30,6 +30,10 @@ out/
 bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
+# The deb payload dir is named bin/ — keep the shipped token script tracked,
+# but not the fat JAR the deploy workflow copies in at build time.
+!krill-mcp-service/package/usr/local/bin/
+krill-mcp-service/package/usr/local/bin/krill-mcp.jar
 
 ### NetBeans ###
 /nbproject/private/

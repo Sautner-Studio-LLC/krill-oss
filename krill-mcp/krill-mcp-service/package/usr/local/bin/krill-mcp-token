@@ -1,0 +1,37 @@
+#!/bin/sh
+# Reprint the krill-mcp connector URL + bearer token shown by postinst.
+# The key file is root-readable only, so this is normally run as:
+#   sudo krill-mcp-token
+
+set -e
+
+KEY_FILE="${KRILL_MCP_KEY_FILE:-/etc/krill-mcp/credentials/pin_derived_key}"
+CONFIG_FILE="${KRILL_MCP_CONFIG_FILE:-/etc/krill-mcp/config.json}"
+
+if [ ! -e "$KEY_FILE" ] && [ ! -L "$KEY_FILE" ]; then
+    echo "krill-mcp-token: $KEY_FILE not found — is krill-mcp installed and configured?" >&2
+    exit 1
+fi
+
+if [ ! -r "$KEY_FILE" ]; then
+    echo "krill-mcp-token: cannot read $KEY_FILE — run with sudo." >&2
+    exit 1
+fi
+
+BEARER=$(cat "$KEY_FILE")
+LISTEN_PORT=$(awk -F'[ ,:]+' '/listenPort/{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+$/){print $i; exit}}' "$CONFIG_FILE" 2>/dev/null || true)
+[ -n "$LISTEN_PORT" ] || LISTEN_PORT=50052
+HOSTNAME=$(hostname)
+HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+
+echo ""
+echo "🦐 krill-mcp connector credentials"
+echo ""
+echo "Add a Custom Connector in Claude with:"
+echo "   URL:    http://$HOSTNAME.local:$LISTEN_PORT/mcp"
+echo "   (or)    http://$HOSTNAME:$LISTEN_PORT/mcp"
+if [ -n "$HOST_IP" ]; then
+    echo "   (or)    http://$HOST_IP:$LISTEN_PORT/mcp"
+fi
+echo "   Header: Authorization: Bearer $BEARER"
+echo ""
