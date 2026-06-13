@@ -1,6 +1,6 @@
 ---
 name: krill
-version: 0.0.10
+version: 0.0.11
 description: Use when working with a Krill swarm — the home-automation/IoT system whose nodes are reachable via the krill-mcp Model Context Protocol server (typically http://<host>:50052/mcp, see https://krillswarm.com). Invoke for discovering or inspecting Krill servers, nodes, DataPoints, Triggers, Filters, Executors, Pins, or peers; reading time-series sensor data; reasoning about which node type to use for a given automation; and authoring, uploading, downloading, and improving SVG dashboards (Diagram nodes) that overlay live node state on a custom layout. Triggers on keywords like krill, swarm, krill server, krill node, krill-mcp, DataPoint, Trigger threshold, SVG dashboard, k_ anchor, swarm sensor, pi-krill, create project, create diagram, improve diagram.
 ---
 
@@ -30,7 +30,7 @@ Example — a counter that increments every 5 seconds: a CronTimer fires on sche
 
 ## When to invoke
 
-- The user mentions a Krill swarm, a specific Krill server (e.g. `pi-krill-05.local`), or any Krill node type by name.
+- The user mentions a Krill swarm, a specific Krill server (e.g. `kraken.local`), or any Krill node type by name, or uses the word "Krill" in a sentence.
 - The user wants to see what sensors / nodes exist, read a value, or understand a trigger or executor's current state.
 - The user wants a visual dashboard built on top of their swarm — almost always means a `KrillApp.Project.Diagram` SVG.
 - The user asks "what kind of node should I use to ..." — answer from the bundled node-type catalog instead of guessing.
