@@ -12,7 +12,7 @@ Krill is a privacy-first, offline-first automation platform for home automation,
 
 Everything in Krill is a typed **Node**: data points, triggers, executors, hardware pins, projects, peers. You wire nodes together and the system reacts in real time. State changes flow over Server Side Events to every connected client with sub-second latency.
 
-With Krill, you can setup any number of Krill Servers to work as a mesh of nodes, each capable of connecting over 40 type of nodes with different functions and capabilities into an interconnected Swarm. Nodes can send emails, run python lambdas and ever connect local LLMs with seemless cross server connectivity. You can also build your own apps on top of Krill Server with the Kotlin Multiplatform SDK using:
+With Krill, you can setup any number of Krill Servers to work as a mesh of nodes, each capable of connecting over 40 types of nodes with different functions and capabilities into an interconnected Swarm. Nodes can send emails, run python lambdas and ever connect local LLMs with seemless cross server connectivity. You can also build your own apps on top of Krill Server with the Kotlin Multiplatform SDK using:
 
 ```
 implementation("com.krillforge:krill-sdk:0.0.40")
