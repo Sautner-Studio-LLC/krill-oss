@@ -57,4 +57,8 @@ override val inputs: List<NodeIdentity> = emptyList(),
      */
     val isConfigured: Boolean
         get() = pinNumber > 0 && hardwareId.isNotEmpty()
+
+    override fun withError(error: String) = copy(error = error)
+    override fun displayName() = name
+    override fun isDigital() = true
 }

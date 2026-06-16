@@ -80,4 +80,7 @@ override val inputs: List<NodeIdentity> = emptyList(),
 
     /** Returns the full `https://<resolvedHost>:<port>` base URL for this server. */
     fun getUrl(): String = "https://${resolvedHost()}:$port"
+
+    override fun withError(error: String) = copy(error = error)
+    override fun displayName() = name
 }

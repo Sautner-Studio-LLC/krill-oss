@@ -7,9 +7,8 @@
  * the proprietary metadata implementations that ship with the reference server.
  *
  * The concrete `MetaData` data classes (e.g. `ServerMetaData`, `PinMetaData`,
- * `TriggerMetaData`, ...) and the `updateMetaWithError(...)` helper that
- * dispatches across them remain in the consuming module; they reference the
- * full sealed `KrillApp` hierarchy and are migrated subtype-by-subtype.
+ * `TriggerMetaData`, ...) all live in `krill-sdk` under the
+ * `krill.zone.shared.krillapp.*` packages and implement this interface.
  */
 package krill.zone.shared.node
 
@@ -19,9 +18,20 @@ import krill.zone.shared.krillapp.datapoint.*
 /**
  * Marker interface that every node's per-type metadata payload must implement.
  *
- * The single contract — surfacing an [error] string — is what lets generic
- * code (UI badges, the SSE event pump, the polymorphic JSON serializer) treat
- * any node uniformly without knowing the concrete subtype.
+ * Beyond surfacing an [error] string, the interface declares three extension
+ * points that let cross-cutting helpers (error propagation, display naming,
+ * digital-signal detection) work uniformly over any concrete subtype without
+ * an exhaustive `when` dispatch:
+ *
+ * - [withError] — **abstract**: every implementing `data class` must supply
+ *   a `copy(error = error)` override.  Making it abstract ensures a compile
+ *   error rather than a silent no-op when a new subtype is introduced.
+ * - [displayName] — default `""`: concrete types that carry a human-readable
+ *   name field override this; callers fall back to the node's [KrillApp] type
+ *   string when the result is empty.
+ * - [isDigital] — default `false`: overridden to `true` for node types whose
+ *   values are inherently boolean (Pin, LogicGate, TaskList) and to
+ *   `dataType == DIGITAL` for DataPoint.
  *
  * The implementation classes are `@Serializable` data classes registered in
  * the consuming module's `Serializer.kt` polymorphic module; missing such a
@@ -36,6 +46,35 @@ interface NodeMetaData {
      * server clears it (writes `""`) on the next successful processing pass.
      */
     val error: String
+
+    /**
+     * Returns a copy of this metadata with [error] replaced by the given string.
+     *
+     * **Must be implemented** by every concrete `data class` as
+     * `override fun withError(error: String) = copy(error = error)`.
+     * Declared abstract (no default) so that adding a new subtype without this
+     * override is a compile error rather than a runtime silent-no-op.
+     */
+    fun withError(error: String): NodeMetaData
+
+    /**
+     * Human-readable display name for this node, or empty string when the
+     * concrete type has no dedicated name field.
+     *
+     * Callers that need a non-empty label (e.g. [krill.zone.shared.node.name])
+     * fall back to the node's [krill.zone.shared.KrillApp] type string when
+     * this returns `""`.
+     */
+    fun displayName(): String = ""
+
+    /**
+     * `true` when this node's value is inherently boolean / digital.
+     *
+     * Overridden to `true` in Pin, LogicGate, and TaskList metadata;
+     * overridden to `dataType == DIGITAL` in DataPointMetaData.
+     * All other types keep the default `false`.
+     */
+    fun isDigital(): Boolean = false
 }
 
 /**

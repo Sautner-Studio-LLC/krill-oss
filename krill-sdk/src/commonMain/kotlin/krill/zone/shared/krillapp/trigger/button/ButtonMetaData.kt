@@ -20,4 +20,6 @@ data class ButtonMetaData(
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val inputs: List<NodeIdentity> = emptyList(),
-) : SourceMetaData
+) : SourceMetaData {
+    override fun withError(error: String) = copy(error = error)
+}

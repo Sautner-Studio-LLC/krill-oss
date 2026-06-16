@@ -44,4 +44,7 @@ data class BackupMetaData(
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
 override val inputs: List<NodeIdentity> = emptyList(),
-) : SourceMetaData
+) : SourceMetaData {
+    override fun withError(error: String) = copy(error = error)
+    override fun displayName() = name.ifEmpty { "Backup" }
+}
