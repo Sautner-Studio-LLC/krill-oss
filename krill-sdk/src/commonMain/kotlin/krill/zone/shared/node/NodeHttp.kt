@@ -107,8 +107,15 @@ class NodeHttp(
         }
     }
 
+    /**
+     * Returns the node list from the server, or `null` if the request failed.
+     *
+     * Null distinguishes a network or HTTP failure from a genuinely empty server
+     * (which returns an empty list with `200 OK`). Callers that want the old
+     * "empty on failure" behaviour can do `readNodes(host) ?: emptyList()`.
+     */
     @OptIn(ExperimentalUuidApi::class)
-    suspend fun readNodes(host: Node): List<Node> {
+    suspend fun readNodes(host: Node): List<Node>? {
         logger.i("${host.details()}: read nodes")
         try {
             val meta = host.meta as ServerMetaData
@@ -123,12 +130,12 @@ class NodeHttp(
                     if (it.state == NodeState.EXECUTED) it.copy(state = NodeState.NONE) else it
                 }
             } else {
-                logger.w { "Failed to read nodes ${response.status}: $url ${host.details()}" }
-                emptyList()
+                logger.e { "Failed to read nodes ${response.status}: $url ${host.details()}" }
+                null
             }
         } catch (e: Exception) {
             logger.e("Error getting nodes ${host.details()}", e)
-            return emptyList()
+            return null
         }
     }
 
