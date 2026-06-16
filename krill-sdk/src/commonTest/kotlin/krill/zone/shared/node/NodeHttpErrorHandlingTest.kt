@@ -14,10 +14,13 @@ import krill.zone.shared.KrillApp
 import krill.zone.shared.io.TrustHost
 import krill.zone.shared.krillapp.server.ServerMetaData
 import krill.zone.shared.krillapp.server.pin.PinMetaData
+import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -29,6 +32,10 @@ import kotlin.test.assertTrue
  *
  * 2. `chart` had no try-catch at all — a network failure escaped to
  *    callers as an unhandled exception while every other method absorbed it.
+ *
+ * 3. `readNodes` returned `emptyList()` on HTTP error or exception, making
+ *    it impossible for callers to distinguish a network failure from a
+ *    genuinely empty server. Now returns `null` on failure.
  */
 class NodeHttpErrorHandlingTest {
 
@@ -111,5 +118,40 @@ class NodeHttpErrorHandlingTest {
 
         val result = nodeHttp.chart(hostNode, "dp-1", 0L, 1_000L)
         assertEquals(0, result.size, "chart must absorb exceptions and return empty array")
+    }
+
+    // ── readNodes ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `readNodes returns null on HTTP error so callers can distinguish failure from empty server`() = runTest {
+        val engine = MockEngine { _ ->
+            respond("Server Error", HttpStatusCode.InternalServerError)
+        }
+        val nodeHttp = NodeHttp(clientWithJson(engine), fakeTrust()) { "token" }
+
+        val result = nodeHttp.readNodes(hostNode)
+        assertNull(result, "readNodes must return null on HTTP error, not emptyList()")
+    }
+
+    @Test
+    fun `readNodes returns null on network exception`() = runTest {
+        val engine = MockEngine { _ -> throw Exception("connection refused") }
+        val nodeHttp = NodeHttp(clientWithJson(engine), fakeTrust()) { "token" }
+
+        val result = nodeHttp.readNodes(hostNode)
+        assertNull(result, "readNodes must return null on exception, not emptyList()")
+    }
+
+    @Test
+    fun `readNodes returns empty list when server responds 200 with no nodes`() = runTest {
+        val emptyJson = testJson.encodeToString<List<Node>>(emptyList())
+        val engine = MockEngine { _ ->
+            respond(emptyJson, HttpStatusCode.OK, headersOf("Content-Type", "application/json"))
+        }
+        val nodeHttp = NodeHttp(clientWithJson(engine), fakeTrust()) { "token" }
+
+        val result = nodeHttp.readNodes(hostNode)
+        assertNotNull(result, "readNodes must return non-null on 200 OK")
+        assertEquals(0, result.size, "readNodes must return empty list when server has no nodes")
     }
 }
