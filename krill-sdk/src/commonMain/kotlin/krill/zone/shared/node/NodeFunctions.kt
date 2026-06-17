@@ -12,21 +12,9 @@ import io.ktor.http.Url
 import kotlinx.coroutines.flow.StateFlow
 import krill.zone.shared.KrillApp
 import krill.zone.shared.MenuCommand
-import krill.zone.shared.krillapp.client.ClientMetaData
 import krill.zone.shared.krillapp.datapoint.DataPointMetaData
 import krill.zone.shared.krillapp.datapoint.DataType
-import krill.zone.shared.krillapp.datapoint.graph.GraphMetaData
-import krill.zone.shared.krillapp.executor.lambda.LambdaSourceMetaData
-import krill.zone.shared.krillapp.executor.logicgate.LogicGateMetaData
-import krill.zone.shared.krillapp.project.ProjectMetaData
-import krill.zone.shared.krillapp.project.camera.CameraMetaData
-import krill.zone.shared.krillapp.project.diagram.DiagramMetaData
-import krill.zone.shared.krillapp.project.journal.JournalMetaData
-import krill.zone.shared.krillapp.project.tasklist.TaskListMetaData
 import krill.zone.shared.krillapp.server.ServerMetaData
-import krill.zone.shared.krillapp.server.backup.BackupMetaData
-import krill.zone.shared.krillapp.server.pin.PinMetaData
-import krill.zone.shared.krillapp.server.serialdevice.SerialDeviceMetaData
 
 /**
  * Returns the canonical `https://<resolvedHost>:<port>` [Url] for a server
@@ -60,35 +48,12 @@ fun Node.id(): NodeIdentity = NodeIdentity(
 )
 
 /**
- * Returns the human-readable display name for the node. Each [KrillApp]
- * subtype reads its name out of the appropriate concrete `MetaData` field.
- *
- * The `else` arm stringifies the [KrillApp] type itself, which is the
- * desired fallback for `MenuCommand` entries and any subtype whose
- * MetaData has no dedicated name field.
+ * Returns the human-readable display name for the node. Delegates to
+ * [NodeMetaData.displayName]; when that returns empty, falls back to the
+ * node's [KrillApp] type string (the desired behaviour for MenuCommand
+ * entries and any subtype with no dedicated name field).
  */
-fun Node.name(): String {
-    return when (this.type) {
-        KrillApp.DataPoint -> (this.meta as DataPointMetaData).name
-        KrillApp.Server.SerialDevice -> (this.meta as SerialDeviceMetaData).hardwareId
-        KrillApp.Server, KrillApp.Server.Peer -> (this.meta as ServerMetaData).name
-        KrillApp.Client -> (this.meta as ClientMetaData).name
-        KrillApp.Server.Pin -> (this.meta as PinMetaData).name
-        KrillApp.DataPoint.Graph -> (this.meta as GraphMetaData).name.ifEmpty { "Graph" }
-        KrillApp.Project.TaskList -> (this.meta as TaskListMetaData).name
-        KrillApp.Project.Journal -> (this.meta as JournalMetaData).name
-        KrillApp.Project.Camera -> (this.meta as CameraMetaData).name.ifEmpty { "Camera" }
-        KrillApp.Server.Backup -> (this.meta as BackupMetaData).name.ifEmpty { "Backup" }
-        KrillApp.Project -> (this.meta as ProjectMetaData).name
-        KrillApp.Project.Diagram -> (this.meta as DiagramMetaData).name
-        KrillApp.Executor.LogicGate -> (this.meta as LogicGateMetaData).name.ifEmpty { this.meta.gateType.name }
-        KrillApp.Executor.Lambda -> {
-            val meta = this.meta as LambdaSourceMetaData
-            if (meta.filename.isNotEmpty()) meta.filename.removeSuffix(".py") else ""
-        }
-        else -> this.type.toString()
-    }
-}
+fun Node.name(): String = this.meta.displayName().ifEmpty { this.type.toString() }
 
 /**
  * For a `DataPoint` whose [DataType] is `COLOR`, returns the snapshot value
@@ -125,13 +90,5 @@ fun StateFlow<Node>.details(): String =
  */
 fun KrillApp.isMenuOption(): Boolean = this is MenuCommand
 
-fun Node.isDigital() : Boolean {
-    when (this.type) {
-        KrillApp.Server.Pin, KrillApp.Executor.LogicGate, KrillApp.Project.TaskList -> return true
-        KrillApp.DataPoint -> {
-            val meta = this.meta as DataPointMetaData
-            return (meta.dataType == DataType.DIGITAL)
-        }
-        else -> return false
-    }
-}
+/** `true` when this node's value is inherently boolean / digital. Delegates to [NodeMetaData.isDigital]. */
+fun Node.isDigital(): Boolean = this.meta.isDigital()
