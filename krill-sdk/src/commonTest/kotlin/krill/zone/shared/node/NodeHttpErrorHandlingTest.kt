@@ -154,4 +154,37 @@ class NodeHttpErrorHandlingTest {
         assertNotNull(result, "readNodes must return non-null on 200 OK")
         assertEquals(0, result.size, "readNodes must return empty list when server has no nodes")
     }
+
+    // ── clientProvider ────────────────────────────────────────────────────────
+
+    @Test
+    fun `clientProvider constructor is invoked on each request so a swapped client is picked up`() = runTest {
+        val emptyJson = testJson.encodeToString<List<Node>>(emptyList())
+        var callCount = 0
+        val engine = MockEngine { _ ->
+            respond(emptyJson, HttpStatusCode.OK, headersOf("Content-Type", "application/json"))
+        }
+        val nodeHttp = NodeHttp(
+            clientProvider = { callCount++; clientWithJson(engine) },
+            trustHost = fakeTrust(),
+            bearerTokenProvider = { "token" },
+        )
+
+        nodeHttp.readNodes(hostNode)
+        nodeHttp.readNodes(hostNode)
+
+        assertEquals(2, callCount, "clientProvider must be invoked once per request, not cached")
+    }
+
+    @Test
+    fun `convenience HttpClient constructor wraps instance without breaking behaviour`() = runTest {
+        val emptyJson = testJson.encodeToString<List<Node>>(emptyList())
+        val engine = MockEngine { _ ->
+            respond(emptyJson, HttpStatusCode.OK, headersOf("Content-Type", "application/json"))
+        }
+        val nodeHttp = NodeHttp(clientWithJson(engine), fakeTrust()) { "token" }
+
+        val result = nodeHttp.readNodes(hostNode)
+        assertNotNull(result, "convenience constructor must work identically to provider constructor")
+    }
 }

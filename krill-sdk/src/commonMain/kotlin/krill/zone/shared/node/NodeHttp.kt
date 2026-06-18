@@ -30,8 +30,10 @@ import kotlin.uuid.*
 /**
  * REST + SSE-friendly client for a Krill server.
  *
- * @param httpClient Pre-configured Ktor client. The caller is responsible
- *   for installing engines, content-negotiation, plugins, and trust setup.
+ * @param clientProvider Returns the [HttpClient] to use for each request.
+ *   Called on every outbound call so that callers can swap or rebuild the
+ *   underlying client (e.g. after a TLS trust-store update) without stranding
+ *   this instance on a closed/cancelled client.
  * @param trustHost Trust-store callback used to evict and re-fetch a peer
  *   cert when an outbound call fails with an SSL error.
  * @param bearerTokenProvider Supplies the current bearer token (PIN-derived
@@ -40,10 +42,21 @@ import kotlin.uuid.*
  *   is what unauthenticated FTUE traffic should do.
  */
 class NodeHttp(
-    private val httpClient: HttpClient,
+    private val clientProvider: () -> HttpClient,
     private val trustHost: TrustHost,
     private val bearerTokenProvider: () -> String?,
 ) {
+    /**
+     * Convenience constructor for callers that supply a stable, pre-built
+     * [HttpClient]. Wraps the instance as `{ httpClient }` so it satisfies
+     * the provider contract without requiring call-site changes.
+     */
+    constructor(
+        httpClient: HttpClient,
+        trustHost: TrustHost,
+        bearerTokenProvider: () -> String?,
+    ) : this(clientProvider = { httpClient }, trustHost = trustHost, bearerTokenProvider = bearerTokenProvider)
+
     private val logger = Logger.withTag("NodeHttp")
 
     // ==================== Helpers ====================
@@ -70,7 +83,7 @@ class NodeHttp(
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/health"
 
-            val response = httpClient.get(url) { withAuth() }
+            val response = clientProvider().get(url) { withAuth() }
             return if (response.status == HttpStatusCode.OK) {
                 response.body<Node>().copy(state = NodeState.NONE)
             } else {
@@ -90,7 +103,7 @@ class NodeHttp(
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/node/$id"
 
-            val response = httpClient.get(url) {
+            val response = clientProvider().get(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
             }
@@ -121,7 +134,7 @@ class NodeHttp(
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/nodes"
 
-            val response = httpClient.get(url) {
+            val response = clientProvider().get(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
             }
@@ -148,7 +161,7 @@ class NodeHttp(
         val url = "${baseUrl(meta)}/node/${node.id}"
 
         try {
-            val response = httpClient.post(url) {
+            val response = clientProvider().post(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
                 setBody(node)
@@ -193,7 +206,7 @@ class NodeHttp(
         val url = "${baseUrl(meta)}/node/${target.id}/invoke"
 
         try {
-            val response = httpClient.post(url) {
+            val response = clientProvider().post(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
                 setBody(InvokeRequest(by = by, verb = verb))
@@ -217,7 +230,7 @@ class NodeHttp(
 
         logger.i("${node.details()}: deleting $url")
         try {
-            val response = httpClient.delete(url) {
+            val response = clientProvider().delete(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
                 setBody(node)
@@ -244,7 +257,7 @@ class NodeHttp(
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/node/$id/data/plot"
 
-            val response = httpClient.get(url) {
+            val response = clientProvider().get(url) {
                 contentType(ContentType.Application.Xml)
                 withAuth()
             }
@@ -271,7 +284,7 @@ class NodeHttp(
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/node/$sourceId/data/series?st=$startTime&et=$endTime"
 
-            val response = httpClient.get(url) {
+            val response = clientProvider().get(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
             }
@@ -296,7 +309,7 @@ class NodeHttp(
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/header"
 
-            val response = httpClient.get(url) { withAuth() }
+            val response = clientProvider().get(url) { withAuth() }
             return if (response.status.isSuccess()) {
                 response.body()
             } else {
@@ -316,7 +329,7 @@ class NodeHttp(
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/camera/$cameraId/snapshot"
 
-            val response = httpClient.get(url) { withAuth() }
+            val response = clientProvider().get(url) { withAuth() }
             return if (response.status.isSuccess()) {
                 response.body<ByteArray>()
             } else {
@@ -334,7 +347,7 @@ class NodeHttp(
         try {
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/camera/$cameraId/thumbnails"
-            val response = httpClient.get(url) {
+            val response = clientProvider().get(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
             }
@@ -352,7 +365,7 @@ class NodeHttp(
         try {
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/camera/$cameraId/thumbnails/$filename"
-            val response = httpClient.get(url) { withAuth() }
+            val response = clientProvider().get(url) { withAuth() }
             return if (response.status.isSuccess()) response.body<ByteArray>() else null
         } catch (e: Exception) {
             logger.e(e) { "Error fetching thumbnail $filename" }
@@ -373,7 +386,7 @@ class NodeHttp(
         try {
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/backup/list"
-            val response = httpClient.get(url) {
+            val response = clientProvider().get(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
             }
@@ -390,7 +403,7 @@ class NodeHttp(
         try {
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/backup/file?file=${filename.encodeURLPath()}"
-            val response = httpClient.delete(url) { withAuth() }
+            val response = clientProvider().delete(url) { withAuth() }
             return response.status.isSuccess()
         } catch (e: Exception) {
             logger.e(e) { "Error deleting backup file $filename" }
@@ -403,7 +416,7 @@ class NodeHttp(
         try {
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/backup/restore"
-            val response = httpClient.post(url) {
+            val response = clientProvider().post(url) {
                 contentType(ContentType.Application.Json)
                 withAuth()
                 setBody(mapOf("filename" to filename))
@@ -436,7 +449,7 @@ class NodeHttp(
         try {
             val meta = host.meta as ServerMetaData
             val url = "${baseUrl(meta)}/node/$nodeId/qr"
-            val response = httpClient.get(url) { withAuth() }
+            val response = clientProvider().get(url) { withAuth() }
             return if (response.status.isSuccess()) {
                 response.body<ByteArray>()
             } else {
@@ -456,7 +469,7 @@ class NodeHttp(
             val encodedFileName = fileName.encodeURLPath()
             val url = "${baseUrl(meta)}/project/$projectId/diagram/$encodedFileName"
 
-            val response = httpClient.put(url) {
+            val response = clientProvider().put(url) {
                 withAuth()
                 contentType(ContentType.Image.SVG)
                 setBody(svgBytes)
