@@ -262,6 +262,30 @@ Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.Button", "
 
 The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
 
+### `update_node`
+Update an existing node's metadata by shallow-merging a `meta` overlay onto the current node. The updated node is posted with `state=USER_EDIT` so connected clients (desktop UI, other agents) receive the change live via SSE.
+
+Use this to configure fields that couldn't be determined at `create_node` time:
+
+| Node type | Example field | Example value |
+|-----------|--------------|---------------|
+| `KrillApp.Trigger.CronTimer` | `expression` | `"*/5 * * * * *"` (every 5 seconds) |
+| `KrillApp.Executor.Calculation` | `formula` | `"{a} + {b}"` |
+| Any node | `name` | `"My renamed node"` |
+
+The polymorphic `type` key inside `meta` is always preserved from the existing node — passing it in the overlay is silently ignored (you cannot change a node's type after creation).
+
+```json
+{"name": "update_node", "arguments": {"id": "<cron-uuid>", "meta": {"expression": "*/5 * * * * *"}}}
+{"name": "update_node", "arguments": {"id": "<calc-uuid>", "meta": {"formula": "{a} + {b}", "name": "Summer"}}}
+{"name": "update_node", "arguments": {"server": "<id>", "id": "<node-uuid>", "meta": {"name": "Renamed node"}}}
+```
+Response: `{"server": "<id>", "id": "<id>", "type": "KrillApp.Trigger.CronTimer", "updatedFields": ["expression"], "meta": {...}, "note": "..."}`
+
+The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
+
+**Wiring fields** (`sources`, `inputs`, `invocationTriggers`, `nodeAction`) can also be patched via `update_node`, but prefer `set_node_wiring` and `set_node_action` for those — they document intent more clearly and validate the values they accept.
+
 ### `record_snapshot`
 Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot runs through the DataPoint's Filters (read from the DataPoint's `meta.inputs`), becomes a new point in the time-series store if accepted, and invokes every node observing the DataPoint as a source.
 
@@ -557,5 +581,4 @@ To derive the JSON shape for a different type, fetch an existing node of that ty
 
 ## What's NOT here yet
 
-- **General update in place.** `create_node` is for brand-new nodes (posts `state=CREATE_OR_OVERWRITE`). For existing nodes, `set_node_wiring` / `set_node_action` cover the wiring fields and `update_diagram` covers diagrams; updating any *other* meta field means fetching the node, mutating meta, and POSTing back — no high-level helper for that yet.
 - **Server-side join / bulk create.** Each `create_node` is a single HTTP POST. Large trees are N posts; no transactional "create this subtree" primitive.
