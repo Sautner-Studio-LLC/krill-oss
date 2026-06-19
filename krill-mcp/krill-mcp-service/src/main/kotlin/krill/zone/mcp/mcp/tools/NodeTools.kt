@@ -836,6 +836,107 @@ class SetNodeWiringTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
+/**
+ * Updates an existing node's metadata by shallow-merging a caller-supplied
+ * meta overlay onto the current node and re-posting with `state=USER_EDIT`.
+ *
+ * This is the create-then-configure counterpart to [CreateNodeTool]: after
+ * creating a node you can call `update_node` to set fields that couldn't be
+ * determined at creation time — e.g. a CronTimer's `expression`, a
+ * Calculation's `formula`, or a node's `name`.
+ *
+ * The polymorphic `type` key in meta is always preserved from the existing
+ * node — callers cannot change a node's type after creation.
+ */
+class UpdateNodeTool(private val registry: KrillRegistry) : Tool {
+    override val name = "update_node"
+    override val description =
+        "Update an existing node's metadata by shallow-merging a `meta` overlay onto the current " +
+            "node and posting it back with `state=USER_EDIT` so connected clients (desktop UI, other " +
+            "agents) see the change live. Use this to configure fields that couldn't be set at " +
+            "create_node time: a CronTimer's `expression`, a Calculation's `formula`, a node's `name`, " +
+            "or any other MetaData field. Wiring fields (`sources`, `inputs`, `invocationTriggers`, " +
+            "`nodeAction`) can also be patched here, but `set_node_wiring` and `set_node_action` are " +
+            "preferred for those — they document the intent more clearly. The polymorphic `type` key " +
+            "inside meta is always preserved from the existing node; passing it is silently ignored."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("server") {
+                put("type", "string")
+                put("description", "Krill server id, host, or host:port. Defaults to the first registered server.")
+            }
+            putJsonObject("id") {
+                put("type", "string")
+                put("description", "Id of the node to update.")
+            }
+            putJsonObject("meta") {
+                put("type", "object")
+                put(
+                    "description",
+                    "Meta-field overlay. Keys are shallow-merged over the node's current meta. The " +
+                        "polymorphic `type` key is always taken from the existing node — pass it or not, " +
+                        "it makes no difference.",
+                )
+            }
+        }
+        putJsonArray("required") {
+            add("id")
+            add("meta")
+        }
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val id = arguments["id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: id")
+        val overlay = arguments["meta"] as? JsonObject
+            ?: error("Missing required argument: meta (must be a JSON object of fields to update).")
+        if (overlay.isEmpty()) {
+            error("meta is empty — provide at least one field to update (e.g. {\"expression\": \"*/5 * * * * *\"}).")
+        }
+
+        val client = resolve(registry, arguments)
+        val existing = client.node(id) as? JsonObject
+            ?: error("Node $id not found on server ${client.serverId}.")
+
+        val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+        val shortName = typeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName } ?: typeFqn ?: "unknown"
+
+        val existingMeta = existing["meta"] as? JsonObject
+            ?: error("Node $id has no meta object.")
+
+        val updatedMeta = JsonObject(
+            existingMeta.toMutableMap().also { base ->
+                for ((key, value) in overlay) {
+                    if (key == KrillNodeTypes.META_TYPE_KEY) continue
+                    base[key] = value
+                }
+            },
+        )
+        val updatedNode = JsonObject(
+            existing.toMutableMap().also {
+                it["meta"] = updatedMeta
+                it["state"] = JsonPrimitive("USER_EDIT")
+            },
+        )
+        client.postNode(updatedNode)
+
+        val appliedKeys = overlay.keys.filter { it != KrillNodeTypes.META_TYPE_KEY }
+        return buildJsonObject {
+            put("server", client.serverId)
+            put("id", id)
+            put("type", shortName)
+            putJsonArray("updatedFields") { appliedKeys.forEach { add(JsonPrimitive(it)) } }
+            put("meta", updatedMeta)
+            put(
+                "note",
+                "Posted with state=USER_EDIT. Connected clients receive the update via SSE. " +
+                    "Verify via `get_node` — allow ~500ms for the server to persist before reading back.",
+            )
+        }
+    }
+}
+
 private fun resolve(registry: KrillRegistry, arguments: JsonObject): KrillClient {
     val selector = arguments["server"]?.jsonPrimitive?.contentOrNull
     return registry.resolve(selector)
