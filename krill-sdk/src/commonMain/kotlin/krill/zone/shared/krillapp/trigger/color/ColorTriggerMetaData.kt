@@ -45,6 +45,8 @@ data class ColorTriggerMetaData(
      * editor to render a one-glance swatch of "what colour does this trigger
      * approximately match".
      */
+    override fun withError(error: String) = copy(error = error)
+
     fun midpointArgb(): Long {
         val r = ((rMin + rMax) / 2).coerceIn(0, 255)
         val g = ((gMin + gMax) / 2).coerceIn(0, 255)

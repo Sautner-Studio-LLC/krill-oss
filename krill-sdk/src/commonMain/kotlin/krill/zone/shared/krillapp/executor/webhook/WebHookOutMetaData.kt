@@ -40,4 +40,6 @@ data class WebHookOutMetaData(
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
 override val inputs: List<NodeIdentity> = emptyList(),
-) : SourceMetaData
+) : SourceMetaData {
+    override fun withError(error: String) = copy(error = error)
+}

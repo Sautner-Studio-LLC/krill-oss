@@ -1,76 +1,11 @@
 package krill.zone.shared.node
 
-
-import krill.zone.shared.krillapp.client.*
-import krill.zone.shared.krillapp.datapoint.*
-import krill.zone.shared.krillapp.datapoint.filter.*
-import krill.zone.shared.krillapp.datapoint.graph.*
-import krill.zone.shared.krillapp.executor.*
-import krill.zone.shared.krillapp.executor.calculation.*
-import krill.zone.shared.krillapp.executor.compute.*
-import krill.zone.shared.krillapp.executor.lambda.*
-import krill.zone.shared.krillapp.executor.logicgate.*
-import krill.zone.shared.krillapp.executor.mqtt.*
-import krill.zone.shared.krillapp.executor.smtp.*
-import krill.zone.shared.krillapp.executor.webhook.*
-import krill.zone.shared.krillapp.project.*
-import krill.zone.shared.krillapp.project.camera.*
-import krill.zone.shared.krillapp.project.diagram.*
-import krill.zone.shared.krillapp.project.journal.*
-import krill.zone.shared.krillapp.project.tasklist.*
-import krill.zone.shared.krillapp.server.*
-import krill.zone.shared.krillapp.server.backup.*
-import krill.zone.shared.krillapp.server.pin.*
-import krill.zone.shared.krillapp.server.serialdevice.*
-import krill.zone.shared.krillapp.spacer.*
-import krill.zone.shared.krillapp.trigger.*
-import krill.zone.shared.krillapp.trigger.button.*
-import krill.zone.shared.krillapp.trigger.color.*
-import krill.zone.shared.krillapp.trigger.cron.*
-import krill.zone.shared.krillapp.trigger.timer.TimerMetaData
-import krill.zone.shared.krillapp.trigger.webhook.*
-
 /**
  * Returns a copy of [meta] with its `error` field replaced by [error].
  *
- * Centralised because each concrete `MetaData` subtype is a different
- * `data class` — the only way to flip a single field on an unknown subtype
- * without losing the others is per-subtype `copy(error = ...)`. The `else`
- * arm returns the input unchanged, which is the right behaviour for any
- * future MetaData type that hasn't been added to the `when` yet.
+ * Delegates to [NodeMetaData.withError], which every concrete MetaData
+ * `data class` implements as `copy(error = error)`. No per-subtype dispatch
+ * needed here — adding a new MetaData type requires only implementing the
+ * abstract [NodeMetaData.withError] on that type, enforced at compile time.
  */
-fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData {
-    return when (meta) {
-        is ServerMetaData -> meta.copy(error = error)
-        is PinMetaData -> meta.copy(error = error)
-        is SerialDeviceMetaData -> meta.copy(error = error)
-        is SerialDeviceTargetMetaData -> meta.copy(error = error)
-        is ProjectMetaData -> meta.copy(error = error)
-        is SpacerMetaData -> meta.copy(error = error)
-        is DataPointMetaData -> meta.copy(error = error)
-        is CalculationEngineNodeMetaData -> meta.copy(error = error)
-        is TriggerMetaData -> meta.copy(error = error)
-        is FilterMetaData -> meta.copy(error = error)
-        is ExecuteMetaData -> meta.copy(error = error)
-        is ClientMetaData -> meta.copy(error = error)
-        is ComputeMetaData -> meta.copy(error = error)
-        is CronMetaData -> meta.copy(error = error)
-        is WebHookOutMetaData -> meta.copy(error = error)
-        is IncomingWebHookMetaData -> meta.copy(error = error)
-        is LambdaSourceMetaData -> meta.copy(error = error)
-        is ButtonMetaData -> meta.copy(error = error)
-        is LogicGateMetaData -> meta.copy(error = error)
-        is MqttMetaData -> meta.copy(error = error)
-        is GraphMetaData -> meta.copy(error = error)
-        is DiagramMetaData -> meta.copy(error = error)
-        is TaskListMetaData -> meta.copy(error = error)
-        is JournalMetaData -> meta.copy(error = error)
-        is SMTPMetaData -> meta.copy(error = error)
-        is CameraMetaData -> meta.copy(error = error)
-        is BackupMetaData -> meta.copy(error = error)
-        is ColorTriggerMetaData -> meta.copy(error = error)
-        is TimerMetaData -> meta.copy(error = error)
-        else -> meta
-    }
-}
-
+fun updateMetaWithError(meta: NodeMetaData, error: String): NodeMetaData = meta.withError(error)

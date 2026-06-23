@@ -51,6 +51,7 @@ fun main() {
         DeleteNodeTool(registry),
         SetNodeActionTool(registry),
         SetNodeWiringTool(registry),
+        UpdateNodeTool(registry),
     )
 
     val mcp = McpServer(

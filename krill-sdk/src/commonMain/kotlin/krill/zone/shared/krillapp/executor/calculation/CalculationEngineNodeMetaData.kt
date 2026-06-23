@@ -37,4 +37,6 @@ data class CalculationEngineNodeMetaData(
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
 
-) : SourceMetaData
+) : SourceMetaData {
+    override fun withError(error: String) = copy(error = error)
+}

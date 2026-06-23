@@ -27,24 +27,10 @@ enum class DigitalState {
     OFF,
 }
 
-/**
- * Maps a [DigitalState] to a numeric value suitable for time-series graphing
- * and calculation nodes: `ON → 1.0`, `OFF → 0.0`.
- *
- * The `try/catch` is a defensive guard for corner cases where the enum
- * reference itself is somehow invalid at runtime (e.g., when a future
- * platform deserialises an unknown ordinal); on any failure the safe fallback
- * `0.0` is returned so downstream math never sees `NaN`.
- */
-fun DigitalState.toDouble() : Double {
-    return try {
-        when (this) {
-            DigitalState.ON -> 1.0
-            DigitalState.OFF -> 0.0
-        }
-    }catch (_: Exception) {
-        0.0
-    }
+/** Maps [DigitalState] to a numeric value for graphing: `ON → 1.0`, `OFF → 0.0`. */
+fun DigitalState.toDouble(): Double = when (this) {
+    DigitalState.ON -> 1.0
+    DigitalState.OFF -> 0.0
 }
 
 /**
