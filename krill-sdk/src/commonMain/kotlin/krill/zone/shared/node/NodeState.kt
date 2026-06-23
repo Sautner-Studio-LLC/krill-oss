@@ -34,6 +34,28 @@ fun DigitalState.toDouble(): Double = when (this) {
 }
 
 /**
+ * Returns `true` when a node in this state may receive a deliberate invocation.
+ *
+ * [NodeState.PAUSED] is documented as suppressing execution — the node exists
+ * but its processor is deliberately suspended by user action. [NodeState.DELETING]
+ * means the node is in the middle of removal; firing work into it is semantically
+ * wrong and the server will reject it.
+ *
+ * All other states (including error and transient execution states such as
+ * [NodeState.PROCESSING] and [NodeState.EXECUTED]) are considered invokable:
+ * the server remains the authoritative gatekeeper, and the SDK should not
+ * over-eagerly block invocations that the server might still accept.
+ *
+ * Used by [krill.zone.shared.node.NodeHttp.invokeNode] to short-circuit
+ * network calls for clearly non-invokable states.
+ */
+fun NodeState.isInvokable(): Boolean = when (this) {
+    NodeState.PAUSED -> false
+    NodeState.DELETING -> false
+    else -> true
+}
+
+/**
  * Lifecycle / status state for every Krill node.
  *
  * Consumed widely: the UI colours node chips by this value, processors gate
@@ -41,8 +63,14 @@ fun DigitalState.toDouble(): Double = when (this) {
  * changes as `STATE_CHANGE` events, and downstream logic (triggers, filters)
  * reacts to specific transitions.
  *
- * Ordinals are part of the wire contract — do not reorder.
+ * Both enum names and ordinals are part of the public wire contract and are
+ * observed by clients across JVM, Android, iOS, and wasmJs — do not rename
+ * or reorder without a coordinated migration.
+ *
+ * Use [isInvokable] to check whether a node in this state may receive a
+ * deliberate invocation (via [krill.zone.shared.node.NodeHttp.invokeNode]).
  */
+@Serializable
 enum class NodeState {
     /** Processing is suspended by user action; the node exists but is not running. */
     PAUSED,
