@@ -54,6 +54,9 @@ data class ServerMetaData(
     val serialDevices: List<String> = emptyList(),
     /** `true` if the server has a camera attached and exposes the `/camera/` routes. */
     val cameraAvailable: Boolean = false,
+
+    val beaconsEnabled: Boolean = true,
+
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
