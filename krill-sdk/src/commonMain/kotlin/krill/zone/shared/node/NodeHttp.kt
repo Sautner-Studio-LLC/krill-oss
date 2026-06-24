@@ -85,7 +85,8 @@ class NodeHttp(
 
             val response = clientProvider().get(url) { withAuth() }
             return if (response.status == HttpStatusCode.OK) {
-                response.body<Node>().copy(state = NodeState.NONE)
+                val node = response.body<Node>()
+                if (node.state == NodeState.NONE) node else node.copy(state = NodeState.NONE)
             } else {
                 logger.e("error calling $url ${response.status} ${response.status.description}")
                 null
@@ -139,9 +140,9 @@ class NodeHttp(
                 withAuth()
             }
             return if (response.status == HttpStatusCode.OK) {
-                response.body<List<Node>>().map {
-                    if (it.state == NodeState.EXECUTED) it.copy(state = NodeState.NONE) else it
-                }
+                val nodes = response.body<List<Node>>()
+                if (nodes.none { it.state == NodeState.EXECUTED }) nodes
+                else nodes.map { if (it.state == NodeState.EXECUTED) it.copy(state = NodeState.NONE) else it }
             } else {
                 logger.e { "Failed to read nodes ${response.status}: $url ${host.details()}" }
                 null
@@ -201,6 +202,10 @@ class NodeHttp(
     ) {
         logger.i("${host.details()}: invoke ${target.details()} by=$by verb=$verb")
         if (target.type == KrillApp.Client) return
+        if (!target.state.isInvokable()) {
+            logger.w("${target.details()}: skipping invoke — state=${target.state} is not invokable")
+            return
+        }
 
         val meta = host.meta as ServerMetaData
         val url = "${baseUrl(meta)}/node/${target.id}/invoke"
