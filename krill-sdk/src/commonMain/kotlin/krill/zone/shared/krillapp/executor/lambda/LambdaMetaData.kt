@@ -9,21 +9,17 @@
 package krill.zone.shared.krillapp.executor.lambda
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.krillapp.datapoint.*
+import krill.zone.shared.node.*
 
 /**
  * Payload for a `Lambda` executor node.
  */
 @Serializable
-data class LambdaSourceMetaData(
+data class LambdaMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
-    /** User-supplied tag/value pairs; passed through to the script as environment-style data. */
-    val tags: Map<String, String> = emptyMap(),
+
     /** Filename of the uploaded `.py` source on the server (e.g. `"average.py"`). */
     val filename: String = "",
     /** Epoch millis the source file was last uploaded — drives cache busting on clients. */
@@ -31,7 +27,7 @@ data class LambdaSourceMetaData(
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     override fun withError(error: String) = copy(error = error)
     override fun displayName() = if (filename.isNotEmpty()) filename.removeSuffix(".py") else ""
