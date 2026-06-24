@@ -187,4 +187,42 @@ class NodeHttpErrorHandlingTest {
         val result = nodeHttp.readNodes(hostNode)
         assertNotNull(result, "convenience constructor must work identically to provider constructor")
     }
+
+    // ── invokeNode state guard (krill-oss#158) ────────────────────────────────
+
+    @Test
+    fun `invokeNode does not make a network call when target is PAUSED`() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ -> requestCount++; respond("", HttpStatusCode.OK) }
+        val nodeHttp = NodeHttp(clientWithJson(engine), fakeTrust()) { "token" }
+
+        val pausedNode = pinNode.copy(state = NodeState.PAUSED)
+        nodeHttp.invokeNode(hostNode, pausedNode, pausedNode.id())
+
+        assertEquals(0, requestCount, "invokeNode must not send a request when the target is PAUSED")
+    }
+
+    @Test
+    fun `invokeNode does not make a network call when target is DELETING`() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ -> requestCount++; respond("", HttpStatusCode.OK) }
+        val nodeHttp = NodeHttp(clientWithJson(engine), fakeTrust()) { "token" }
+
+        val deletingNode = pinNode.copy(state = NodeState.DELETING)
+        nodeHttp.invokeNode(hostNode, deletingNode, deletingNode.id())
+
+        assertEquals(0, requestCount, "invokeNode must not send a request when the target is DELETING")
+    }
+
+    @Test
+    fun `invokeNode sends a network call when target is NONE`() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ -> requestCount++; respond("", HttpStatusCode.OK) }
+        val nodeHttp = NodeHttp(clientWithJson(engine), fakeTrust()) { "token" }
+
+        val activeNode = pinNode.copy(state = NodeState.NONE)
+        nodeHttp.invokeNode(hostNode, activeNode, activeNode.id())
+
+        assertEquals(1, requestCount, "invokeNode must send a request when the target is in an invokable state")
+    }
 }

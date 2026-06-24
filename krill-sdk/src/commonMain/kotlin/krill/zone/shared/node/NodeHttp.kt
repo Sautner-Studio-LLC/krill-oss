@@ -202,6 +202,10 @@ class NodeHttp(
     ) {
         logger.i("${host.details()}: invoke ${target.details()} by=$by verb=$verb")
         if (target.type == KrillApp.Client) return
+        if (!target.state.isInvokable()) {
+            logger.w("${target.details()}: skipping invoke — state=${target.state} is not invokable")
+            return
+        }
 
         val meta = host.meta as ServerMetaData
         val url = "${baseUrl(meta)}/node/${target.id}/invoke"
