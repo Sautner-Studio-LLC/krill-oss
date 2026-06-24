@@ -18,11 +18,16 @@ import krill.zone.shared.krillapp.server.ServerMetaData
 
 /**
  * Returns the canonical `https://<resolvedHost>:<port>` [Url] for a server
- * node. Caller must guarantee `node.meta` is a [ServerMetaData] — typically
- * by checking `node.type is KrillApp.Server`.
+ * node. Throws [IllegalArgumentException] with a diagnostic message when
+ * [meta] is not a [ServerMetaData] — prefer calling this only on nodes whose
+ * [type] is [KrillApp.Server].
  */
 fun Node.https(): Url {
-    val meta = this.meta as ServerMetaData
+    val meta = this.meta as? ServerMetaData
+        ?: throw IllegalArgumentException(
+            "Node.https() requires ServerMetaData; got ${this.meta::class.simpleName} " +
+                "(id=${this.id}, type=${this.type})"
+        )
     return URLBuilder(
         protocol = URLProtocol.HTTPS,
         host = meta.resolvedHost(),
