@@ -33,15 +33,15 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
     override val name = "create_node"
     override val description =
         "Create a Krill node of ANY registered KrillApp.* type. Required: `type` (short name like " +
-            "`KrillApp.DataPoint` or full FQN) and `parent` (the id of the parent node on the server). " +
-            "Optional: `name` (injected into meta.name when the MetaData class supports it), `meta` (a " +
-            "JsonObject whose keys overlay the type's default meta skeleton). Use `list_node_types` to " +
-            "discover valid types, their parents, and their meta fields. Parent/child is visual " +
-            "organization only — data flows through observer wiring (`meta.sources` + " +
-            "`meta.invocationTriggers`, values read via `meta.inputs`). When `sources` is left empty the " +
-            "server wires the parent in as the default source, so a child observes its parent out of the " +
-            "box; use `set_node_wiring` to rewire. Prefer the specialized `create_project` / " +
-            "`create_diagram` tools for those types (diagram needs file upload)."
+            "`KrillApp.DataPoint` or full FQN). Optional: `parent` (id of the parent node; omit or pass " +
+            "the server id to create a top-level node under the server root), `name` (injected into " +
+            "meta.name when the MetaData class supports it), `meta` (a JsonObject whose keys overlay the " +
+            "type's default meta skeleton). Use `list_node_types` to discover valid types, their parents, " +
+            "and their meta fields. Parent/child is visual organization only — data flows through observer " +
+            "wiring (`meta.sources` + `meta.invocationTriggers`, values read via `meta.inputs`). When " +
+            "`sources` is left empty the server wires the parent in as the default source, so a child " +
+            "observes its parent out of the box; use `set_node_wiring` to rewire. Prefer the specialized " +
+            "`create_project` / `create_diagram` tools for those types (diagram needs file upload)."
     override val inputSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -61,8 +61,10 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                 put("type", "string")
                 put(
                     "description",
-                    "Id of the parent node on the same server. For top-level server children (DataPoint, " +
-                        "Project, Server.Pin, etc.) pass the server id.",
+                    "Id of the parent node on the same server. Omit (or pass the server id) to create a " +
+                        "top-level node directly under the server root — the server id is used as the " +
+                        "parent automatically. For nested nodes pass the id of the containing " +
+                        "DataPoint, Trigger, Executor, or Project.",
                 )
             }
             putJsonObject("name") {
@@ -85,7 +87,6 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
         }
         putJsonArray("required") {
             add("type")
-            add("parent")
         }
     }
 
@@ -99,17 +100,24 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                     "like `krill.zone.shared.KrillApp.DataPoint`.",
             )
 
-        val parentId = arguments["parent"]?.jsonPrimitive?.contentOrNull
-            ?: error("Missing required argument: parent")
+        // Default parent to the server root when not supplied — lets callers omit `parent` for
+        // top-level nodes without a separate list_nodes call to find the server id.
+        val parentId = arguments["parent"]?.jsonPrimitive?.contentOrNull ?: client.serverId
         val callerName = arguments["name"]?.jsonPrimitive?.contentOrNull
         val callerMeta = arguments["meta"] as? JsonObject
 
-        // Verify parent exists on the server.
-        val parentNode = runCatching { client.node(parentId) as? JsonObject }.getOrNull()
-            ?: error(
-                "Parent node '$parentId' not found on server ${client.serverId}. Verify with `list_nodes` " +
-                    "or `get_node` before creating.",
-            )
+        // When the parent is the server itself, skip the /node/{id} lookup — the server entity
+        // is not addressable as a node via that endpoint (krill-oss#163).  Synthesize a minimal
+        // server-typed parent so downstream parent-type validation can still run.
+        val parentNode: JsonObject = if (parentId == client.serverId) {
+            serverParentNode(client.serverId)
+        } else {
+            runCatching { client.node(parentId) as? JsonObject }.getOrNull()
+                ?: error(
+                    "Parent node '$parentId' not found on server ${client.serverId}. Verify with " +
+                        "`list_nodes` or `get_node` before creating.",
+                )
+        }
         val parentTypeFqn = parentNode["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
         val parentShortName = parentTypeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName }
         val resolvedCallerName = callerName ?: derivedDefaultName(spec, parentNode)
@@ -166,6 +174,22 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                 putJsonArray("warnings") { add(JsonPrimitive(parentValidationWarning)) }
             }
         }
+    }
+
+    /**
+     * Minimal server-typed parent node JSON used when the caller's `parent`
+     * argument equals the server's own id. The Krill server is not addressable
+     * via `GET /node/{id}`, so we synthesize a stand-in rather than failing
+     * the parent existence check. The FQN is the canonical wire discriminator
+     * for the server entity; `KrillNodeTypes.byTypeFqn` won't resolve it
+     * (the server type is never in the creatable-type registry), so downstream
+     * parent-type validation reports `"unknown-parent-type"` — no warning, no
+     * block.  See krill-oss#163.
+     */
+    internal fun serverParentNode(serverId: String): JsonObject = buildJsonObject {
+        put("id", serverId)
+        putJsonObject("type") { put("type", "krill.zone.shared.KrillApp.Server") }
+        putJsonObject("meta") { put("name", "") }
     }
 
     /**

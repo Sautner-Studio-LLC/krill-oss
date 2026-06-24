@@ -186,8 +186,9 @@ Return the full creatable-type catalog the MCP knows about: short name, MetaData
 Both filters are optional and case-insensitive. Response: `{"count": N, "types": [{"shortName": "KrillApp.Trigger.HighThreshold", "typeFqn": "...", "metaFqn": "...", "role": "trigger", "sideEffect": "low", "description": "...", "validParentTypes": [...], "validChildTypes": [...], "defaultMeta": {...}, "notes": "..."}, ...]}`
 
 ### `create_node`
-Create a node of any registered type. Provide `type` (short name or FQN), `parent` (id of an existing node on the same server), optional `name`, and optional `meta` overlay.
+Create a node of any registered type. Provide `type` (short name or FQN), optional `parent` (id of an existing node on the same server or the server id; defaults to the server root when omitted), optional `name`, and optional `meta` overlay.
 
+- `parent` is **optional**. Omit it (or pass the server id) to create a top-level node directly under the server root — the tool defaults the parent to the server id and skips the HTTP lookup for the server entity, which is not addressable via `/node/{id}`. For nested nodes pass the id of the containing DataPoint, Trigger, Executor, or Project.
 - `meta` is **shallow-merged** over the type's default meta skeleton. The `type` key (polymorphic discriminator) inside `meta` is always overwritten by the tool — callers can't break it.
 - A few MetaData classes have no `name` field (MQTT, Compute, Lambda, SMTP, LLM). Passing `name` on those types is silently dropped by the server's `ignoreUnknownKeys = true`.
 - If the parent's type isn't in the `validParentTypes` list for the requested type, the tool returns a `warnings[]` entry but still posts — the server will accept the node and the catalog may simply be behind.
@@ -198,7 +199,6 @@ Create a node of any registered type. Provide `type` (short name or FQN), `paren
   "arguments": {
     "server": "<optional>",
     "type": "KrillApp.DataPoint",
-    "parent": "<server-uuid-or-other-parent>",
     "name": "Aquarium temp",
     "meta": {"dataType": "DOUBLE", "unit": "°C", "precision": 1, "manualEntry": false}
   }
@@ -209,7 +209,7 @@ Response: `{"server": "<id>", "nodeId": "<new-uuid>", "type": "KrillApp.DataPoin
 **Parent/child is organization; wiring is flow.** The tree you build with `parent` is visual grouping only. Data and activity flow through observer wiring: `meta.sources` (who wakes me) + `meta.invocationTriggers` (which events wake me) + `meta.inputs` (whose values I read). When you leave `sources` empty, the server wires the parent in as the default source (with `SOURCE_INVOKED`) — so a child observes its parent out of the box, except when either side is a Project/Server container. Pass explicit wiring in `meta`, or call `set_node_wiring` after creation.
 
 **Authoring a multi-node tree (parent-first):**
-1. `create_node type=KrillApp.DataPoint parent=<serverId> name="Aquarium temp" meta={dataType:"DOUBLE",unit:"°C"}` → record the returned `nodeId` as `dpId`.
+1. `create_node type=KrillApp.DataPoint name="Aquarium temp" meta={dataType:"DOUBLE",unit:"°C"}` → record the returned `nodeId` as `dpId`. (No `parent` needed — defaults to server root.)
 2. `create_node type=KrillApp.Trigger.HighThreshold parent=<dpId> name="Overheat" meta={snapshot:{timestamp:0,value:"30"}}` → record `tId`. (Trigger thresholds live in `meta.snapshot.value` — TriggerMetaData has no separate `value` field. The server wires `dpId` into the trigger's `sources` automatically.)
 3. `create_node type=KrillApp.Executor.OutgoingWebHook parent=<tId> name="Page me" meta={url:"https://...",method:"POST"}`. (Parent default again: the webhook observes the trigger.)
 4. `get_node` each new id to confirm persistence — the create response echoes what was sent, not what the server stored. Check `meta.sources` to see the wiring the server applied.

@@ -4,18 +4,18 @@ import krill.zone.mcp.auth.PinProvider
 import krill.zone.mcp.config.KrillMcpConfig
 import krill.zone.mcp.krill.KrillNodeTypes
 import krill.zone.mcp.krill.KrillRegistry
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * Regression tests for issue Sautner-Studio-LLC/krill-oss#13.
- *
- * `create_node` must inject a parent-derived display name when creating a
- * `KrillApp.DataPoint.Graph` and the caller did not supply one — otherwise
- * sibling Graphs under different DataPoints all surface with the same name.
+ * Regression tests for:
+ *   - krill-oss#13: `create_node` must inject a parent-derived display name when
+ *     creating a `KrillApp.DataPoint.Graph` so sibling Graphs don't share a name.
+ *   - krill-oss#163: `create_node` with the server id as parent (or no parent)
+ *     must synthesize a server-typed stub rather than calling `GET /node/{id}`,
+ *     which fails because the server entity is not addressable at that endpoint.
  */
 class CreateNodeToolTest {
 
@@ -52,6 +52,29 @@ class CreateNodeToolTest {
     fun `Graph registry default name is empty so create_node always sources it from the parent or caller`() {
         val defaultName = graphSpec.defaultMeta["name"]?.let { (it as JsonPrimitive).content }
         assertEquals("", defaultName)
+    }
+
+    // ── krill-oss#163 — server-parent guard ──────────────────────────────────
+
+    @Test
+    fun `serverParentNode carries the canonical KrillApp Server FQN`() {
+        val node = tool.serverParentNode("test-server-uuid")
+        val fqn = node["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+        assertEquals("krill.zone.shared.KrillApp.Server", fqn)
+    }
+
+    @Test
+    fun `serverParentNode embeds the supplied server id`() {
+        val serverId = "deadbeef-0000-0000-0000-000000000001"
+        val node = tool.serverParentNode(serverId)
+        assertEquals(serverId, node["id"]?.jsonPrimitive?.contentOrNull)
+    }
+
+    @Test
+    fun `serverParentNode has a meta object so derivedDefaultName does not throw`() {
+        val node = tool.serverParentNode("any-id")
+        // derivedDefaultName must not NPE on a synthesized server parent
+        assertNull(tool.derivedDefaultName(graphSpec, node))
     }
 
     private fun parentNode(typeFqn: String, name: String) = buildJsonObject {
