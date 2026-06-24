@@ -8,14 +8,9 @@
 package krill.zone.shared.krillapp.server.pin
 
 import kotlinx.serialization.*
-import krill.zone.shared.krillapp.datapoint.Snapshot
+import krill.zone.shared.krillapp.datapoint.*
 import krill.zone.shared.krillapp.server.*
-import krill.zone.shared.node.DigitalState
-import krill.zone.shared.node.InvocationTrigger
-import krill.zone.shared.node.NodeAction
-import krill.zone.shared.node.NodeIdentity
-import krill.zone.shared.node.PinPullResistance
-import krill.zone.shared.node.SourceMetaData
+import krill.zone.shared.node.*
 
 /**
  * Payload for a `Server.Pin` node.
@@ -45,14 +40,14 @@ data class PinMetaData(
     /** Optional CSS colour hint shown on the pin tile. */
     val color: String? = null,
 
-    val  pinPullResistance: PinPullResistance = PinPullResistance.OFF,
+    val pinPullResistance: PinPullResistance = PinPullResistance.OFF,
 
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
-override val inputs: List<NodeIdentity> = emptyList(),
+    override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     /**
      * `true` when the pin has been assigned a real header position and a
