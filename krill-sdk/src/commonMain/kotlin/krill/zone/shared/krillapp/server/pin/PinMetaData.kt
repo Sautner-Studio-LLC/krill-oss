@@ -14,6 +14,7 @@ import krill.zone.shared.node.DigitalState
 import krill.zone.shared.node.InvocationTrigger
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
+import krill.zone.shared.node.PinPullResistance
 import krill.zone.shared.node.SourceMetaData
 
 /**
@@ -43,6 +44,9 @@ data class PinMetaData(
     val address: Int? = null,
     /** Optional CSS colour hint shown on the pin tile. */
     val color: String? = null,
+
+    val  pinPullResistance: PinPullResistance = PinPullResistance.OFF,
+
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),

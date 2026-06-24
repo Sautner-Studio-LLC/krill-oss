@@ -27,6 +27,16 @@ enum class DigitalState {
     OFF,
 }
 
+@Serializable
+enum class PinPullResistance {
+
+    PULL_DOWN,
+
+    PULL_UP,
+
+    OFF,
+}
+
 /** Maps [DigitalState] to a numeric value for graphing: `ON → 1.0`, `OFF → 0.0`. */
 fun DigitalState.toDouble(): Double = when (this) {
     DigitalState.ON -> 1.0
