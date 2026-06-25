@@ -695,9 +695,9 @@ object KrillNodeTypes {
         KrillNodeType(
             shortName = "KrillApp.Executor.Lambda",
             typeFqn = "krill.zone.shared.KrillApp.Executor.Lambda",
-            metaFqn = "krill.zone.shared.krillapp.executor.lambda.LambdaSourceMetaData",
+            metaFqn = "krill.zone.shared.krillapp.executor.lambda.LambdaMetaData",
             defaultMeta = sdkMeta(
-                "krill.zone.shared.krillapp.executor.lambda.LambdaSourceMetaData",
+                "krill.zone.shared.krillapp.executor.lambda.LambdaMetaData",
                 LambdaSourceMetaData.serializer(),
                 LambdaSourceMetaData(),
             ),
@@ -706,12 +706,11 @@ object KrillNodeTypes {
             description = "Runs a sandboxed Python script when invoked; reads its `inputs` and stores its result in its own `meta.snapshot`.",
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
-            notes = "`filename` identifies the script on the server. LambdaSourceMetaData has no `name` field — any `name` arg is dropped by `ignoreUnknownKeys`.",
+            notes = "`filename` identifies the script on the server. LambdaMetaData has no `name` field — any `name` arg is dropped by `ignoreUnknownKeys`.",
             metaFieldHints = mapOf(
                 "sources" to SOURCES_HINT,
                 "inputs" to INPUTS_HINT + " Values the Python script reads.",
                 "snapshot" to SNAPSHOT_HINT,
-                "tags" to "Map<String, String> — arbitrary key/value pairs the script can read from its context.",
                 "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
                 "nodeAction" to NODE_ACTION_HINT,
             ),
