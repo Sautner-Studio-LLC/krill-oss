@@ -7,7 +7,9 @@ import krill.zone.mcp.krill.KrillRegistry
 import kotlinx.serialization.json.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Regression tests for:
@@ -19,6 +21,8 @@ import kotlin.test.assertNull
  *   - krill-oss#165: Lambda `meta.type` discriminator must be `LambdaMetaData`
  *     (the serial name the krill server registers), not `LambdaSourceMetaData`
  *     (the stale SDK class name from 0.0.48).
+ *   - krill-oss#168: `create_node` must accept a node display name for `parent`,
+ *     not just a UUID — demo pipeline passes names like 'B' not UUIDs.
  */
 class CreateNodeToolTest {
 
@@ -102,6 +106,65 @@ class CreateNodeToolTest {
             typeInMeta,
             "create_node posts this value as meta.type — must match the serial name the krill server registers",
         )
+    }
+
+    // ── krill-oss#168 — name-based parent resolution ─────────────────────────
+
+    @Test
+    fun `isUuid returns true for a well-formed UUID`() {
+        assertTrue(tool.isUuid("3fb3f849-21a7-4eb3-8622-e4b351f18706"))
+    }
+
+    @Test
+    fun `isUuid returns false for a plain name`() {
+        assertFalse(tool.isUuid("B"))
+    }
+
+    @Test
+    fun `isUuid returns false for a short label`() {
+        assertFalse(tool.isUuid("XOR"))
+    }
+
+    @Test
+    fun `resolveNodeByName finds node by exact name (case-insensitive)`() {
+        val nodes = JsonArray(
+            listOf(
+                nodeElement(id = "uuid-alpha", name = "Alpha"),
+                nodeElement(id = "uuid-b", name = "B"),
+                nodeElement(id = "uuid-gamma", name = "Gamma"),
+            ),
+        )
+        val result = tool.resolveNodeByName(nodes, "b")
+        assertEquals("uuid-b", result?.get("id")?.jsonPrimitive?.contentOrNull)
+    }
+
+    @Test
+    fun `resolveNodeByName returns null when name not found`() {
+        val nodes = JsonArray(listOf(nodeElement(id = "uuid-alpha", name = "Alpha")))
+        assertNull(tool.resolveNodeByName(nodes, "B"))
+    }
+
+    @Test
+    fun `resolveNodeByName returns null for empty node list`() {
+        assertNull(tool.resolveNodeByName(JsonArray(emptyList()), "B"))
+    }
+
+    @Test
+    fun `resolveNodeByName returns first match when multiple nodes share a name`() {
+        val nodes = JsonArray(
+            listOf(
+                nodeElement(id = "uuid-first", name = "B"),
+                nodeElement(id = "uuid-second", name = "B"),
+            ),
+        )
+        val result = tool.resolveNodeByName(nodes, "B")
+        assertEquals("uuid-first", result?.get("id")?.jsonPrimitive?.contentOrNull)
+    }
+
+    private fun nodeElement(id: String, name: String): JsonObject = buildJsonObject {
+        put("id", id)
+        putJsonObject("type") { put("type", "krill.zone.shared.KrillApp.DataPoint") }
+        putJsonObject("meta") { put("name", name) }
     }
 
     private fun parentNode(typeFqn: String, name: String) = buildJsonObject {

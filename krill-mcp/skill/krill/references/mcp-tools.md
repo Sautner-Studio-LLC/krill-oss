@@ -188,7 +188,7 @@ Both filters are optional and case-insensitive. Response: `{"count": N, "types":
 ### `create_node`
 Create a node of any registered type. Provide `type` (short name or FQN), optional `parent` (id of an existing node on the same server or the server id; defaults to the server root when omitted), optional `name`, and optional `meta` overlay.
 
-- `parent` is **optional**. Omit it (or pass the server id) to create a top-level node directly under the server root — the tool defaults the parent to the server id and skips the HTTP lookup for the server entity, which is not addressable via `/node/{id}`. For nested nodes pass the id of the containing DataPoint, Trigger, Executor, or Project.
+- `parent` is **optional**. Omit it (or pass the server id) to create a top-level node directly under the server root. For nested nodes pass **either** the UUID of the containing node **or** its display name (`meta.name`) — if the value is not a UUID, the tool calls `list_nodes` and resolves by case-insensitive name match. Pass a UUID when possible; name-resolution adds one extra network call.
 - `meta` is **shallow-merged** over the type's default meta skeleton. The `type` key (polymorphic discriminator) inside `meta` is always overwritten by the tool — callers can't break it.
 - A few MetaData classes have no `name` field (MQTT, Compute, Lambda, SMTP, LLM). Passing `name` on those types is silently dropped by the server's `ignoreUnknownKeys = true`.
 - If the parent's type isn't in the `validParentTypes` list for the requested type, the tool returns a `warnings[]` entry but still posts — the server will accept the node and the catalog may simply be behind.

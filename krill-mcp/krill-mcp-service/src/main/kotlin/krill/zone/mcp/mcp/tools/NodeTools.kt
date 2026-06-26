@@ -61,10 +61,10 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                 put("type", "string")
                 put(
                     "description",
-                    "Id of the parent node on the same server. Omit (or pass the server id) to create a " +
-                        "top-level node directly under the server root — the server id is used as the " +
-                        "parent automatically. For nested nodes pass the id of the containing " +
-                        "DataPoint, Trigger, Executor, or Project.",
+                    "Parent node id (UUID) or display name (`meta.name`). Omit (or pass the server id) to " +
+                        "create a top-level node directly under the server root. When a plain name is " +
+                        "passed (not a UUID), the tool resolves it via `list_nodes` — it must be an " +
+                        "exact case-insensitive match of an existing node's `meta.name`.",
                 )
             }
             putJsonObject("name") {
@@ -100,23 +100,40 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
                     "like `krill.zone.shared.KrillApp.DataPoint`.",
             )
 
-        // Default parent to the server root when not supplied — lets callers omit `parent` for
-        // top-level nodes without a separate list_nodes call to find the server id.
-        val parentId = arguments["parent"]?.jsonPrimitive?.contentOrNull ?: client.serverId
+        val rawParent = arguments["parent"]?.jsonPrimitive?.contentOrNull
         val callerName = arguments["name"]?.jsonPrimitive?.contentOrNull
         val callerMeta = arguments["meta"] as? JsonObject
 
-        // When the parent is the server itself, skip the /node/{id} lookup — the server entity
-        // is not addressable as a node via that endpoint (krill-oss#163).  Synthesize a minimal
-        // server-typed parent so downstream parent-type validation can still run.
-        val parentNode: JsonObject = if (parentId == client.serverId) {
-            serverParentNode(client.serverId)
-        } else {
-            runCatching { client.node(parentId) as? JsonObject }.getOrNull()
-                ?: error(
-                    "Parent node '$parentId' not found on server ${client.serverId}. Verify with " +
-                        "`list_nodes` or `get_node` before creating.",
-                )
+        // Resolve the parent node. Three cases:
+        //   1. Absent or equals the server id → server-root synthetic stub (krill-oss#163).
+        //   2. Looks like a UUID → fetch directly from the server.
+        //   3. Plain name → search all nodes by meta.name (krill-oss#168).
+        val parentId: String
+        val parentNode: JsonObject
+
+        when {
+            rawParent == null || rawParent == client.serverId -> {
+                parentId = client.serverId
+                parentNode = serverParentNode(client.serverId)
+            }
+            isUuid(rawParent) -> {
+                parentId = rawParent
+                parentNode = runCatching { client.node(rawParent) as? JsonObject }.getOrNull()
+                    ?: error(
+                        "Parent node '$rawParent' not found on server ${client.serverId}. Verify with " +
+                            "`list_nodes` or `get_node` before creating.",
+                    )
+            }
+            else -> {
+                val matched = resolveNodeByName(client.nodes(), rawParent)
+                    ?: error(
+                        "No node with name '$rawParent' found on server ${client.serverId}. " +
+                            "Pass a UUID or verify the name with `list_nodes`.",
+                    )
+                parentId = matched["id"]?.jsonPrimitive?.contentOrNull
+                    ?: error("Matched parent node for name '$rawParent' has no id field.")
+                parentNode = matched
+            }
         }
         val parentTypeFqn = parentNode["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
         val parentShortName = parentTypeFqn?.let { KrillNodeTypes.byTypeFqn[it]?.shortName }
@@ -175,6 +192,20 @@ class CreateNodeTool(private val registry: KrillRegistry) : Tool {
             }
         }
     }
+
+    /** True when [s] is a well-formed UUID — the usual form of a Krill node id. */
+    internal fun isUuid(s: String): Boolean = runCatching { UUID.fromString(s) }.isSuccess
+
+    /**
+     * Searches [nodes] for the first entry whose `meta.name` equals [name]
+     * (case-insensitive). Returns `null` when not found.
+     */
+    internal fun resolveNodeByName(nodes: JsonArray, name: String): JsonObject? =
+        nodes.firstOrNull { element ->
+            val obj = element as? JsonObject ?: return@firstOrNull false
+            (obj["meta"] as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull
+                ?.equals(name, ignoreCase = true) == true
+        } as? JsonObject
 
     /**
      * Minimal server-typed parent node JSON used when the caller's `parent`
