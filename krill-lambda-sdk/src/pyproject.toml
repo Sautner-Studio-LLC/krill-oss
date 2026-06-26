@@ -1,0 +1,10 @@
+[project]
+name = "lambdas"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "data>=0.4",
+    "requests>=2.34.2",
+    "termine>=0.1.5",
+    "urllib3>=2.7.0",
+]
