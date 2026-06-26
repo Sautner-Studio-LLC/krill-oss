@@ -251,7 +251,7 @@ Set only the action verb on any Krill node. Prefer `set_node_wiring` when also s
 | `action` | Meaning |
 |----------|---------|
 | `EXECUTE` | (default) Observers run their primary execution logic. |
-| `RESET` | Observers revert to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, SilentAlarmMs, Color) transitions WARN→NONE without re-evaluating the threshold. A node with no sensible response to a verb safely ignores it (best effort). |
+| `RESET` | Observers revert to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, Color) transitions WARN→NONE without re-evaluating the threshold; Timer cancels the active countdown. A node with no sensible response to a verb safely ignores it (best effort). |
 
 Since v0.0.11, every node type carries `nodeAction` (all MetaData implements `ActionNodeMetaData`). Read via `get_node` → `meta.nodeAction`.
 
@@ -270,6 +270,7 @@ Use this to configure fields that couldn't be determined at `create_node` time:
 | Node type | Example field | Example value |
 |-----------|--------------|---------------|
 | `KrillApp.Trigger.CronTimer` | `expression` | `"*/5 * * * * *"` (every 5 seconds) |
+| `KrillApp.Trigger.Timer` | `delay` | `5000` (5-second countdown) |
 | `KrillApp.Executor.Calculation` | `formula` | `"{a} + {b}"` |
 | Any node | `name` | `"My renamed node"` |
 

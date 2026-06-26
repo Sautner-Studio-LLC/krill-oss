@@ -28,6 +28,8 @@ Internalize this model before wiring anything — it drives every authoring deci
 
 Example — a counter that increments every 5 seconds: a CronTimer fires on schedule; a Calculation lists the cron in `sources` (wakes on fire), the counter DataPoint in `inputs`, and `formula: "[<hostId>:<counterId>]+1"`; the counter DataPoint lists the calc in both `sources` and `inputs`, so each computed value is pulled, filtered, and stored as a time-series point.
 
+Use `KrillApp.Trigger.Timer` for a **one-shot countdown** instead of a recurring schedule. Send EXECUTE via `set_node_action` to start the countdown; RESET cancels it. Configure the duration with `update_node meta={delay: <ms>}`.
+
 ## When to invoke
 
 - The user mentions a Krill swarm, a specific Krill server (e.g. `kraken.local`), or any Krill node type by name, or uses the word "Krill" in a sentence.

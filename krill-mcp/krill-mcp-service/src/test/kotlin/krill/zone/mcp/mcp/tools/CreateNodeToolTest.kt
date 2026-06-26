@@ -108,6 +108,44 @@ class CreateNodeToolTest {
         )
     }
 
+    // ── krill-oss#172 — KrillApp.Trigger.Timer catalog guard ────────────────
+
+    @Test
+    fun `Timer type is resolvable by short name`() {
+        val timer = KrillNodeTypes.resolve("KrillApp.Trigger.Timer")
+        assertTrue(timer != null, "KrillApp.Trigger.Timer missing from registry")
+    }
+
+    @Test
+    fun `Timer metaFqn points to TimerMetaData`() {
+        val timer = KrillNodeTypes.resolve("KrillApp.Trigger.Timer")
+            ?: error("KrillApp.Trigger.Timer missing from registry")
+        assertEquals(
+            "krill.zone.shared.krillapp.trigger.timer.TimerMetaData",
+            timer.metaFqn,
+        )
+    }
+
+    @Test
+    fun `Timer defaultMeta type discriminator is TimerMetaData`() {
+        val timer = KrillNodeTypes.resolve("KrillApp.Trigger.Timer")
+            ?: error("KrillApp.Trigger.Timer missing from registry")
+        assertEquals(
+            "krill.zone.shared.krillapp.trigger.timer.TimerMetaData",
+            timer.defaultMeta["type"]?.jsonPrimitive?.contentOrNull,
+        )
+    }
+
+    @Test
+    fun `Timer defaultMeta includes delay field`() {
+        val timer = KrillNodeTypes.resolve("KrillApp.Trigger.Timer")
+            ?: error("KrillApp.Trigger.Timer missing from registry")
+        assertTrue(
+            timer.defaultMeta.containsKey("delay"),
+            "Timer defaultMeta must include delay field",
+        )
+    }
+
     // ── krill-oss#168 — name-based parent resolution ─────────────────────────
 
     @Test
