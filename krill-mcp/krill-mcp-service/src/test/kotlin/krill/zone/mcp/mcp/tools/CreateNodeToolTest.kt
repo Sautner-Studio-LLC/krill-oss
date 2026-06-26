@@ -16,6 +16,9 @@ import kotlin.test.assertNull
  *   - krill-oss#163: `create_node` with the server id as parent (or no parent)
  *     must synthesize a server-typed stub rather than calling `GET /node/{id}`,
  *     which fails because the server entity is not addressable at that endpoint.
+ *   - krill-oss#165: Lambda `meta.type` discriminator must be `LambdaMetaData`
+ *     (the serial name the krill server registers), not `LambdaSourceMetaData`
+ *     (the stale SDK class name from 0.0.48).
  */
 class CreateNodeToolTest {
 
@@ -75,6 +78,30 @@ class CreateNodeToolTest {
         val node = tool.serverParentNode("any-id")
         // derivedDefaultName must not NPE on a synthesized server parent
         assertNull(tool.derivedDefaultName(graphSpec, node))
+    }
+
+    // ── krill-oss#165 — Lambda meta serial-name guard ────────────────────────
+
+    @Test
+    fun `Lambda metaFqn is LambdaMetaData not LambdaSourceMetaData`() {
+        val lambda = KrillNodeTypes.resolve("KrillApp.Executor.Lambda")
+            ?: error("Lambda spec missing from registry")
+        assertEquals(
+            "krill.zone.shared.krillapp.executor.lambda.LambdaMetaData",
+            lambda.metaFqn,
+        )
+    }
+
+    @Test
+    fun `Lambda defaultMeta type discriminator is LambdaMetaData`() {
+        val lambda = KrillNodeTypes.resolve("KrillApp.Executor.Lambda")
+            ?: error("Lambda spec missing from registry")
+        val typeInMeta = lambda.defaultMeta["type"]?.jsonPrimitive?.contentOrNull
+        assertEquals(
+            "krill.zone.shared.krillapp.executor.lambda.LambdaMetaData",
+            typeInMeta,
+            "create_node posts this value as meta.type — must match the serial name the krill server registers",
+        )
     }
 
     private fun parentNode(typeFqn: String, name: String) = buildJsonObject {
