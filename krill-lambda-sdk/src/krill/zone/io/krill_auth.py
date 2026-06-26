@@ -38,7 +38,7 @@ from pathlib import Path
 CREDENTIALS_DIR = "/etc/krill/credentials"
 DERIVED_KEY_PATH = f"{CREDENTIALS_DIR}/pin_derived_key"
 PIN_HASH_PATH = f"{CREDENTIALS_DIR}/pin_hash"
-
+KRILL_CERT = "/etc/krill/certs/krill.crt"
 # Fixed HMAC key for token derivation. Shared verbatim with krill-reset-pin and
 # the server's PinProvider — do NOT change or auth breaks cluster-wide.
 _DERIVE_HMAC_KEY = b"krill-api-pbkdf2-v1"

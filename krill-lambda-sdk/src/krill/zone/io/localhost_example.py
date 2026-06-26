@@ -15,9 +15,6 @@ import krill_auth
 
 # Local Krill server. DEFAULT_PORT is 8442 (see server ServerIdentity.kt).
 HEALTH_URL = "https://localhost:8442/health"
-# Self-signed server cert installed by the krill package. If the cert's
-# hostname doesn't cover "localhost", swap verify=KRILL_CERT for verify=False.
-KRILL_CERT = "/etc/krill/certs/krill.crt"
 
 
 def main():
@@ -28,7 +25,7 @@ def main():
     response = requests.get(
         HEALTH_URL,
         auth=krill_auth.KrillPinAuth(),
-        verify=KRILL_CERT,
+        verify=krill_auth.KRILL_CERT,
         timeout=10,
     )
     response.raise_for_status()
