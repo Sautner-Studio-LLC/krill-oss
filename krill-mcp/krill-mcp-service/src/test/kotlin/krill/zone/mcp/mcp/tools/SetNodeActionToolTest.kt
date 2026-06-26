@@ -95,7 +95,6 @@ class SetNodeActionToolTest {
             "KrillApp.Trigger.Button",
             "KrillApp.Trigger.HighThreshold",
             "KrillApp.Trigger.LowThreshold",
-            "KrillApp.Trigger.SilentAlarmMs",
             "KrillApp.Trigger.CronTimer",
             "KrillApp.Trigger.Color",
             "KrillApp.Trigger.IncomingWebHook",

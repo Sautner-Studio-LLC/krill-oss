@@ -20,7 +20,7 @@
     "llmCreationHints": "Create a DataPoint when the user needs to store and track a measurable value over time. Configure data type, precision, and unit. To ingest another node's output, list that node in BOTH the DataPoint's sources (with SOURCE_INVOKED in invocationTriggers) and its inputs. List any filter nodes in inputs as well — a filter merely parented under the DataPoint does nothing.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.Server", "KrillApp.Server.SerialDevice"],
-        "childTypes": ["KrillApp.DataPoint.Filter", "KrillApp.DataPoint.Graph", "KrillApp.Trigger", "KrillApp.Trigger.HighThreshold", "KrillApp.Trigger.LowThreshold", "KrillApp.Trigger.CronTimer", "KrillApp.Trigger.Button", "KrillApp.Trigger.SilentAlarmMs", "KrillApp.Executor"],
+        "childTypes": ["KrillApp.DataPoint.Filter", "KrillApp.DataPoint.Graph", "KrillApp.Trigger", "KrillApp.Trigger.HighThreshold", "KrillApp.Trigger.LowThreshold", "KrillApp.Trigger.CronTimer", "KrillApp.Trigger.Button", "KrillApp.Executor"],
         "role": "central data node observed by triggers, graphs, and executors; ingests from the data-source node wired into its sources and inputs",
         "wiring": "List the node whose output to store (e.g. a Pin, SerialDevice, webhook, or calculation) in BOTH sources (with SOURCE_INVOKED) and inputs; list filters in inputs; downstream triggers and executors observe this DataPoint via their own sources."
     },

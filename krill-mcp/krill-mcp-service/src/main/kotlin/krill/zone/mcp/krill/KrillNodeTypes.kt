@@ -283,7 +283,6 @@ object KrillNodeTypes {
                 "KrillApp.Trigger.LowThreshold",
                 "KrillApp.Trigger.CronTimer",
                 "KrillApp.Trigger.Button",
-                "KrillApp.Trigger.SilentAlarmMs",
                 "KrillApp.Executor",
             ),
             notes = "`dataType` ∈ {TEXT, JSON, DIGITAL, DOUBLE, COLOR}. Use `record_snapshot` to write values. " +
@@ -430,7 +429,6 @@ object KrillNodeTypes {
             validChildTypes = listOf(
                 "KrillApp.Trigger.Button",
                 "KrillApp.Trigger.CronTimer",
-                "KrillApp.Trigger.SilentAlarmMs",
                 "KrillApp.Trigger.HighThreshold",
                 "KrillApp.Trigger.LowThreshold",
                 "KrillApp.Trigger.IncomingWebHook",
@@ -491,28 +489,6 @@ object KrillNodeTypes {
                 "Watch a DataPoint by listing it in `sources` with SOURCE_INVOKED (the creation default when dropped under one).",
             metaFieldHints = mapOf(
                 "snapshot" to "{timestamp: Long, value: String} — `value` holds the threshold to compare against.",
-                "sources" to SOURCES_HINT,
-                "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
-                "nodeAction" to NODE_ACTION_HINT,
-            ),
-        ),
-        KrillNodeType(
-            shortName = "KrillApp.Trigger.SilentAlarmMs",
-            typeFqn = "krill.zone.shared.KrillApp.Trigger.SilentAlarmMs",
-            metaFqn = "krill.zone.shared.krillapp.trigger.TriggerMetaData",
-            defaultMeta = sdkMeta(
-                "krill.zone.shared.krillapp.trigger.TriggerMetaData",
-                TriggerMetaData.serializer(),
-                TriggerMetaData(name = "SilentAlarm"),
-            ),
-            role = "trigger",
-            sideEffect = "low",
-            description = "Fires when an observed DataPoint receives no snapshot within the window (ms) in `meta.snapshot.value`.",
-            validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
-            validChildTypes = listOf("KrillApp.Executor"),
-            notes = "The window (ms) lives in `meta.snapshot.value` (stringified number).",
-            metaFieldHints = mapOf(
-                "snapshot" to "{timestamp: Long, value: String} — `value` holds the silence window in ms.",
                 "sources" to SOURCES_HINT,
                 "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
                 "nodeAction" to NODE_ACTION_HINT,
@@ -623,7 +599,6 @@ object KrillNodeTypes {
                 "KrillApp.Trigger",
                 "KrillApp.Trigger.HighThreshold",
                 "KrillApp.Trigger.LowThreshold",
-                "KrillApp.Trigger.SilentAlarmMs",
                 "KrillApp.Trigger.Button",
                 "KrillApp.Trigger.CronTimer",
                 "KrillApp.Trigger.IncomingWebHook",
