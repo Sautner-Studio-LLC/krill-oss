@@ -498,28 +498,6 @@ object KrillNodeTypes {
             ),
         ),
         KrillNodeType(
-            shortName = "KrillApp.Trigger.SilentAlarmMs",
-            typeFqn = "krill.zone.shared.KrillApp.Trigger.SilentAlarmMs",
-            metaFqn = "krill.zone.shared.krillapp.trigger.TriggerMetaData",
-            defaultMeta = sdkMeta(
-                "krill.zone.shared.krillapp.trigger.TriggerMetaData",
-                TriggerMetaData.serializer(),
-                TriggerMetaData(name = "SilentAlarm"),
-            ),
-            role = "trigger",
-            sideEffect = "low",
-            description = "Fires when an observed DataPoint receives no snapshot within the window (ms) in `meta.snapshot.value`.",
-            validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
-            validChildTypes = listOf("KrillApp.Executor"),
-            notes = "The window (ms) lives in `meta.snapshot.value` (stringified number).",
-            metaFieldHints = mapOf(
-                "snapshot" to "{timestamp: Long, value: String} — `value` holds the silence window in ms.",
-                "sources" to SOURCES_HINT,
-                "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
-                "nodeAction" to NODE_ACTION_HINT,
-            ),
-        ),
-        KrillNodeType(
             shortName = "KrillApp.Trigger.Button",
             typeFqn = "krill.zone.shared.KrillApp.Trigger.Button",
             metaFqn = "krill.zone.shared.krillapp.trigger.button.ButtonMetaData",

@@ -251,7 +251,7 @@ Set only the action verb on any Krill node. Prefer `set_node_wiring` when also s
 | `action` | Meaning |
 |----------|---------|
 | `EXECUTE` | (default) Observers run their primary execution logic. |
-| `RESET` | Observers revert to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, Color) transitions WARN→NONE without re-evaluating the threshold; Timer cancels the active countdown. A node with no sensible response to a verb safely ignores it (best effort). |
+| `RESET` | Observers revert to initial/cleared state: TaskList marks all tasks complete and reopens repeatables; Trigger family (HighThreshold, LowThreshold, Color) transitions WARN→NONE without re-evaluating the threshold. A node with no sensible response to a verb safely ignores it (best effort). |
 
 Since v0.0.11, every node type carries `nodeAction` (all MetaData implements `ActionNodeMetaData`). Read via `get_node` → `meta.nodeAction`.
 
