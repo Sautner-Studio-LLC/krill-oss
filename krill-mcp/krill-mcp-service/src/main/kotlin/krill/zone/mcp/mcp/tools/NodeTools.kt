@@ -992,6 +992,172 @@ class UpdateNodeTool(private val registry: KrillRegistry) : Tool {
     }
 }
 
+/**
+ * Sets a value on a DataPoint by id or display name.
+ *
+ * The demo orchestrator uses a `set_value` action (target name + scalar value)
+ * that has no direct MCP equivalent until this tool — the closest existing tool
+ * was `set_node_wiring`, which modifies observer wiring rather than recording a
+ * snapshot. This caused the demo to fail with a 404 on `set_node_wiring` whenever
+ * it tried to feed live data into a pipeline node by name (krill-oss#174).
+ *
+ * Target resolution mirrors `create_node`'s parent resolution:
+ *   - UUID → direct `GET /node/{id}`
+ *   - plain name → search via `list_nodes`, case-insensitive `meta.name` match
+ *
+ * Value coercion and `state=USER_EDIT` posting mirror [RecordSnapshotTool] — the
+ * server's filter/trigger pipeline evaluates every `USER_EDIT` post. Use
+ * `record_snapshot` when you have a UUID and need batch/backfill semantics; use
+ * `set_value` for one-shot imperative writes where only the node name is known.
+ */
+class SetValueTool(private val registry: KrillRegistry) : Tool {
+    override val name = "set_value"
+    override val description =
+        "Record a value on a DataPoint — the primary way for demo scripts and automation to feed live " +
+            "data into a Krill pipeline when only the node's human name is known. Accepts a `target` " +
+            "that is either a node id (UUID) or a display name (`meta.name`); when a name is passed the " +
+            "tool resolves it via `list_nodes` (exact case-insensitive match). Validates the resolved " +
+            "node is a DataPoint, then coerces and validates the value against its `dataType` (TEXT " +
+            "non-empty; DIGITAL ∈ {0,1}, booleans mapped to 0/1; DOUBLE parseable; COLOR a decimal " +
+            "24-bit RGB int; JSON non-empty). Posts with `state=USER_EDIT` so the server's " +
+            "filter/trigger pipeline evaluates the snapshot. " +
+            "Use `record_snapshot` when you have the UUID and need batch or backfill semantics."
+    override val inputSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("server") {
+                put("type", "string")
+                put("description", "Krill server id, host, or host:port. Defaults to the first registered server.")
+            }
+            putJsonObject("target") {
+                put("type", "string")
+                put(
+                    "description",
+                    "Id (UUID) or display name (`meta.name`) of the target DataPoint. " +
+                        "When a plain name is passed (not a UUID), the tool resolves it via `list_nodes` — " +
+                        "it must be an exact case-insensitive match of an existing DataPoint's `meta.name`.",
+                )
+            }
+            putJsonObject("value") {
+                put(
+                    "description",
+                    "Value to record. String, number, or boolean. Validated against the DataPoint's " +
+                        "`dataType`: TEXT non-empty; DIGITAL ∈ {0,1} (booleans mapped to 0/1); " +
+                        "DOUBLE parseable; COLOR a decimal 24-bit RGB int; JSON non-empty.",
+                )
+            }
+            putJsonObject("timestamp") {
+                put("type", "integer")
+                put("description", "Epoch millis for the snapshot. Defaults to server-received now if omitted.")
+            }
+        }
+        putJsonArray("required") {
+            add("target")
+            add("value")
+        }
+    }
+
+    override suspend fun execute(arguments: JsonObject): JsonElement {
+        val rawTarget = arguments["target"]?.jsonPrimitive?.contentOrNull
+            ?: error("Missing required argument: target")
+        val rawValue = arguments["value"]
+            ?: error("Missing required argument: value")
+        val timestamp = arguments["timestamp"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis()
+
+        val client = resolve(registry, arguments)
+
+        val existing: JsonObject = when {
+            isUuid(rawTarget) -> {
+                client.node(rawTarget) as? JsonObject
+                    ?: error("DataPoint '$rawTarget' not found on server ${client.serverId}.")
+            }
+            else -> {
+                resolveDataPointByName(client, rawTarget)
+            }
+        }
+
+        val typeFqn = existing["type"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+        if (typeFqn != DATA_POINT_FQN) {
+            error(
+                "Target '$rawTarget' is not a KrillApp.DataPoint (got ${typeFqn ?: "unknown"}). " +
+                    "`set_value` only writes to DataPoint nodes — use `update_node` for other types.",
+            )
+        }
+
+        val resolvedId = existing["id"]?.jsonPrimitive?.contentOrNull ?: rawTarget
+        val existingMeta = existing["meta"] as? JsonObject
+            ?: error("DataPoint '$resolvedId' has no meta object.")
+        val dataType = existingMeta["dataType"]?.jsonPrimitive?.contentOrNull ?: "DOUBLE"
+
+        val stringValue = coerceValue(rawValue, dataType)
+            ?: error("Value $rawValue is not valid for dataType=$dataType.")
+
+        val snapshotObj = buildJsonObject {
+            put("timestamp", timestamp)
+            put("value", stringValue)
+        }
+        val updatedMeta = JsonObject(existingMeta.toMutableMap().apply { put("snapshot", snapshotObj) })
+        val updatedNode = JsonObject(
+            existing.toMutableMap().apply {
+                put("meta", updatedMeta)
+                put("state", JsonPrimitive("USER_EDIT"))
+            },
+        )
+        client.postNode(updatedNode)
+
+        return buildJsonObject {
+            put("server", client.serverId)
+            put("id", resolvedId)
+            put("dataType", dataType)
+            put("value", stringValue)
+            put("timestamp", timestamp)
+            put(
+                "note",
+                "Posted with state=USER_EDIT; server ingest is asynchronous. Call `read_series` to " +
+                    "verify — a ~1.5s delay or a child Filter can cause 0 snapshots on immediate read.",
+            )
+        }
+    }
+
+    private suspend fun resolveDataPointByName(client: KrillClient, name: String): JsonObject {
+        val nodes = client.nodes()
+        return nodes.firstOrNull { element ->
+            val obj = element as? JsonObject ?: return@firstOrNull false
+            (obj["meta"] as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull
+                ?.equals(name, ignoreCase = true) == true
+        } as? JsonObject
+            ?: error(
+                "No node with name '$name' found on server ${client.serverId}. " +
+                    "Pass a UUID or verify the name with `list_nodes`.",
+            )
+    }
+
+    private fun isUuid(s: String): Boolean = runCatching { UUID.fromString(s) }.isSuccess
+
+    private fun coerceValue(raw: JsonElement, dataType: String): String? {
+        val primitive = raw as? JsonPrimitive ?: return null
+        val content = primitive.content
+        return when (dataType) {
+            "TEXT" -> content.takeIf { it.isNotEmpty() }
+            "JSON" -> content.takeIf { it.isNotEmpty() }
+            "DIGITAL" -> when {
+                primitive.booleanOrNull == true -> "1"
+                primitive.booleanOrNull == false -> "0"
+                else -> content.toDoubleOrNull()?.takeIf { it == 0.0 || it == 1.0 }?.let {
+                    if (it == 1.0) "1" else "0"
+                }
+            }
+            "DOUBLE" -> content.toDoubleOrNull()?.toString()
+            "COLOR" -> content.toLongOrNull()?.toString()
+            else -> content
+        }
+    }
+
+    companion object {
+        private const val DATA_POINT_FQN = "krill.zone.shared.KrillApp.DataPoint"
+    }
+}
+
 private fun resolve(registry: KrillRegistry, arguments: JsonObject): KrillClient {
     val selector = arguments["server"]?.jsonPrimitive?.contentOrNull
     return registry.resolve(selector)

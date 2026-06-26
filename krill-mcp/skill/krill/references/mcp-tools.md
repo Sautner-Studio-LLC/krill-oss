@@ -286,6 +286,28 @@ The update is posted with `state=USER_EDIT`. Verify via `get_node` after ~500ms.
 
 **Wiring fields** (`sources`, `inputs`, `invocationTriggers`, `nodeAction`) can also be patched via `update_node`, but prefer `set_node_wiring` and `set_node_action` for those — they document intent more clearly and validate the values they accept.
 
+### `set_value`
+Record a single value on a DataPoint by id **or display name** — the primary tool for demo scripts and automation steps that know the node's human name but not its UUID. When the `target` is not a UUID, the tool resolves it via `list_nodes` (exact case-insensitive `meta.name` match). Only works on `KrillApp.DataPoint` nodes; use `update_node` for arbitrary meta updates on other types.
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `target` | ✓ | Node id (UUID) or display name (`meta.name`) |
+| `value` | ✓ | String, number, or boolean — coerced against `dataType` (same rules as `record_snapshot`) |
+| `timestamp` | — | Epoch millis. Defaults to server-received now. |
+| `server` | — | Server id, host, or host:port. Defaults to the first registered server. |
+
+**Value coercion rules** (same as `record_snapshot`): TEXT non-empty; DIGITAL ∈ {0,1}, booleans mapped to 0/1; DOUBLE parseable as a double; COLOR decimal 24-bit RGB integer; JSON non-empty.
+
+```json
+{"name": "set_value", "arguments": {"target": "Series", "value": 10}}
+{"name": "set_value", "arguments": {"target": "3fb3f849-21a7-4eb3-8622-e4b351f18706", "value": 22.5}}
+{"name": "set_value", "arguments": {"server": "<id>", "target": "Tank Temperature", "value": true, "timestamp": 1776700000000}}
+```
+
+Response: `{"server": "<id>", "id": "<uuid>", "dataType": "DOUBLE", "value": "10.0", "timestamp": <ms>, "note": "..."}`
+
+Use `record_snapshot` when you have the UUID and need batch or backfill semantics (multiple snapshots in one call). Use `set_value` for one-shot imperative writes — demo pipelines, automation steps, or any time only the human name is known.
+
 ### `record_snapshot`
 Record one or many values on an existing `KrillApp.DataPoint`. Each snapshot runs through the DataPoint's Filters (read from the DataPoint's `meta.inputs`), becomes a new point in the time-series store if accepted, and invokes every node observing the DataPoint as a source.
 
