@@ -44,4 +44,3 @@ Read the linked JSON for the full `llmInputs`, `llmOutputs`, `llmConnectionHints
 | `KrillApp.Trigger.HighThreshold` | trigger | low | Triggers when a DataPoint value reaches or exceeds a configured upper limit. | [KrillApp.Triggers.HighThreshold.json](KrillApp.Triggers.HighThreshold.json) |
 | `KrillApp.Trigger.IncomingWebHook` | trigger | low | Fires when an HTTP request hits its configured endpoint; observing nodes are invoked. | [KrillApp.Trigger.IncomingWebHook.json](KrillApp.Trigger.IncomingWebHook.json) |
 | `KrillApp.Trigger.LowThreshold` | trigger | low | Triggers when a DataPoint value falls at or below a configured lower limit. | [KrillApp.Trigger.LowThreshold.json](KrillApp.Trigger.LowThreshold.json) |
-| `KrillApp.Trigger.SilentAlarmMs` | trigger | low | Triggers an alarm when no data updates are received within a configured time period. | [KrillApp.Trigger.SilentAlarm.json](KrillApp.Trigger.SilentAlarm.json) |

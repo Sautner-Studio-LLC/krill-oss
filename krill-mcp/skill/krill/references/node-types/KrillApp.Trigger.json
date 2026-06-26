@@ -1,7 +1,7 @@
 {
     "name": "KrillApp.Trigger",
     "title": "Trigger",
-    "description": "A container node that visually organizes trigger nodes under a DataPoint. Grouping is visual organization only — each trigger observes the DataPoint through its own meta.sources (and reads it via meta.inputs), not through the container. Specific trigger behavior is implemented by nodes such as HighThreshold, LowThreshold, CronTimer, Button, SilentAlarm, or IncomingWebHook.",
+    "description": "A container node that visually organizes trigger nodes under a DataPoint. Grouping is visual organization only — each trigger observes the DataPoint through its own meta.sources (and reads it via meta.inputs), not through the container. Specific trigger behavior is implemented by nodes such as HighThreshold, LowThreshold, CronTimer, Button, Color, or IncomingWebHook.",
     "shortDescription": "Container that visually groups trigger nodes; each trigger wires its own sources to the DataPoint.",
     "state": "ROADMAP",
     "nodeClickBehavior": "NONE",
@@ -17,7 +17,7 @@
     "llmCreationHints": "Create a Trigger node as a child of a DataPoint when the user wants to organize conditional or scheduled logic for that data stream. Remember the grouping is visual only — each trigger must list the DataPoint in its own sources (and inputs) to watch it.",
     "llmConnectionHints": {
         "parentTypes": ["KrillApp.DataPoint"],
-        "childTypes": ["KrillApp.Trigger.HighThreshold", "KrillApp.Trigger.LowThreshold", "KrillApp.Trigger.CronTimer", "KrillApp.Trigger.Button", "KrillApp.Trigger.SilentAlarmMs", "KrillApp.Trigger.IncomingWebHook"],
+        "childTypes": ["KrillApp.Trigger.HighThreshold", "KrillApp.Trigger.LowThreshold", "KrillApp.Trigger.CronTimer", "KrillApp.Trigger.Button", "KrillApp.Trigger.IncomingWebHook"],
         "role": "organizational container between a DataPoint and specific trigger implementations; wiring lives on each trigger",
         "wiring": "Not wired — visual grouping only; each child trigger lists the DataPoint in its own sources (SOURCE_INVOKED) and inputs."
     },
