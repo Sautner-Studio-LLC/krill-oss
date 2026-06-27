@@ -20,7 +20,8 @@ jobs:
     name: cherry-pick hotfix to agents
     if: >-
       github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.labels.*.name, 'hotfix')
+      (contains(github.event.pull_request.labels.*.name, 'hotfix') ||
+       contains(github.event.pull_request.labels.*.name, 'hotfix:'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
