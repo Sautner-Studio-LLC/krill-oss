@@ -1,0 +1,47 @@
+name: PR Risk Classify
+
+# Kraken's second opinion on a PR's `risk:` label. On PRs to `agents`, Kraken's
+# classifier (kraken/scripts/release/classify-pr-risk.py) reads the diff + body
+# (+ optional corpus context) on the local model and, only if it disagrees with
+# Blue by MORE THAN ONE level, comments with its rationale and relabels. A
+# one-level disagreement is left alone. On any model/parse failure it exits
+# without overriding — it never blocks a PR. See kraken/docs/agent-workflow.md.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [agents]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: pr-risk-classify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    name: Kraken risk second-opinion
+    runs-on: [self-hosted, Linux, X64, kraken]
+    env:
+      KRAKEN_DIR:        /home/ben/Code/kraken
+      KRILL_AGENTS_ROOT: /home/ben/Code/krill-agents
+    steps:
+      - name: Sync kraken working copy (release scripts live there)
+        run: |
+          set -euo pipefail
+          # shellcheck source=/dev/null
+          source "$KRILL_AGENTS_ROOT/scripts/lib.sh"
+          update_repo "$KRAKEN_DIR"
+      - name: Classify
+        env:
+          GH_TOKEN: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
+        run: |
+          set -euo pipefail
+          cd "$KRAKEN_DIR/scripts/release"
+          uv sync --quiet
+          uv run python classify-pr-risk.py \
+            --repo "${{ github.event.repository.name }}" \
+            --pr "${{ github.event.pull_request.number }}"

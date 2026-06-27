@@ -1,0 +1,54 @@
+name: Hotfix Cherry-Pick
+
+# A hotfix ships straight to `main` (labeled `hotfix:`, merged by Ben). This
+# workflow then cherry-picks the merge into `agents` so the fix isn't clobbered
+# by the next integration merge. `agents` is PR-only, so the cherry-pick always
+# lands via a PR + automerge (never a direct push); on conflict it opens the PR
+# with conflict markers for a human to resolve. See kraken/docs/agent-workflow.md.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cherrypick:
+    name: cherry-pick hotfix to agents
+    if: >-
+      github.event.pull_request.merged == true &&
+      (contains(github.event.pull_request.labels.*.name, 'hotfix') ||
+       contains(github.event.pull_request.labels.*.name, 'hotfix:'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
+      - name: Cherry-pick the merge commit onto a PR branch off agents
+        env:
+          GH_TOKEN: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config user.name  krill-kraken-bot
+          git config user.email kraken@krill.zone
+          git fetch origin agents main
+          br="hotfix-cherrypick/$PR"
+          git checkout -B "$br" origin/agents
+          if git cherry-pick -m 1 "$MERGE_SHA"; then
+            body="Automated cherry-pick of hotfix #$PR onto agents. no-lesson-needed (lesson already in #$PR)."
+          else
+            git add -A
+            git commit -m "chore: cherry-pick hotfix #$PR (CONFLICTS — resolve)" || true
+            body="Automated cherry-pick of hotfix #$PR CONFLICTED. Resolve the markers and merge. no-lesson-needed (lesson already in #$PR)."
+          fi
+          git push origin "$br"
+          gh pr create --base agents --head "$br" \
+            --title "Cherry-pick hotfix #$PR to agents" \
+            --body "$body" --label risk:trivial
+          gh pr merge --auto --squash --delete-branch || true
