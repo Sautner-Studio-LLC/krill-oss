@@ -1,0 +1,45 @@
+name: Release PR Update
+
+# Regenerates the permanent `agents` → `main` integration PR description on every
+# push to `agents`. The narrative is written by Kraken's release tooling
+# (kraken/scripts/release/update-release-pr.py) on the self-hosted kraken runner,
+# using the local model (no Anthropic spend) with a deterministic fallback so a
+# model hiccup never blocks the update. See kraken/docs/agent-workflow.md.
+
+on:
+  push:
+    branches: [agents]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: release-pr-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: regenerate integration PR description
+    runs-on: [self-hosted, Linux, X64, kraken]
+    env:
+      KRAKEN_DIR:        /home/ben/Code/kraken
+      KRILL_AGENTS_ROOT: /home/ben/Code/krill-agents
+    steps:
+      - name: Sync kraken working copy (release scripts live there)
+        run: |
+          set -euo pipefail
+          # shellcheck source=/dev/null
+          source "$KRILL_AGENTS_ROOT/scripts/lib.sh"
+          update_repo "$KRAKEN_DIR"
+          echo "kraken @ $(git -C "$KRAKEN_DIR" rev-parse --short HEAD)"
+      - name: Regenerate integration PR body
+        env:
+          GH_TOKEN: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
+        run: |
+          set -euo pipefail
+          cd "$KRAKEN_DIR/scripts/release"
+          uv sync --quiet
+          uv run python update-release-pr.py --repo "${{ github.event.repository.name }}"

@@ -1,0 +1,86 @@
+name: Release Notes
+
+# Fires when Ben merges the permanent integration PR (`agents` → `main`). Appends
+# the integration-PR narrative to docs/releases.md (on `agents`, via a PR +
+# automerge — `agents` is PR-only) and creates the release tag on the merge commit
+# (krill → vX.Y.Z from version.txt; others → release-YYYY-MM-DD). Tagging is
+# idempotent-guarded. See kraken/docs/agent-workflow.md and
+# kraken/scripts/release/generate-release-notes.py.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-notes-${{ github.event.repository.name }}
+  cancel-in-progress: false
+
+jobs:
+  notes:
+    name: append release notes + tag
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'agents'
+    runs-on: [self-hosted, Linux, X64, kraken]
+    env:
+      KRAKEN_DIR:        /home/ben/Code/kraken
+      KRILL_AGENTS_ROOT: /home/ben/Code/krill-agents
+    steps:
+      - name: Generate notes on agents, tag main
+        env:
+          GH_TOKEN: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
+          PR: ${{ github.event.pull_request.number }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          # shellcheck source=/dev/null
+          source "$KRILL_AGENTS_ROOT/scripts/lib.sh"
+          update_repo "$KRAKEN_DIR"
+
+          repo_dir="/home/ben/Code/$REPO"
+          git -C "$repo_dir" fetch --quiet origin agents main
+          git -C "$repo_dir" config user.name  krill-kraken-bot
+          git -C "$repo_dir" config user.email kraken@krill.zone
+
+          today="$(date -u +%F)"
+          version=""
+          [ "$REPO" = krill ] && version="$(cat "$repo_dir/version.txt")"
+
+          # Check out a fresh notes branch off agents so the prepend lands on
+          # current agents content, then compute the tag + write releases.md.
+          tagbranch="release-notes-$today"
+          git -C "$repo_dir" checkout -B "$tagbranch" origin/agents
+
+          cd "$KRAKEN_DIR/scripts/release"
+          uv sync --quiet
+          tag="$(uv run python generate-release-notes.py \
+                   --repo "$REPO" --pr "$PR" --date "$today" \
+                   ${version:+--version "$version"} \
+                   --releases-file "$repo_dir/docs/releases.md")"
+
+          # Commit the notes onto agents via PR + automerge (agents is PR-only).
+          cd "$repo_dir"
+          if ! git diff --quiet -- docs/releases.md; then
+            git add docs/releases.md
+            git commit -m "docs(release): notes for $tag"
+            git push origin "$tagbranch"
+            gh pr create --base agents --head "$tagbranch" \
+              --title "Release notes $tag" \
+              --body "Mechanical release-notes append. no-lesson-needed (release automation)." \
+              --label risk:trivial
+            gh pr merge --auto --squash --delete-branch
+          else
+            echo "releases.md already current for $tag; skipping notes commit"
+          fi
+
+          # Tag the integration merge commit on main (idempotent).
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "tag $tag already exists; skipping"
+          else
+            git tag -a "$tag" -m "Release $tag" "$MERGE_SHA"
+            git push origin "$tag"
+          fi

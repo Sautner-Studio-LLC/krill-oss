@@ -8,7 +8,7 @@ name: build
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, agents]
   # Lets you re-run the matrix from the Actions tab without a code change.
   workflow_dispatch:
 
@@ -108,3 +108,51 @@ jobs:
       # `:krill-pi4j-service` (JDK 25 daemon). Foojay auto-provisions the
       # client toolchain off the JDK 25 launcher.
       - run: ./gradlew build --no-daemon --stacktrace
+
+  # ── Release-train CI gate ──────────────────────────────────────────────
+  # Two contexts are marked *required* on the `agents` branch protection:
+  # `lessons-check` and `required-checks-passed`. The aggregator tolerates
+  # *skipped* path-filtered builds (a docs-only PR runs none) but fails on a
+  # real failure — never mark an individual conditional build job as required.
+  lessons-check:
+    name: lessons-check
+    # Exempt the permanent integration PR (agents->main): it is an aggregate of
+    # already-lessoned PRs, not a unit of work. The required-checks-passed
+    # aggregator tolerates this skip, so the integration PR still gets the build
+    # gate without a spurious lessons failure.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref != 'agents'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Require a lessons entry or explicit waiver
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)"
+          if echo "$changed" | grep -qE '^docs/lessons/.+\.md$'; then
+            echo "lessons entry present"; exit 0
+          fi
+          if printf '%s' "$PR_BODY" | grep -qiF 'no-lesson-needed'; then
+            echo "explicit no-lesson-needed waiver in PR body"; exit 0
+          fi
+          echo "::error::PR must add a docs/lessons/YYYY-MM-DD-<slug>.md entry, or include 'no-lesson-needed' with justification in the PR body."
+          exit 1
+
+  required-checks-passed:
+    name: required-checks-passed
+    if: always() && github.event_name == 'pull_request'
+    needs: [changes, krill-sdk, krill-mcp, krill-pi4j, lessons-check]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any needed job failed or was cancelled
+        run: |
+          set -euo pipefail
+          results='${{ toJSON(needs) }}'
+          echo "$results"
+          bad="$(echo "$results" | python3 -c "import json,sys; d=json.load(sys.stdin); print('\n'.join(k for k,v in d.items() if v['result'] in ('failure','cancelled')))")"
+          if [ -n "$bad" ]; then echo "::error::failing/cancelled jobs: $bad"; exit 1; fi
+          echo "all required checks passed (skipped jobs allowed)"
