@@ -50,7 +50,9 @@ jobs:
 
           today="$(date -u +%F)"
           version=""
-          [ "$REPO" = krill ] && version="$(cat "$repo_dir/version.txt")"
+          # Read the SHIPPED version from the integration merge commit, not the
+          # (possibly stale) working-copy checkout.
+          [ "$REPO" = krill ] && version="$(git -C "$repo_dir" show "$MERGE_SHA:version.txt" 2>/dev/null | tr -d '[:space:]')"
 
           # Check out a fresh notes branch off agents so the prepend lands on
           # current agents content, then compute the tag + write releases.md.
