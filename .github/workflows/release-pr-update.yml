@@ -36,10 +36,11 @@ jobs:
           update_repo "$KRAKEN_DIR"
           echo "kraken @ $(git -C "$KRAKEN_DIR" rev-parse --short HEAD)"
       - name: Regenerate integration PR body
-        env:
-          GH_TOKEN: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
         run: |
           set -euo pipefail
+          # gh authenticates from the runner's GH_TOKEN (krill-kraken-bot PAT in
+          # /etc/environment), like Nightly Bug Hunt — NOT an Actions secret.
+          set -a; source /etc/environment 2>/dev/null || true; set +a
           cd "$KRAKEN_DIR/scripts/release"
           uv sync --quiet
           uv run python update-release-pr.py --repo "${{ github.event.repository.name }}"
