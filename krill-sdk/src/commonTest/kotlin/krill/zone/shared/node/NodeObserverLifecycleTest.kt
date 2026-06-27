@@ -32,7 +32,7 @@ class NodeObserverLifecycleTest {
     }
 
     @Test
-    fun `use {} block invokes close on NodeObserver`() {
+    fun `use block invokes close on NodeObserver`() {
         var closeCalled = false
         val observer = object : NodeObserver {
             override fun observe(node: MutableStateFlow<Node>) {}
