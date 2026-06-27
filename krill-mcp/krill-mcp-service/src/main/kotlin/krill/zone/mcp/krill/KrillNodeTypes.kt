@@ -32,6 +32,7 @@ import krill.zone.shared.krillapp.trigger.TriggerMetaData
 import krill.zone.shared.krillapp.trigger.button.ButtonMetaData
 import krill.zone.shared.krillapp.trigger.color.ColorTriggerMetaData
 import krill.zone.shared.krillapp.trigger.cron.CronMetaData
+import krill.zone.shared.krillapp.trigger.timer.TimerMetaData
 import krill.zone.shared.krillapp.trigger.webhook.IncomingWebHookMetaData
 
 /**
@@ -282,6 +283,7 @@ object KrillNodeTypes {
                 "KrillApp.Trigger.HighThreshold",
                 "KrillApp.Trigger.LowThreshold",
                 "KrillApp.Trigger.CronTimer",
+                "KrillApp.Trigger.Timer",
                 "KrillApp.Trigger.Button",
                 "KrillApp.Executor",
             ),
@@ -429,6 +431,7 @@ object KrillNodeTypes {
             validChildTypes = listOf(
                 "KrillApp.Trigger.Button",
                 "KrillApp.Trigger.CronTimer",
+                "KrillApp.Trigger.Timer",
                 "KrillApp.Trigger.HighThreshold",
                 "KrillApp.Trigger.LowThreshold",
                 "KrillApp.Trigger.IncomingWebHook",
@@ -538,6 +541,32 @@ object KrillNodeTypes {
             ),
         ),
         KrillNodeType(
+            shortName = "KrillApp.Trigger.Timer",
+            typeFqn = "krill.zone.shared.KrillApp.Trigger.Timer",
+            metaFqn = "krill.zone.shared.krillapp.trigger.timer.TimerMetaData",
+            defaultMeta = sdkMeta(
+                "krill.zone.shared.krillapp.trigger.timer.TimerMetaData",
+                TimerMetaData.serializer(),
+                TimerMetaData(name = "Timer"),
+            ),
+            role = "trigger",
+            sideEffect = "low",
+            description = "One-shot countdown timer: EXECUTE starts the countdown, RESET cancels it. " +
+                "Fires once after `delay` ms; nodes observing it as a source are invoked when it fires.",
+            validParentTypes = listOf("KrillApp.Trigger", "KrillApp.DataPoint"),
+            validChildTypes = listOf("KrillApp.Executor"),
+            notes = "`delay` is the countdown duration in milliseconds (default 1000). `name` is REQUIRED on the wire. " +
+                "`timestamp` is server-maintained (last fire time); leave 0. " +
+                "Send EXECUTE via `set_node_action` to start the countdown; RESET to cancel.",
+            metaFieldHints = mapOf(
+                "delay" to "Long — countdown duration in milliseconds (default 1000).",
+                "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
+                "nodeAction" to NODE_ACTION_HINT,
+                "sources" to SOURCES_HINT,
+                "snapshot" to SNAPSHOT_HINT,
+            ),
+        ),
+        KrillNodeType(
             shortName = "KrillApp.Trigger.IncomingWebHook",
             typeFqn = "krill.zone.shared.KrillApp.Trigger.IncomingWebHook",
             metaFqn = "krill.zone.shared.krillapp.trigger.webhook.IncomingWebHookMetaData",
@@ -599,6 +628,7 @@ object KrillNodeTypes {
                 "KrillApp.Trigger",
                 "KrillApp.Trigger.HighThreshold",
                 "KrillApp.Trigger.LowThreshold",
+                "KrillApp.Trigger.Timer",
                 "KrillApp.Trigger.Button",
                 "KrillApp.Trigger.CronTimer",
                 "KrillApp.Trigger.IncomingWebHook",

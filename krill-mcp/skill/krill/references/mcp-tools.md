@@ -270,6 +270,7 @@ Use this to configure fields that couldn't be determined at `create_node` time:
 | Node type | Example field | Example value |
 |-----------|--------------|---------------|
 | `KrillApp.Trigger.CronTimer` | `expression` | `"*/5 * * * * *"` (every 5 seconds) |
+| `KrillApp.Trigger.Timer` | `delay` | `5000` (5-second countdown) |
 | `KrillApp.Executor.Calculation` | `formula` | `"{a} + {b}"` |
 | Any node | `name` | `"My renamed node"` |
 
