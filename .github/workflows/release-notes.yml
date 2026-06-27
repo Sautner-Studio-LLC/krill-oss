@@ -42,7 +42,7 @@ jobs:
           update_repo "$KRAKEN_DIR"
 
           repo_dir="/home/ben/Code/$REPO"
-          git -C "$repo_dir" fetch --quiet origin agents main
+          git -C "$repo_dir" fetch --quiet --tags origin agents main
           git -C "$repo_dir" config user.name  krill-kraken-bot
           git -C "$repo_dir" config user.email kraken@krill.zone
 
