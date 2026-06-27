@@ -22,21 +22,25 @@ jobs:
       github.event.pull_request.merged == true &&
       (contains(github.event.pull_request.labels.*.name, 'hotfix') ||
        contains(github.event.pull_request.labels.*.name, 'hotfix:'))
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, kraken]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
       - name: Cherry-pick the merge commit onto a PR branch off agents
         env:
-          GH_TOKEN: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
+          # gh + git push authenticate from the runner's GH_TOKEN (krill-kraken-bot
+          # PAT in /etc/environment) — NOT an Actions secret. Point origin at a
+          # token https remote so the push triggers the agents PR's CI (a
+          # GITHUB_TOKEN push would not, stalling automerge).
+          set -a; source /etc/environment 2>/dev/null || true; set +a
           git config user.name  krill-kraken-bot
           git config user.email kraken@krill.zone
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin agents main
           br="hotfix-cherrypick/$PR"
           git checkout -B "$br" origin/agents

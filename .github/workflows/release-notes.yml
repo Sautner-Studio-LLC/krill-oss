@@ -31,12 +31,14 @@ jobs:
     steps:
       - name: Generate notes on agents, tag main
         env:
-          GH_TOKEN: ${{ secrets.KRILL_KRAKEN_BOT_PAT }}
           PR: ${{ github.event.pull_request.number }}
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           REPO: ${{ github.event.repository.name }}
         run: |
           set -euo pipefail
+          # gh + git push authenticate from the runner's GH_TOKEN (krill-kraken-bot
+          # PAT in /etc/environment), like Nightly UX Audit — NOT an Actions secret.
+          set -a; source /etc/environment 2>/dev/null || true; set +a
           # shellcheck source=/dev/null
           source "$KRILL_AGENTS_ROOT/scripts/lib.sh"
           update_repo "$KRAKEN_DIR"
