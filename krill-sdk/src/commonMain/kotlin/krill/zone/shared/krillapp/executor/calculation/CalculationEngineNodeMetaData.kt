@@ -39,4 +39,5 @@ data class CalculationEngineNodeMetaData(
 
 ) : SourceMetaData {
     override fun withError(error: String) = copy(error = error)
+    override fun displayName() = name
 }

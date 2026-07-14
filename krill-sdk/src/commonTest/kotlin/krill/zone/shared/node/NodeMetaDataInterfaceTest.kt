@@ -4,8 +4,15 @@ import krill.zone.shared.KrillApp
 import krill.zone.shared.krillapp.datapoint.DataPointMetaData
 import krill.zone.shared.krillapp.datapoint.DataType
 import krill.zone.shared.krillapp.datapoint.graph.GraphMetaData
+import krill.zone.shared.krillapp.executor.calculation.CalculationEngineNodeMetaData
+import krill.zone.shared.krillapp.executor.lambda.LambdaMetaData
 import krill.zone.shared.krillapp.executor.logicgate.LogicGate
 import krill.zone.shared.krillapp.executor.logicgate.LogicGateMetaData
+import krill.zone.shared.krillapp.executor.mqtt.MqttMetaData
+import krill.zone.shared.krillapp.executor.smtp.SMTPMetaData
+import krill.zone.shared.krillapp.trigger.TriggerMetaData
+import krill.zone.shared.krillapp.trigger.button.ButtonMetaData
+import krill.zone.shared.krillapp.trigger.cron.CronMetaData
 import krill.zone.shared.krillapp.project.tasklist.TaskListMetaData
 import krill.zone.shared.krillapp.server.ServerMetaData
 import krill.zone.shared.krillapp.server.backup.BackupMetaData
@@ -100,8 +107,69 @@ class NodeMetaDataInterfaceTest {
     }
 
     @Test
-    fun `displayName returns empty for types with no dedicated name field such as LLMMetaData`() {
+    fun `displayName returns empty for types with genuinely no name field`() {
+        // MQTT/SMTP/Compute carry no human-readable name. They now say so explicitly
+        // (the interface method is abstract) rather than inheriting a silent default.
+        assertEquals("", MqttMetaData().displayName())
+        assertEquals("", SMTPMetaData().displayName())
+    }
+
+    // ── krill#847: metas that carry a `name` must actually surface it ──────────
+    // Before krill-oss#195 these twelve inherited NodeMetaData's `displayName() = ""`
+    // default, so Node.name() fell through to the type string and the canvas
+    // labelled every one of them with its type instead of its name.
+
+    @Test
+    fun `displayName returns name field for TriggerMetaData`() {
+        assertEquals("Wake", TriggerMetaData(name = "Wake").displayName())
+    }
+
+    @Test
+    fun `displayName returns name field for CronMetaData`() {
+        assertEquals("Nightly", CronMetaData(name = "Nightly").displayName())
+    }
+
+    @Test
+    fun `displayName returns name field for CalculationEngineNodeMetaData`() {
+        assertEquals("Average", CalculationEngineNodeMetaData(name = "Average").displayName())
+    }
+
+    @Test
+    fun `displayName returns name field for ButtonMetaData`() {
+        assertEquals("Arm", ButtonMetaData(name = "Arm").displayName())
+    }
+
+    @Test
+    fun `displayName returns name field for LLMMetaData`() {
+        assertEquals("Sentry", LLMMetaData(name = "Sentry").displayName())
+    }
+
+    @Test
+    fun `LLMMetaData with no name still falls back to the type string`() {
         assertEquals("", LLMMetaData().displayName())
+        assertEquals("LLM", nodeOf(KrillApp.Server.LLM, LLMMetaData()).name())
+    }
+
+    @Test
+    fun `LambdaMetaData prefers its name over the script filename`() {
+        val named = LambdaMetaData(name = "Gate", filename = "coop_gate.py")
+        assertEquals("Gate", named.displayName())
+    }
+
+    @Test
+    fun `LambdaMetaData falls back to the script filename when unnamed`() {
+        // Back-compat: every Lambda serialized before `name` existed keeps its label.
+        assertEquals("coop_gate", LambdaMetaData(filename = "coop_gate.py").displayName())
+        assertEquals("", LambdaMetaData().displayName())
+    }
+
+    @Test
+    fun `two LLM nodes with different names are distinguishable on the canvas`() {
+        // The krill#847 headline: both starring nodes in the demo read "LLM".
+        val sentry = nodeOf(KrillApp.Server.LLM, LLMMetaData(name = "Sentry"))
+        val analyst = nodeOf(KrillApp.Server.LLM, LLMMetaData(name = "Analyst"))
+        assertEquals("Sentry", sentry.name())
+        assertEquals("Analyst", analyst.name())
     }
 
     // ── Node.name() end-to-end ────────────────────────────────────────────────

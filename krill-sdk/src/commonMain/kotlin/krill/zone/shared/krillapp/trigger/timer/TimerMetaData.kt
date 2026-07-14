@@ -29,4 +29,5 @@ data class TimerMetaData(
     override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     override fun withError(error: String) = copy(error = error)
+    override fun displayName() = name
 }

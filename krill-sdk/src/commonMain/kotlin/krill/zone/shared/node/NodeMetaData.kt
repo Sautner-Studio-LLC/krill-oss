@@ -64,8 +64,16 @@ interface NodeMetaData {
      * Callers that need a non-empty label (e.g. [krill.zone.shared.node.name])
      * fall back to the node's [krill.zone.shared.KrillApp] type string when
      * this returns `""`.
+     *
+     * **Must be implemented** by every concrete `data class`, for the same reason
+     * [withError] is abstract: a default of `""` is silently wrong rather than
+     * loudly missing. It previously had one, and twelve subtypes that *did* carry
+     * a `name` field never overrode it — so every Trigger, Cron and Calculation
+     * node on the canvas was labelled with its type instead of its name. A type
+     * with no human-readable name returns `""` explicitly, which makes that an
+     * intentional choice a reviewer can see rather than an omission nobody can.
      */
-    fun displayName(): String = ""
+    fun displayName(): String
 
     /**
      * `true` when this node's value is inherently boolean / digital.
