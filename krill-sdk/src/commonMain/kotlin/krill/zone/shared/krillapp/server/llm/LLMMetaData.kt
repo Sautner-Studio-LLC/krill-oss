@@ -19,6 +19,12 @@ import krill.zone.shared.node.*
  */
 @Serializable
 data class LLMMetaData(
+    /**
+     * User-chosen name for this node, surfaced on the canvas. Empty falls back
+     * to the type string (`LLM`), which is what every LLM node showed before
+     * this field existed — two LLM nodes on one canvas were indistinguishable.
+     */
+    val name: String = "",
     /** Port on the server hosting the inference endpoint. */
     val port: Int = 11434,
     /** Model identifier sent on every request (e.g. `"qwen2.5-coder:32b-instruct-q8_0"`). */
@@ -50,4 +56,5 @@ data class LLMMetaData(
     override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     override fun withError(error: String) = copy(error = error)
+    override fun displayName() = name
 }
