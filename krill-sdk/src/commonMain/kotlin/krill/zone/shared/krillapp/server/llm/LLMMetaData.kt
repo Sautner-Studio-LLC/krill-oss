@@ -23,16 +23,21 @@ data class LLMMetaData(
     val port: Int = 11434,
     /** Model identifier sent on every request (e.g. `"qwen2.5-coder:32b-instruct-q8_0"`). */
     val model: String = "qwen2.5-coder:32b-instruct-q8_0",
-    /** User-entered prompt template; injected into the request at invocation time. */
-    val prompt: String = "",
-    /** Inference backend this node routes requests to. */
-    val backend: LlmBackend = LlmBackend.OLLAMA,
     /**
      * System prompt prepended to every request.
      * Blank means the server applies its default Krill persona automatically.
      */
     val systemPrompt: String = "",
     /** How the model should format its reply. */
+    /** User-entered prompt template; injected into the request at invocation time. */
+    val prompt: String = "",
+    /** Inference backend this node routes requests to. */
+    val backend: LlmBackend = LlmBackend.OLLAMA,
+
+    val systemPromptDataSource : NodeIdentity? = null,
+
+    val promptDataSource : NodeIdentity? = null,
+
     val responseFormat: ResponseFormat = ResponseFormat.NATURAL_LANGUAGE,
     /**
      * JSON Schema (or natural-language instruction) the model must follow when
