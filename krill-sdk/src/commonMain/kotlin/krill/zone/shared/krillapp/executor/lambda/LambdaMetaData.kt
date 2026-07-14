@@ -20,6 +20,12 @@ data class LambdaMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
 
+    /**
+     * User-chosen name for this node, surfaced on the canvas. Empty falls back to
+     * the script filename, which is what every Lambda showed before this field
+     * existed — so unnamed Lambdas keep their current label.
+     */
+    val name: String = "",
     /** Filename of the uploaded `.py` source on the server (e.g. `"average.py"`). */
     val filename: String = "",
     /** Epoch millis the source file was last uploaded — drives cache busting on clients. */
@@ -30,5 +36,5 @@ data class LambdaMetaData(
     override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     override fun withError(error: String) = copy(error = error)
-    override fun displayName() = if (filename.isNotEmpty()) filename.removeSuffix(".py") else ""
+    override fun displayName() = name.ifEmpty { filename.removeSuffix(".py") }
 }
