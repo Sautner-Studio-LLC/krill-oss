@@ -1,10 +1,6 @@
 ---
 issue: Sautner-Studio-LLC/krill-oss#195
-<<<<<<< HEAD
-pr: Sautner-Studio-LLC/krill-oss#196
-=======
 pr: Sautner-Studio-LLC/krill-oss#197
->>>>>>> refs/remotes/origin/agents
 date: 2026-07-14
 module: krill-sdk
 category: api-design
