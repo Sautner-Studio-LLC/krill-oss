@@ -47,6 +47,17 @@ data class LLMMetaData(
      * `snapshot.value` as [LLMResult] out of the box.
      */
     val responseInstructions: String = LLMResult.JSON_SCHEMA,
+    /**
+     * Ollama `options.num_ctx` sent on every request — the context window
+     * (in tokens) the backend allocates KV cache for. 8192 is a safe default
+     * that fits every krill workload seen so far without risking a KV-cache
+     * OOM on typical hardware (see `krill#883`).
+     */
+    val numCtx: Int = 8192,
+    /** Ollama `options.temperature` sent on every request. Null lets the backend use its own default. */
+    val temperature: Double? = null,
+    /** Ollama `options.keep_alive` sent on every request. Null lets the backend use its own default. */
+    val keepAlive: String? = null,
 
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
