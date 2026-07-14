@@ -1,6 +1,6 @@
 ---
 issue: Sautner-Studio-LLC/krill-oss#195
-pr: Sautner-Studio-LLC/krill-oss#NN
+pr: Sautner-Studio-LLC/krill-oss#196
 date: 2026-07-14
 module: krill-sdk
 category: api-design
