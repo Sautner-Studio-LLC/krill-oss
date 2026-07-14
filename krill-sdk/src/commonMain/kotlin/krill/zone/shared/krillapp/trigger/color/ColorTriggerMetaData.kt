@@ -47,6 +47,7 @@ data class ColorTriggerMetaData(
      */
     override fun withError(error: String) = copy(error = error)
 
+    override fun displayName() = name
     fun midpointArgb(): Long {
         val r = ((rMin + rMax) / 2).coerceIn(0, 255)
         val g = ((gMin + gMax) / 2).coerceIn(0, 255)
