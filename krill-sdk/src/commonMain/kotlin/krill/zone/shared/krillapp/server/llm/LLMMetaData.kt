@@ -34,16 +34,16 @@ data class LLMMetaData(
      * Blank means the server applies its default Krill persona automatically.
      */
     val systemPrompt: String = "",
-    /** How the model should format its reply. */
     /** User-entered prompt template; injected into the request at invocation time. */
     val prompt: String = "",
     /** Inference backend this node routes requests to. */
     val backend: LlmBackend = LlmBackend.OLLAMA,
 
-    val systemPromptDataSource : NodeIdentity? = null,
+    val systemPromptDataSource: NodeIdentity? = null,
 
-    val promptDataSource : NodeIdentity? = null,
+    val promptDataSource: NodeIdentity? = null,
 
+    /** How the model should format its reply. */
     val responseFormat: ResponseFormat = ResponseFormat.NATURAL_LANGUAGE,
     /**
      * JSON Schema (or natural-language instruction) the model must follow when
