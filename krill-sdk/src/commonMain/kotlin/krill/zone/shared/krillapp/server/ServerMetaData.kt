@@ -57,6 +57,17 @@ data class ServerMetaData(
 
     val beaconsEnabled: Boolean = true,
 
+    /**
+     * `true` when the server is running as a public **read-only demo** (the
+     * `demoMode` flag in the server's `/etc/krill/config.json`). Clients read
+     * this to skip FTUE/PIN onboarding and hide edit affordances
+     * (Save/Add/Delete). The server itself hard-blocks every mutation
+     * server-side regardless of this flag, so it is a UX hint, not the
+     * enforcement boundary. Defaults to `false`; old records lacking the key
+     * deserialize fine (`fastJson` ignores unknown keys).
+     */
+    val demoMode: Boolean = false,
+
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
