@@ -35,3 +35,4 @@ krill-lambda-sdk/*.iml
 !krill-sdk/gradle/wrapper/gradle-wrapper.jar
 .idea/
 .idea/**
+krill-sdk/local.properties
