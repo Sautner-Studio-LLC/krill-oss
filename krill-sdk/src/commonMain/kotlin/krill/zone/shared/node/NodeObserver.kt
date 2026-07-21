@@ -23,7 +23,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * child coroutine inside [close]; failing to do so leaks coroutines beyond
  * the observer's intended lifetime.
  *
- * The canonical implementation pattern (as used by `DefaultNodeObserver`):
+ * Prefer extending [AbstractNodeObserver] over implementing this interface
+ * directly — it type-enforces scope cancellation on [close] (the method is
+ * `final` there) and exposes an `onClose` hook for any additional teardown,
+ * so the cancellation contract can't be silently dropped by a subclass
+ * override. The canonical pattern below is what [AbstractNodeObserver] does
+ * internally; implement it by hand only when extending that base class
+ * isn't possible:
  *
  * ```kotlin
  * class MyObserver(parentScope: CoroutineScope) : NodeObserver {

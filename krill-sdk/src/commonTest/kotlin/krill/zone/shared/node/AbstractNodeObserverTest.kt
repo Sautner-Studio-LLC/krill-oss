@@ -1,6 +1,8 @@
 package krill.zone.shared.node
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -40,18 +42,29 @@ class AbstractNodeObserverTest {
 
     @Test
     fun `use block triggers close and observerScope is cancelled`() = runTest {
-        var closeCalled = false
+        var onCloseCalled = false
 
         val observer = object : AbstractNodeObserver(this) {
             override fun observe(node: MutableStateFlow<Node>) {}
             override fun remove(id: String) {}
-            override fun close() {
-                closeCalled = true
-                super.close()
+            override fun onClose() {
+                onCloseCalled = true
             }
         }
 
         observer.use { }
-        assertTrue(closeCalled, "use {} must invoke close()")
+        assertTrue(onCloseCalled, "use {} must invoke close(), which must invoke onClose()")
+    }
+
+    @Test
+    fun `close cannot be overridden — subclass hooks into onClose instead`() {
+        // Compile-time proof: AbstractNodeObserver.close() is `final`, so a
+        // subclass has no way to omit observerScope cancellation. Overriding
+        // onClose() is the only extension point close() offers.
+        val observer = object : AbstractNodeObserver(CoroutineScope(SupervisorJob())) {
+            override fun observe(node: MutableStateFlow<Node>) {}
+            override fun remove(id: String) {}
+        }
+        observer.close()
     }
 }
