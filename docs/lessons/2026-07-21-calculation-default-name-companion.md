@@ -1,6 +1,6 @@
 ---
 issue: Sautner-Studio-LLC/krill-oss#210
-pr: Sautner-Studio-LLC/krill-oss#PENDING
+pr: Sautner-Studio-LLC/krill-oss#212
 date: 2026-07-21
 module: krill-sdk
 category: serialization
