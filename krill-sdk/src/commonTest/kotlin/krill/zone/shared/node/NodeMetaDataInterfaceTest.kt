@@ -134,6 +134,19 @@ class NodeMetaDataInterfaceTest {
         assertEquals("Average", CalculationEngineNodeMetaData(name = "Average").displayName())
     }
 
+    /**
+     * Regression: a brand-new Calculation node (no explicit name) must default to
+     * "Calculation", not "Companion". The default value used to be
+     * `this::class.simpleName!!`, which — because this is a `@Serializable` data
+     * class — resolved `this` to the generated `Companion` object at construction
+     * time, so every fresh node was mislabelled "Companion". Asserting on the
+     * *default* is what guards this; the explicit-name test above never could.
+     */
+    @Test
+    fun `default displayName for CalculationEngineNodeMetaData is Calculation not Companion`() {
+        assertEquals("Calculation", CalculationEngineNodeMetaData().displayName())
+    }
+
     @Test
     fun `displayName returns name field for ButtonMetaData`() {
         assertEquals("Arm", ButtonMetaData(name = "Arm").displayName())
