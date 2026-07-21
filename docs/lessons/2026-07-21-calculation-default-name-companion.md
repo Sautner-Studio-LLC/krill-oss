@@ -59,8 +59,8 @@ place the bug lived.
   machinery.
 - `krill-sdk/.../node/NodeMetaDataInterfaceTest.kt` — added a regression that asserts the
   **default**: `CalculationEngineNodeMetaData().displayName() == "Calculation"`.
-- Bumped `krill-sdk` `0.0.59 → 0.0.60` so CI republishes to Maven Central; the app picks up the
-  fix once `krill`'s `krill-sdk` pin is bumped to `0.0.60`.
+- Bumped `krill-sdk` `0.0.60 → 0.0.61` so CI republishes to Maven Central; the app picks up the
+  fix once `krill`'s `krill-sdk` pin is bumped to `0.0.61`.
 - Deliberately did **not** rename the class to `CalculationMetaData` (an in-progress rename was
   reverted): it has no `@SerialName`, so its polymorphic discriminator is its fully-qualified
   name — renaming would break deserialization of already-persisted Calculation nodes and break
