@@ -13,7 +13,9 @@ import kotlinx.coroutines.cancel
  * [close] cancels it, propagating cancellation to all children without
  * disturbing the parent.
  *
- * Overriding [close] is allowed, but **must** call `super.close()`.
+ * [close] is `final` so [observerScope] cancellation is guaranteed at the
+ * type level rather than by convention. Subclasses that need additional
+ * teardown override [onClose] instead.
  */
 abstract class AbstractNodeObserver(parentScope: CoroutineScope) : NodeObserver {
 
@@ -21,7 +23,11 @@ abstract class AbstractNodeObserver(parentScope: CoroutineScope) : NodeObserver 
         parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job])
     )
 
-    override fun close() {
+    final override fun close() {
         observerScope.cancel()
+        onClose()
     }
+
+    /** Hook for subclass-specific teardown. Runs after [observerScope] is cancelled. */
+    protected open fun onClose() {}
 }

@@ -26,6 +26,45 @@ class LLMMetaDataTest {
         assertEquals(ResponseFormat.NATURAL_LANGUAGE, meta.responseFormat)
         assertEquals("", meta.systemPrompt)
         assertEquals(LLMResult.JSON_SCHEMA, meta.responseInstructions)
+        assertEquals(8192, meta.numCtx)
+        assertNull(meta.temperature)
+        assertNull(meta.keepAlive)
+    }
+
+    @Test
+    fun `LLMMetaData back-compat round-trip ignores missing numCtx temperature keepAlive`() {
+        val oldPayload = """
+            {
+              "port": 11434,
+              "model": "old-model",
+              "prompt": "summarise",
+              "error": "",
+              "sources": [],
+              "snapshot": {"timestamp": 0, "value": ""},
+              "invocationTriggers": [],
+              "nodeAction": "EXECUTE",
+              "inputs": []
+            }
+        """.trimIndent()
+
+        val meta = json.decodeFromString<LLMMetaData>(oldPayload)
+
+        assertEquals(8192, meta.numCtx)
+        assertNull(meta.temperature)
+        assertNull(meta.keepAlive)
+    }
+
+    @Test
+    fun `LLMMetaData round-trips with numCtx temperature keepAlive`() {
+        val original = LLMMetaData(
+            model = "llama3:8b",
+            numCtx = 32768,
+            temperature = 0.7,
+            keepAlive = "5m",
+        )
+        val encoded = json.encodeToString(LLMMetaData.serializer(), original)
+        val decoded = json.decodeFromString<LLMMetaData>(encoded)
+        assertEquals(original, decoded)
     }
 
     @Test
