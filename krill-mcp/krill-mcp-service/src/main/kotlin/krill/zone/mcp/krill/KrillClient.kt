@@ -81,6 +81,24 @@ class KrillClient(
         }
     }
 
+    /**
+     * Deliberate invocation. POSTs `{by, verb}` to `/node/{id}/invoke` — the
+     * explicit publish step for nodes whose creation alone is inert. Used by
+     * the swarm tools: creating a `Swarm.Work`/`Swarm.Batch` node only
+     * persists it locally, an EXECUTE invoke (conventionally `by` = the
+     * node's own identity) is what makes the server wake its processor and
+     * publish the OPEN state to swarm peers.
+     *
+     * @param by NodeIdentity JSON object `{nodeId, hostId}` of the invoking actor.
+     */
+    suspend fun invokeNode(id: String, by: JsonObject, verb: String = "EXECUTE") {
+        val body = buildJsonObject {
+            put("by", by)
+            put("verb", verb)
+        }
+        postJson("/node/$id/invoke", body)
+    }
+
     /** PUT raw SVG bytes to /project/{id}/diagram/{file}. */
     suspend fun uploadDiagramFile(projectId: String, fileName: String, svgContent: String) {
         val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")

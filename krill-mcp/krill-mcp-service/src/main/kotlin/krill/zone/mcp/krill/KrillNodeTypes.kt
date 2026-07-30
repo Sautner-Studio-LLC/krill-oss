@@ -14,7 +14,7 @@ import krill.zone.shared.krillapp.datapoint.graph.GraphMetaData
 import krill.zone.shared.krillapp.executor.ExecuteMetaData
 import krill.zone.shared.krillapp.executor.calculation.CalculationEngineNodeMetaData
 import krill.zone.shared.krillapp.executor.compute.ComputeMetaData
-import krill.zone.shared.krillapp.executor.lambda.LambdaSourceMetaData
+import krill.zone.shared.krillapp.executor.lambda.LambdaMetaData
 import krill.zone.shared.krillapp.executor.logicgate.LogicGateMetaData
 import krill.zone.shared.krillapp.executor.mqtt.MqttMetaData
 import krill.zone.shared.krillapp.executor.smtp.SMTPMetaData
@@ -28,6 +28,8 @@ import krill.zone.shared.krillapp.server.backup.BackupMetaData
 import krill.zone.shared.krillapp.server.llm.LLMMetaData
 import krill.zone.shared.krillapp.server.pin.PinMetaData
 import krill.zone.shared.krillapp.server.serialdevice.SerialDeviceMetaData
+import krill.zone.shared.krillapp.swarm.SwarmBatchMetaData
+import krill.zone.shared.krillapp.swarm.SwarmWorkMetaData
 import krill.zone.shared.krillapp.trigger.TriggerMetaData
 import krill.zone.shared.krillapp.trigger.button.ButtonMetaData
 import krill.zone.shared.krillapp.trigger.color.ColorTriggerMetaData
@@ -703,15 +705,15 @@ object KrillNodeTypes {
             metaFqn = "krill.zone.shared.krillapp.executor.lambda.LambdaMetaData",
             defaultMeta = sdkMeta(
                 "krill.zone.shared.krillapp.executor.lambda.LambdaMetaData",
-                LambdaSourceMetaData.serializer(),
-                LambdaSourceMetaData(),
+                LambdaMetaData.serializer(),
+                LambdaMetaData(),
             ),
             role = "action",
             sideEffect = "high",
             description = "Runs a sandboxed Python script when invoked; reads its `inputs` and stores its result in its own `meta.snapshot`.",
             validParentTypes = listOf("KrillApp.Executor", "KrillApp.Trigger"),
             validChildTypes = emptyList(),
-            notes = "`filename` identifies the script on the server. LambdaMetaData has no `name` field — any `name` arg is dropped by `ignoreUnknownKeys`.",
+            notes = "`filename` identifies the script on the server. `name` falls back to the script filename (minus `.py`) when empty.",
             metaFieldHints = mapOf(
                 "sources" to SOURCES_HINT,
                 "inputs" to INPUTS_HINT + " Values the Python script reads.",
@@ -924,6 +926,68 @@ object KrillNodeTypes {
                 "sources" to SOURCES_HINT,
                 "inputs" to INPUTS_HINT + " Node values the LLM reads as context.",
                 "snapshot" to SNAPSHOT_HINT + " Holds the last LLM response.",
+                "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
+        ),
+        KrillNodeType(
+            shortName = "KrillApp.Swarm.Work",
+            typeFqn = "krill.zone.shared.KrillApp.Swarm.Work",
+            metaFqn = "krill.zone.shared.krillapp.swarm.SwarmWorkMetaData",
+            defaultMeta = sdkMeta(
+                "krill.zone.shared.krillapp.swarm.SwarmWorkMetaData",
+                SwarmWorkMetaData.serializer(),
+                SwarmWorkMetaData(prompt = ""),
+            ),
+            role = "action",
+            sideEffect = "high",
+            description = "A single unit of LLM work advertised to the swarm for a remote `Server.LLM` node to claim and execute. " +
+                "Prefer the `submit_swarm_work` MCP tool over creating this directly — it also invokes EXECUTE (by=self) " +
+                "after create, which is required to publish the OPEN state to swarm peers (a bare create_node leaves it inert).",
+            validParentTypes = listOf("KrillApp.Server"),
+            validChildTypes = emptyList(),
+            notes = "`prompt` is REQUIRED on the wire — SwarmWorkMetaData has no default for it. Lifecycle: OPEN → ASSIGNED → " +
+                "RUNNING → DONE|FAILED (see `phase`). Use `get_swarm_work_status` to poll instead of raw `get_node`.",
+            metaFieldHints = mapOf(
+                "phase" to "enum: OPEN | ASSIGNED | RUNNING | DONE | FAILED",
+                "images" to "List<String> — small inline base64 images (camera-frame scale). Larger content goes through `fileRefs`.",
+                "fileRefs" to "List<{hash: String, sizeBytes: Long, mime: String, host: String, name: String}> — claim-check " +
+                    "references to blob-store content; bytes are pulled lazily by the winner. File paths in `prompt` are inert " +
+                    "(no filesystem on the inference path) — use fileRefs instead.",
+                "assignee" to "{nodeId: String, hostId: String} | null — winner LLM node once ASSIGNED.",
+                "result" to "{timestamp: Long, value: String} — the winner's answer text, or a serialized FileRef, once phase=DONE.",
+                "maxPayloadBytes" to "Enforced at creation AND at claim-assignment — the server rejects rather than truncating.",
+                "sources" to SOURCES_HINT,
+                "inputs" to INPUTS_HINT,
+                "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
+                "nodeAction" to NODE_ACTION_HINT,
+            ),
+        ),
+        KrillNodeType(
+            shortName = "KrillApp.Swarm.Batch",
+            typeFqn = "krill.zone.shared.KrillApp.Swarm.Batch",
+            metaFqn = "krill.zone.shared.krillapp.swarm.SwarmBatchMetaData",
+            defaultMeta = sdkMeta(
+                "krill.zone.shared.krillapp.swarm.SwarmBatchMetaData",
+                SwarmBatchMetaData.serializer(),
+                SwarmBatchMetaData(),
+            ),
+            role = "action",
+            sideEffect = "high",
+            description = "A group of related LLM work items dispatched together as child `Swarm.Work` nodes — one auction per " +
+                "item. Prefer the `submit_swarm_batch` MCP tool over creating this directly — it also invokes EXECUTE (by=self) " +
+                "after create, which is required to trigger server-side fan-out.",
+            validParentTypes = listOf("KrillApp.Server"),
+            validChildTypes = listOf("KrillApp.Swarm.Work"),
+            notes = "The server caps children at `maxChildren` with an explicit error, never silent truncation. " +
+                "Use `get_swarm_work_status` on individual child ids for per-item detail; this node's own `meta.completedCount` " +
+                "/ `meta.failedCount` track aggregate progress.",
+            metaFieldHints = mapOf(
+                "items" to "List<{prompt: String, images: List<String>, fileRefs: List<FileRef>}> — one child Swarm.Work per item.",
+                "completedCount" to "Count of items whose child work reached phase=DONE.",
+                "failedCount" to "Count of items whose child work reached phase=FAILED.",
+                "sources" to SOURCES_HINT,
+                "inputs" to INPUTS_HINT,
                 "invocationTriggers" to INVOCATION_TRIGGERS_HINT,
                 "nodeAction" to NODE_ACTION_HINT,
             ),

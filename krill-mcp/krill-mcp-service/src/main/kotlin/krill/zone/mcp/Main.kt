@@ -53,6 +53,10 @@ fun main() {
         SetNodeWiringTool(registry),
         SetValueTool(registry),
         UpdateNodeTool(registry),
+        SubmitSwarmWorkTool(registry),
+        SubmitSwarmBatchTool(registry),
+        GetSwarmFleetTool(registry),
+        GetSwarmWorkStatusTool(registry),
     )
 
     val mcp = McpServer(
