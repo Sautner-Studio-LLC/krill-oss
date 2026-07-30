@@ -6,6 +6,7 @@ import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 import java.security.cert.X509Certificate
@@ -37,6 +38,8 @@ class KrillClient(
      */
     val publicBaseUrl: String,
     private val bearerToken: () -> String?,
+    /** Injectable for tests (MockEngine); defaults to the shared trust-all client. */
+    private val httpClient: HttpClient = http,
 ) {
     private val log = LoggerFactory.getLogger(KrillClient::class.java)
 
@@ -70,7 +73,7 @@ class KrillClient(
         val id = node["id"]?.jsonPrimitive?.contentOrNull
             ?: error("Node JSON missing required 'id' field")
         val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
-        val response: HttpResponse = http.delete("$baseUrl/node/$id") {
+        val response: HttpResponse = httpClient.delete("$baseUrl/node/$id") {
             header(HttpHeaders.Authorization, "Bearer $token")
             contentType(ContentType.Application.Json)
             setBody(node.toString())
@@ -89,6 +92,13 @@ class KrillClient(
      * node's own identity) is what makes the server wake its processor and
      * publish the OPEN state to swarm peers.
      *
+     * Called immediately after [postNode] for a brand-new id, which races the
+     * server's own indexing of that node: `/invoke` can 404 with "Node not
+     * found" for the freshly-created id for a short window after `POST
+     * /node/{id}` returns 202. Retries with backoff on a 404 specifically
+     * (never on other failures) to ride out that window instead of surfacing
+     * a spurious error to the caller.
+     *
      * @param by NodeIdentity JSON object `{nodeId, hostId}` of the invoking actor.
      */
     suspend fun invokeNode(id: String, by: JsonObject, verb: String = "EXECUTE") {
@@ -96,14 +106,14 @@ class KrillClient(
             put("by", by)
             put("verb", verb)
         }
-        postJson("/node/$id/invoke", body)
+        postJson("/node/$id/invoke", body, retryNotFound = true)
     }
 
     /** PUT raw SVG bytes to /project/{id}/diagram/{file}. */
     suspend fun uploadDiagramFile(projectId: String, fileName: String, svgContent: String) {
         val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
         val bytes = svgContent.toByteArray(Charsets.UTF_8)
-        val response: HttpResponse = http.put("$baseUrl/project/$projectId/diagram/$fileName") {
+        val response: HttpResponse = httpClient.put("$baseUrl/project/$projectId/diagram/$fileName") {
             header(HttpHeaders.Authorization, "Bearer $token")
             contentType(ContentType.Image.SVG)
             setBody(bytes)
@@ -125,7 +135,7 @@ class KrillClient(
 
     private suspend fun getText(path: String): String {
         val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
-        val response: HttpResponse = http.get("$baseUrl$path") {
+        val response: HttpResponse = httpClient.get("$baseUrl$path") {
             header(HttpHeaders.Authorization, "Bearer $token")
         }
         if (!response.status.isSuccess()) {
@@ -135,14 +145,35 @@ class KrillClient(
         return response.bodyAsText()
     }
 
-    private suspend fun postJson(path: String, body: JsonElement) {
+    /**
+     * @param retryNotFound When true, a 404 response is retried with
+     * exponential backoff (200ms, 400ms, 800ms, 1600ms — ~3s total across 5
+     * attempts) instead of failing immediately. Any other failure status
+     * fails on the first attempt regardless of this flag.
+     */
+    private suspend fun postJson(path: String, body: JsonElement, retryNotFound: Boolean = false) {
         val token = bearerToken() ?: error("krill-mcp has no PIN-derived bearer token configured")
-        val response: HttpResponse = http.post("$baseUrl$path") {
-            header(HttpHeaders.Authorization, "Bearer $token")
-            contentType(ContentType.Application.Json)
-            setBody(body.toString())
-        }
-        if (!response.status.isSuccess()) {
+        val maxAttempts = if (retryNotFound) 5 else 1
+        var backoffMs = 200L
+        repeat(maxAttempts) { attempt ->
+            val response: HttpResponse = httpClient.post("$baseUrl$path") {
+                header(HttpHeaders.Authorization, "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(body.toString())
+            }
+            if (response.status.isSuccess()) return
+
+            val attemptsRemain = attempt < maxAttempts - 1
+            if (retryNotFound && response.status == HttpStatusCode.NotFound && attemptsRemain) {
+                log.debug(
+                    "POST $baseUrl$path returned 404 (attempt ${attempt + 1}/$maxAttempts) — " +
+                        "node may not be indexed yet, retrying in ${backoffMs}ms",
+                )
+                delay(backoffMs)
+                backoffMs *= 2
+                return@repeat
+            }
+
             val errBody = runCatching { response.bodyAsText() }.getOrDefault("")
             error("POST $baseUrl$path returned ${response.status}: $errBody")
         }

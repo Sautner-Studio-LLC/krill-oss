@@ -50,9 +50,22 @@ surface and the demo scripting surface for the whole swarm feature.
   inline base64.
 - `SwarmToolsTest.kt` covers input-schema shape and every pre-HTTP validation path
   (missing required fields, malformed `fileRefs`, oversized payload, over-cap batch) —
-  this package has no `MockEngine` harness for `KrillClient`, so tests exercise the same
-  "validate before resolve()" seam every other tool in this file uses, per the existing
-  `SetValueToolTest`/`CreateNodeToolTest` pattern.
+  tests exercise the same "validate before resolve()" seam every other tool in this file
+  uses, per the existing `SetValueToolTest`/`CreateNodeToolTest` pattern.
+- Ghost's first verify pass on this PR caught a create→invoke race: `invokeNode()` was
+  called immediately after `postNode()` for the brand-new node id, and the krill server's
+  `/node/{id}/invoke` route can 404 "Node not found" for a short window (observed up to
+  ~3s) before that id is visible to it, even though `POST /node/{id}` already returned
+  `202`. Fixed by giving `KrillClient.invokeNode` an opt-in retry with exponential backoff
+  (200ms → 1.6s, 5 attempts, ~3s total) on a 404 specifically — never on other failure
+  statuses, and never for `postNode`/`deleteNode`/etc., which aren't racing anything.
+- Added a `KrillClient` constructor seam (`httpClient: HttpClient = <shared trust-all
+  client>`) so this retry path — and the client generally — is unit-testable with
+  `ktor-client-mock`'s `MockEngine` instead of only via a live Krill server. Wrapped in
+  `runTest` so the production `delay()` backoff runs on virtual time and the test suite
+  doesn't actually wait 3 seconds. `KrillClientTest.kt` covers: retry-then-succeed,
+  exhausting all retries on a persistent 404, no retry on a non-404 failure, and no retry
+  on `postNode`.
 
 ## Prevention
 
@@ -68,5 +81,11 @@ surface and the demo scripting surface for the whole swarm feature.
   pure addition.
 - A pre-HTTP client-side validation pass (payload size, batch cap, required fields) is
   worth writing even when the server enforces the same invariant authoritatively — it
-  turns a round-trip-then-fail into an immediate, cheap failure, and it's the only thing
-  unit-testable without a live Krill server or a `MockEngine` harness in this package.
+  turns a round-trip-then-fail into an immediate, cheap failure.
+- Any "create, then immediately act on the created id" sequence against the krill server
+  (create-then-invoke here; likely also applies anywhere else `krill-mcp` chains a write
+  followed by a read/act on the same fresh id) should assume the second call can 404 for a
+  brief window and retry accordingly — a same-process HTTP round-trip is not proof the
+  server's own indexing has caught up. This can only be caught by an end-to-end run
+  against a live server (Ghost's verify pass, in this case); the pre-HTTP unit tests in
+  this PR could not have found it.

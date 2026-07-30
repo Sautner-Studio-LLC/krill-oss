@@ -18,10 +18,11 @@ import kotlin.test.assertTrue
 /**
  * Unit tests for the swarm-llm-workloads MCP tools (krill-oss#223): schema
  * contracts and the pre-HTTP validation paths that must fire before any
- * network call reaches a Krill server — this repo has no MockEngine harness
- * for [krill.zone.mcp.krill.KrillClient], so tool tests exercise the same
- * "validate before resolve()" seam every other tool in this package uses
- * (see [SetValueToolTest], [CreateNodeToolTest]).
+ * network call reaches a Krill server. These exercise the same "validate
+ * before resolve()" seam every other tool in this package uses (see
+ * [SetValueToolTest], [CreateNodeToolTest]) — the HTTP-boundary behavior of
+ * [krill.zone.mcp.krill.KrillClient] itself (e.g. the invoke-after-create
+ * retry) is covered separately in `KrillClientTest` via `MockEngine`.
  */
 class SwarmToolsTest {
 
