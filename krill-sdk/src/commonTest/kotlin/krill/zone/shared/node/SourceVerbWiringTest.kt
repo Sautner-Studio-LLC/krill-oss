@@ -18,6 +18,8 @@ import krill.zone.shared.krillapp.server.llm.LLMMetaData
 import krill.zone.shared.krillapp.server.pin.PinMetaData
 import krill.zone.shared.krillapp.server.serialdevice.SerialDeviceTargetMetaData
 import krill.zone.shared.krillapp.spacer.SpacerMetaData
+import krill.zone.shared.krillapp.swarm.SwarmBatchMetaData
+import krill.zone.shared.krillapp.swarm.SwarmWorkMetaData
 import krill.zone.shared.krillapp.trigger.TriggerMetaData
 import krill.zone.shared.krillapp.trigger.button.ButtonMetaData
 import krill.zone.shared.krillapp.trigger.color.ColorTriggerMetaData
@@ -128,6 +130,8 @@ class SourceVerbWiringTest {
         "ColorTriggerMetaData" to dec(ColorTriggerMetaData.serializer(), """{"name":"col"}"""),
         "TriggerMetaData" to dec(TriggerMetaData.serializer(), """{"name":"HighThreshold","snapshot":{"timestamp":"0", "value":"1.0"}}"""),
         "CronMetaData" to dec(CronMetaData.serializer(), """{"name":"cron"}"""),
+        "SwarmWorkMetaData" to dec(SwarmWorkMetaData.serializer(), """{"prompt":"p"}"""),
+        "SwarmBatchMetaData" to dec(SwarmBatchMetaData.serializer(), """{}"""),
     )
 
     @Test
@@ -137,7 +141,7 @@ class SourceVerbWiringTest {
         // entry only compiles if X implements TargetingNodeMetaData. This test
         // guards that the audited set stays populated (and is the place to add
         // a new shipped type's entry).
-        assertEquals(18, preChangePayloads.size)
+        assertEquals(20, preChangePayloads.size)
     }
 
     @Test

@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "com.krillforge"
-version = "0.0.62"
+version = "0.0.63"
 
 kotlin {
     jvmToolchain(21)

@@ -1,8 +1,10 @@
 package krill.zone.shared.krillapp.server.llm
 
 import kotlinx.serialization.json.Json
+import krill.zone.shared.node.NodeIdentity
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -103,6 +105,60 @@ class LLMMetaDataTest {
             systemPrompt = "You are a sensor analyst.",
             responseFormat = ResponseFormat.JSON,
             responseInstructions = LLMResult.JSON_SCHEMA,
+        )
+        val encoded = json.encodeToString(LLMMetaData.serializer(), original)
+        val decoded = json.decodeFromString<LLMMetaData>(encoded)
+        assertEquals(original, decoded)
+    }
+
+    // ── krill-oss#217: swarm availability block ────────────────────────────────
+
+    @Test
+    fun `LLMMetaData defaults swarm availability block to opted-out`() {
+        val meta = LLMMetaData()
+        assertFalse(meta.swarmEnabled)
+        assertEquals(emptyList(), meta.advertisedModels)
+        assertEquals("", meta.vramClass)
+        assertEquals(-1.0, meta.costScore)
+        assertNull(meta.costScoreSource)
+        assertNull(meta.acceptWindowSource)
+        assertEquals(0L, meta.advertisedAt)
+    }
+
+    @Test
+    fun `LLMMetaData back-compat round-trip ignores missing swarm availability fields`() {
+        val oldPayload = """
+            {
+              "port": 11434,
+              "model": "old-model",
+              "prompt": "summarise",
+              "error": "",
+              "sources": [],
+              "snapshot": {"timestamp": 0, "value": ""},
+              "invocationTriggers": [],
+              "nodeAction": "EXECUTE",
+              "inputs": []
+            }
+        """.trimIndent()
+
+        val meta = json.decodeFromString<LLMMetaData>(oldPayload)
+
+        assertFalse(meta.swarmEnabled)
+        assertEquals(emptyList(), meta.advertisedModels)
+        assertEquals(-1.0, meta.costScore)
+    }
+
+    @Test
+    fun `LLMMetaData round-trips with a populated swarm availability block`() {
+        val original = LLMMetaData(
+            model = "qwen2.5-coder:32b",
+            swarmEnabled = true,
+            advertisedModels = listOf("qwen2.5-coder:32b", "llava"),
+            vramClass = "24g",
+            costScore = 1.5,
+            costScoreSource = NodeIdentity(nodeId = "n1", hostId = "h1"),
+            acceptWindowSource = NodeIdentity(nodeId = "n2", hostId = "h1"),
+            advertisedAt = 1_700_000_000_000L,
         )
         val encoded = json.encodeToString(LLMMetaData.serializer(), original)
         val decoded = json.decodeFromString<LLMMetaData>(encoded)

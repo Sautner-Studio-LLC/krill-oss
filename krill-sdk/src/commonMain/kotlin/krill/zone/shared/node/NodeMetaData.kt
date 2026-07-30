@@ -148,6 +148,19 @@ enum class NodeAction(val displayLabel: String) {
 
     /** Revert the target node(s) to their initial / cleared state. */
     RESET("Reset"),
+
+    /**
+     * Recompute and republish an LLM node's swarm availability block
+     * (used for solicitation / cold-start advertisement; steady-state
+     * adverts ride the normal metadata publish path instead).
+     */
+    ADVERTISE("Advertise"),
+
+    /**
+     * A remote node's bid on an OPEN [krill.zone.shared.krillapp.swarm.SwarmWorkMetaData]
+     * node, routed through the standard invoke seam.
+     */
+    CLAIM("Claim"),
 }
 
 /**
