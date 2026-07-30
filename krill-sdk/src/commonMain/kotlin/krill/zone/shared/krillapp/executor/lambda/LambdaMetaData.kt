@@ -30,6 +30,15 @@ data class LambdaMetaData(
     val filename: String = "",
     /** Epoch millis the source file was last uploaded — drives cache busting on clients. */
     val timestamp: Long = 0L,
+    /**
+     * Per-node opt-in to network access from inside the sandbox, overriding the
+     * server-wide `SandboxConfig.restrictNetwork` default for this Lambda only.
+     * Defaults to `false` — matching the "default to the more restrictive option,
+     * opt in explicitly" posture from krill#918. A Lambda that needs to call an
+     * external API sets this to `true` instead of disabling network restriction
+     * for every Lambda on the server.
+     */
+    val allowNetwork: Boolean = false,
     override val invocationTriggers: List<InvocationTrigger> = emptyList(),
     override val nodeAction: NodeAction = NodeAction.EXECUTE,
     override val error: String = "",
