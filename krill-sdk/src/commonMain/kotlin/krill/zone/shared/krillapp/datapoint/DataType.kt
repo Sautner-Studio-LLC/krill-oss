@@ -31,4 +31,10 @@ enum class DataType {
 
     /** Packed RGB colour, encoded as an integer in the snapshot value. */
     COLOR,
+
+    /**
+     * Claim-check file reference — [Snapshot.value] holds a serialized
+     * [krill.zone.shared.krillapp.datapoint.FileRef], never raw bytes.
+     */
+    FILE,
 }

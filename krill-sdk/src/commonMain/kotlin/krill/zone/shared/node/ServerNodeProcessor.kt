@@ -47,6 +47,11 @@ interface ServerNodeProcessor {
      *    receiver; a generic node has no reset semantics and the rule forbids
      *    silently falling back to EXECUTE for a verb the processor does not
      *    handle.
+     *  - [NodeAction.ADVERTISE] / [NodeAction.CLAIM] → explicit no-op by
+     *    default. These verbs only mean something to a swarm-participating
+     *    processor (e.g. `Server.LLM`, `Swarm.Work`); a generic node degrades
+     *    to refusal (does nothing) rather than crashing on a verb it was
+     *    never built to understand.
      *
      * Processors with per-source or per-verb logic (Trigger family, TaskList,
      * DataPoint, Calculation) override this method entirely; the override fully
@@ -56,13 +61,14 @@ interface ServerNodeProcessor {
      * @param by     Identity of the node (or actor) that triggered this call —
      *               always [NodeIdentity] (`nodeId` + `hostId`), never a bare
      *               string.
-     * @param verb   The action being applied — [NodeAction.EXECUTE] or
-     *               [NodeAction.RESET].
+     * @param verb   The action being applied.
      */
     suspend fun onInvoke(node: Node, by: NodeIdentity, verb: NodeAction) {
         when (verb) {
             NodeAction.EXECUTE -> process(node)
             NodeAction.RESET -> { /* no reset semantics for a generic node */ }
+            NodeAction.ADVERTISE -> { /* generic node does not participate in swarm advertisement */ }
+            NodeAction.CLAIM -> { /* generic node does not participate in swarm work claiming */ }
         }
     }
 

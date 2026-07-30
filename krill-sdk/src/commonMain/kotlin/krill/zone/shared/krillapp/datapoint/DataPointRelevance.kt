@@ -35,7 +35,8 @@ object DataPointRelevance {
         DataType.COLOR,
         DataType.DIGITAL,
         DataType.TEXT,
-        DataType.JSON -> emptyList()
+        DataType.JSON,
+        DataType.FILE -> emptyList()
     }
 
     /**
@@ -58,7 +59,8 @@ object DataPointRelevance {
             KrillApp.Trigger.Timer
         )
         DataType.TEXT,
-        DataType.JSON -> listOf(
+        DataType.JSON,
+        DataType.FILE -> listOf(
             KrillApp.Trigger.Timer
         )
     }

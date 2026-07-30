@@ -49,6 +49,7 @@ val krillAppChildren: Map<KrillApp?, List<KrillApp>> = mapOf(
     null to listOf(
         KrillApp.Client, KrillApp.Server, KrillApp.Project,
         KrillApp.MQTT, KrillApp.DataPoint, KrillApp.Executor, KrillApp.Trigger,
+        KrillApp.Swarm,
     ),
 
     // Server children
@@ -95,6 +96,9 @@ val krillAppChildren: Map<KrillApp?, List<KrillApp>> = mapOf(
         KrillApp.Trigger.IncomingWebHook,
         KrillApp.Trigger.Color,
     ),
+
+    // Swarm children
+    KrillApp.Swarm to listOf(KrillApp.Swarm.Work, KrillApp.Swarm.Batch),
 )
 
 /** Flat list of every [KrillApp] instance across the hierarchy (all levels). */
@@ -263,5 +267,24 @@ sealed class KrillApp {
 
         @Serializable
         data object Color : KrillApp()
+    }
+
+    /**
+     * Top-level parent for swarm-distributed LLM work dispatch. A new sealed
+     * parent rather than an `Executor.*` child — this family is expected to
+     * grow (arbitration/foreman node types are anticipated beyond the initial
+     * `Work` + `Batch` pair) and its dispatch/claim lifecycle is distinct from
+     * the plain source-invoked `Executor` contract.
+     */
+    @Serializable
+    data object Swarm : KrillApp() {
+
+        /** A single unit of LLM work advertised for a remote node to claim. */
+        @Serializable @DataSource
+        data object Work : KrillApp()
+
+        /** A group of related work items dispatched together, capped and tracked as one unit. */
+        @Serializable @DataSource
+        data object Batch : KrillApp()
     }
 }

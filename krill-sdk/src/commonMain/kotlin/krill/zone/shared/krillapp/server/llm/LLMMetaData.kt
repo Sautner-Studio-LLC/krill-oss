@@ -64,6 +64,25 @@ data class LLMMetaData(
     /** Ollama `options.keep_alive` sent on every request. Null lets the backend use its own default. */
     val keepAlive: String? = null,
 
+    /**
+     * Opt-in to advertising this node as a swarm-work claimant. Defaults to
+     * `false` — an LLM node only participates in `Swarm.Work` dispatch once
+     * its owner explicitly enables it.
+     */
+    val swarmEnabled: Boolean = false,
+    /** Models this node advertises as available; an empty list defaults to `[model]`. */
+    val advertisedModels: List<String> = emptyList(),
+    /** Coarse hardware class advertised alongside availability (`"8g"`, `"24g"`, `"80g"`, `"apple-m"`). */
+    val vramClass: String = "",
+    /** Unitless advertised cost, lower is cheaper; `-1` means "not advertising". */
+    val costScore: Double = -1.0,
+    /** Node that supplied [costScore], for provenance when it isn't self-reported. */
+    val costScoreSource: NodeIdentity? = null,
+    /** Node that supplied the accept-window policy in effect for this advertisement, if any. */
+    val acceptWindowSource: NodeIdentity? = null,
+    /** Epoch millis this node last (re)computed and published its availability block. */
+    val advertisedAt: Long = 0,
+
     override val error: String = "",
     override val sources: List<NodeIdentity> = emptyList(),
     override val snapshot: Snapshot = Snapshot(),
