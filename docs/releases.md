@@ -1,3 +1,42 @@
+# 2026-07-30
+
+# Release candidate: 2026-07-14 → 2026-07-21
+
+## Summary
+
+This release merges the Krill agents branch to main, including fixes to the `krill-sdk` for `LLMMetaData` field completeness, `AbstractNodeObserver` lifecycle refinement, and a new `allowNetwork` opt-in in `LambdaMetaData`. It follows a 7-day gap since the prior release and incorporates recent release-train CI and issue-closure improvements.
+
+## Substantive changes
+
+
+_None this batch._
+
+## Routine maintenance
+
+- #202 Release notes release-2026-07-14 (`trivial`)
+- #203 Release candidate: agents → main (`unlabeled`)
+- #206 fix(krill-sdk): add numCtx/temperature/keepAlive fields to LLMMetaData (#205) (`low`)
+- #211 fix(krill-sdk): make AbstractNodeObserver.close() final, add onClose() hook (#207) (`low`)
+- #214 feat(krill-sdk): add allowNetwork opt-in to LambdaMetaData (#213) (`low`)
+
+## Patterns Kraken noticed
+
+- `AbstractNodeObserver` lifecycle management improved with a final `close()` method and `onClose()` hook, reinforcing an AutoCloseable pattern already evident in recent lessons (#207 → #211).  
+- SDK metadata classes (`LLMMetaData`, `LambdaMetaData`) are being iteratively enhanced with runtime-configurable fields (`numCtx`, `temperature`, `keepAlive`, `allowNetwork`), indicating active model deployment customization work.  
+- Release process automation remains active (7-day release cadence, release-candidate PRs), with ongoing CI gating and canary deployment patterns consistent with prior release-train infra.
+
+## Open friction issues
+
+_None open._
+
+## Stats
+- 5 PRs merged to `agents` since last release
+- 0 risk:high, 0 risk:medium, 5 risk:low+trivial
+- Days since last release: 7
+- Lessons added: 15
+
+---
+
 # 2026-07-14
 
 > @ben — 5 PRs queued (13 days).
