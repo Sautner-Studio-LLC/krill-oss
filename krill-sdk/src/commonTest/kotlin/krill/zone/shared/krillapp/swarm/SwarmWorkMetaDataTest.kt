@@ -24,22 +24,22 @@ class SwarmWorkMetaDataTest {
 
     @Test
     fun `SwarmWorkMetaData defaults are safe and additive`() {
-        val meta = SwarmWorkMetaData(prompt = "summarise the last hour")
+        val meta = WorkMetaData(prompt = "summarise the last hour")
         assertEquals(emptyList(), meta.images)
         assertEquals(emptyList(), meta.fileRefs)
         assertEquals("", meta.requiredModel)
         assertEquals("", meta.minVramClass)
         assertEquals(Double.MAX_VALUE, meta.maxCostScore)
-        assertEquals(SwarmWorkMetaData.DEFAULT_MAX_PAYLOAD, meta.maxPayloadBytes)
+        assertEquals(WorkMetaData.DEFAULT_MAX_PAYLOAD, meta.maxPayloadBytes)
         assertEquals(0L, meta.deadlineAt)
-        assertEquals(SwarmWorkMetaData.DEFAULT_LEASE_TTL, meta.leaseTtlMs)
-        assertEquals(SwarmWorkMetaData.DEFAULT_CLAIM_WINDOW, meta.claimWindowMs)
+        assertEquals(WorkMetaData.DEFAULT_LEASE_TTL, meta.leaseTtlMs)
+        assertEquals(WorkMetaData.DEFAULT_CLAIM_WINDOW, meta.claimWindowMs)
         assertEquals(false, meta.decomposable)
         assertEquals(0, meta.delegationDepth)
-        assertEquals(SwarmWorkMetaData.DEFAULT_MAX_SUBTASKS, meta.maxSubtasks)
+        assertEquals(WorkMetaData.DEFAULT_MAX_SUBTASKS, meta.maxSubtasks)
         assertNull(meta.assignee)
         assertEquals(0, meta.attempts)
-        assertEquals(SwarmWorkMetaData.DEFAULT_MAX_ATTEMPTS, meta.maxAttempts)
+        assertEquals(WorkMetaData.DEFAULT_MAX_ATTEMPTS, meta.maxAttempts)
         assertEquals(Snapshot(), meta.result)
         assertEquals(SwarmWorkPhase.OPEN, meta.phase)
         assertEquals(NodeAction.EXECUTE, meta.nodeAction)
@@ -48,7 +48,7 @@ class SwarmWorkMetaDataTest {
     @Test
     fun `a minimal pre-existing payload deserializes with safe defaults`() {
         val payload = """{"prompt":"classify the image"}"""
-        val meta = json.decodeFromString(SwarmWorkMetaData.serializer(), payload)
+        val meta = json.decodeFromString(WorkMetaData.serializer(), payload)
 
         assertEquals("classify the image", meta.prompt)
         assertEquals(SwarmWorkPhase.OPEN, meta.phase)
@@ -58,7 +58,7 @@ class SwarmWorkMetaDataTest {
 
     @Test
     fun `a fully populated SwarmWorkMetaData round-trips through JSON`() {
-        val original = SwarmWorkMetaData(
+        val original = WorkMetaData(
             prompt = "classify this frame",
             images = listOf("base64frame"),
             fileRefs = listOf(FileRef(hash = "h1", sizeBytes = 10, mime = "image/png", host = "srv-1")),
@@ -79,8 +79,8 @@ class SwarmWorkMetaDataTest {
             phase = SwarmWorkPhase.RUNNING,
             nodeAction = NodeAction.CLAIM,
         )
-        val encoded = json.encodeToString(SwarmWorkMetaData.serializer(), original)
-        val decoded = json.decodeFromString(SwarmWorkMetaData.serializer(), encoded)
+        val encoded = json.encodeToString(WorkMetaData.serializer(), original)
+        val decoded = json.decodeFromString(WorkMetaData.serializer(), encoded)
         assertEquals(original, decoded)
     }
 

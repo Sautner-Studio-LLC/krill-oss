@@ -16,9 +16,10 @@ import krill.zone.shared.node.InvocationTrigger
 import krill.zone.shared.node.NodeAction
 import krill.zone.shared.node.NodeIdentity
 import krill.zone.shared.node.SourceMetaData
+import kotlin.text.ifEmpty
 
 /**
- * Lifecycle phase of a [SwarmWorkMetaData] node, from advertised to settled.
+ * Lifecycle phase of a [WorkMetaData] node, from advertised to settled.
  *
  * Wire form is the enum name — do not reorder or rename without a coordinated
  * migration.
@@ -34,7 +35,7 @@ enum class SwarmWorkPhase {
     /** The assignee is actively executing the work. */
     RUNNING,
 
-    /** Work completed successfully; [SwarmWorkMetaData.result] holds the answer. */
+    /** Work completed successfully; [WorkMetaData.result] holds the answer. */
     DONE,
 
     /** Work could not be completed; see [SourceMetaData.error]. */
@@ -45,7 +46,7 @@ enum class SwarmWorkPhase {
  * Payload for a `Swarm.Work` node.
  */
 @Serializable
-data class SwarmWorkMetaData(
+data class WorkMetaData(
     /** The task prompt sent to whichever node claims this work. */
     val prompt: String,
     /** Small inline images (camera-frame scale base64), rides with the prompt. */
@@ -91,7 +92,8 @@ data class SwarmWorkMetaData(
     override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     override fun withError(error: String) = copy(error = error)
-    override fun displayName() = ""
+
+    override fun displayName() = snapshot.value.take(16).ifEmpty {  prompt.take(12).ifEmpty {  "" } }
 
     companion object {
         /** Default cap on prompt + images payload size, in bytes (1 MiB). */
