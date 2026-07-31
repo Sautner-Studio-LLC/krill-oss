@@ -27,8 +27,8 @@ data class LLMMetaData(
     val name: String = "",
     /** Port on the server hosting the inference endpoint. */
     val port: Int = 11434,
-    /** Model identifier sent on every request (e.g. `"qwen2.5-coder:32b-instruct-q8_0"`). */
-    val model: String = "qwen2.5-coder:32b-instruct-q8_0",
+    /** Model identifier sent on every request (e.g. `"qwen3-coder-next:32k"`). */
+    val model: String = "",
     /**
      * System prompt prepended to every request.
      * Blank means the server applies its default Krill persona automatically.
@@ -91,5 +91,5 @@ data class LLMMetaData(
     override val inputs: List<NodeIdentity> = emptyList(),
 ) : SourceMetaData {
     override fun withError(error: String) = copy(error = error)
-    override fun displayName() = name
+    override fun displayName() =   model.take(16).ifEmpty { name }
 }

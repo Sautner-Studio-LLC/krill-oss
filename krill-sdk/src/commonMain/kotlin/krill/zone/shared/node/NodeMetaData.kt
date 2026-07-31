@@ -157,7 +157,7 @@ enum class NodeAction(val displayLabel: String) {
     ADVERTISE("Advertise"),
 
     /**
-     * A remote node's bid on an OPEN [krill.zone.shared.krillapp.swarm.SwarmWorkMetaData]
+     * A remote node's bid on an OPEN [krill.zone.shared.krillapp.swarm.WorkMetaData]
      * node, routed through the standard invoke seam.
      */
     CLAIM("Claim"),
