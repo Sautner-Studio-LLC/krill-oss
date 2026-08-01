@@ -367,6 +367,86 @@ Response: `{"server": "<id>", "id": "<id>", "dataType": "DOUBLE", "submitted": 3
 
 **No REST equivalent — JSON-RPC only.** Unlike reads and node upserts, snapshot writes have no `POST /node/{id}/data`-style route on `:8442`. If MCP tools aren't in-session, use the **Direct-to-MCP JSON-RPC fallback** (see below) — don't waste time probing `/snapshot`, `/data/record`, etc. on the Krill server; they all 404.
 
+## Swarm dispatch tools
+
+Distribute LLM work across every `Server.LLM` node in the swarm that has opted in (`meta.swarmEnabled = true`). The Krill server ships the dispatch machinery (arbitration, claim windows, leases, batch fan-out) — these four tools are ergonomic projections over the existing node create/invoke/get primitives, no new server routes. See krill `openspec/changes/swarm-llm-workloads/design.md` for the full state machine.
+
+**Payload-boundary rule (design D13) — memorize this before authoring a prompt.** A file **path** in `prompt` is inert to the model: there is no filesystem on the inference path, wherever the work actually runs. The three supported ways to get content to a claimant are:
+1. **`fileRefs`** — claim-check pointers `{hash, sizeBytes, mime, host, name?}` into the server's blob store (`POST /files` / `GET /files/{hash}`, PIN-bearer authenticated). Bytes are pulled lazily by whichever node claims the work, never inlined on the wire. Upload to the target server's `POST /files` first — this MCP does not yet wrap that route with a dedicated tool, call it directly with the bearer.
+2. **Automation loading content into a node's `meta.snapshot`** first, then referencing that node.
+3. **Small inline base64** in `images` — camera-frame scale only; anything bigger belongs in `fileRefs`.
+
+`maxPayloadBytes` (default 1 MiB) must cover the prompt bytes **plus** every `images` entry **plus** the sum of every `fileRefs[].sizeBytes`, or the work fails — `submit_swarm_work` estimates this client-side and refuses before the network call; the server re-checks at creation **and** again at claim-assignment (a large FileRef discovered late still fails cleanly, never silently).
+
+### `submit_swarm_work`
+Advertise one unit of LLM work to the swarm. Creates a `KrillApp.Swarm.Work` node (phase `OPEN`) then invokes it `EXECUTE` (`by` = itself) — that invoke is what makes the host publish the `OPEN` state to swarm peers; a bare `create_node` would leave the work inert with nobody watching it.
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `prompt` | ✓ | The task prompt sent to whichever node claims this work. |
+| `images` | — | `[String]` — small inline base64 images. |
+| `fileRefs` | — | `[{hash, sizeBytes, mime, host, name?}]` — claim-check references; see payload-boundary rule above. |
+| `requiredModel` | — | Exact advertised model name required; omit for any advertised model. |
+| `minVramClass` | — | Minimum advertised VRAM class (`"8g"`, `"24g"`, `"80g"`, `"apple-m"`). |
+| `maxCostScore` | — | Cost ceiling; claims above it are ineligible. |
+| `deadlineAt` | — | Epoch millis after which this work is abandoned. Omit (or `0`) to wait forever — waiting is emergent, not polled. |
+| `maxPayloadBytes` | — | Cap on prompt + images + fileRefs sizes. Defaults to 1 MiB. |
+| `server` | — | Server id, host, or host:port to host this work. Defaults to the first registered server. |
+
+```json
+{"name": "submit_swarm_work", "arguments": {"prompt": "Summarize this week's tank readings.", "maxCostScore": 5.0, "requiredModel": "qwen2.5-coder:32b-instruct-q8_0"}}
+```
+Response: `{"server": "<id>", "workNodeId": "<uuid>", "phase": "OPEN", "maxPayloadBytes": 1048576, "note": "..."}`
+
+Poll `get_swarm_work_status` on `workNodeId` until `phase` reaches `DONE` or `FAILED`.
+
+### `submit_swarm_batch`
+Dispatch a batch of related work items sharing one set of eligibility requirements as child `KrillApp.Swarm.Work` nodes — one auction per item. Creates a `KrillApp.Swarm.Batch` node then invokes it `EXECUTE` (`by` = itself) to trigger server-side fan-out.
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `items` | ✓ | Non-empty `[{prompt, images?, fileRefs?}]` — one child `Swarm.Work` node per item. |
+| `requiredModel` / `minVramClass` / `maxCostScore` / `deadlineAt` | — | Shared across every item, same semantics as `submit_swarm_work`. |
+| `maxChildren` | — | Cap on child nodes this batch may spawn. Defaults to the server's default cap. |
+| `server` | — | Defaults to the first registered server. |
+
+**The server caps children at `maxChildren` with an explicit error — never silent truncation.** This tool pre-checks `items.size` against the same bound before the network call, so an oversized batch fails fast with the same message; split it into multiple `submit_swarm_batch` calls instead of trimming items yourself.
+
+```json
+{
+  "name": "submit_swarm_batch",
+  "arguments": {
+    "items": [
+      {"prompt": "Tag this frame.", "fileRefs": [{"hash": "…", "sizeBytes": 240000, "mime": "image/jpeg", "host": "<server-uuid>"}]},
+      {"prompt": "Tag this frame.", "fileRefs": [{"hash": "…", "sizeBytes": 238000, "mime": "image/jpeg", "host": "<server-uuid>"}]}
+    ],
+    "requiredModel": "llava"
+  }
+}
+```
+Response: `{"server": "<id>", "batchNodeId": "<uuid>", "itemCount": 2, "maxChildren": 16, "note": "..."}`
+
+Poll individual child ids with `get_swarm_work_status`, or this node's own `meta.completedCount` / `meta.failedCount` via `get_node` for aggregate progress.
+
+### `get_swarm_fleet`
+List every `KrillApp.Server.LLM` node advertising to the swarm (`meta.swarmEnabled = true`) across **every** Krill server this krill-mcp instance can reach — one call spans the whole reachable swarm, not just one server. Nodes with `swarmEnabled = false` (the default) are excluded; they never claim swarm work. No arguments.
+```json
+{"name": "get_swarm_fleet", "arguments": {}}
+```
+Response: `{"count": N, "fleet": [{"nodeId": "<uuid>", "host": "<server-id>", "models": ["qwen2.5-coder:32b-instruct-q8_0"], "vramClass": "24g", "costScore": 3.2, "advertisedAt": <ms>, "swarmEnabled": true}, ...]}`
+
+Use this as the "why isn't anyone claiming my work" debugging view — an empty fleet, or a fleet whose members don't satisfy `requiredModel`/`minVramClass`/`maxCostScore`, means the work will sit `OPEN` until someone advertises eligibility.
+
+### `get_swarm_work_status`
+Read the dispatch status of a `KrillApp.Swarm.Work` node. For `KrillApp.Swarm.Batch` aggregate progress, call `get_node` directly and read `meta.completedCount` / `meta.failedCount` — a Batch has no `phase` field.
+
+```json
+{"name": "get_swarm_work_status", "arguments": {"nodeId": "<work-uuid>"}}
+```
+Response: `{"server": "<id>", "nodeId": "<id>", "phase": "ASSIGNED", "assignee": {"nodeId": "...", "hostId": "..."} | null, "attempts": 0, "maxAttempts": 3, "error": "", "result": {"timestamp": <ms>, "value": "..."} | null}`
+
+`phase` values, in lifecycle order: `OPEN` (advertised, unclaimed) → `ASSIGNED` (a claim won the arbitration window) → `RUNNING` (assignee executing) → `DONE` (`result` holds the answer text, or a serialized FileRef for file results) | `FAILED` (see `error`; retries are bounded by `maxAttempts`, exhaustion is terminal). A lease-expiry reclaim (owner yanked GPU, window closed) requeues back to `OPEN` and is a first-class event, not an error.
+
 ## Standard discovery flow
 
 For most user requests, call in this order and stop as soon as you have enough:
@@ -383,6 +463,14 @@ For most user requests, call in this order and stop as soon as you have enough:
 3. Author SVG with `k_*` anchors, build the bindings map.
 4. `create_diagram` (or `update_diagram` for edits of existing ones).
 5. Confirm with `get_diagram` if the user wants a round-trip sanity check.
+
+## Standard swarm dispatch flow
+
+1. `get_swarm_fleet` — confirm at least one `Server.LLM` node is advertising with eligibility the work needs (model / VRAM class / cost ceiling). An empty or ineligible fleet means the work will sit `OPEN` indefinitely (deadline-tolerant by design) rather than error.
+2. Stage any large content as `fileRefs` (upload via `POST /files` on the target server) — never put a file path in `prompt`.
+3. `submit_swarm_work` (single item) or `submit_swarm_batch` (many related items) — record the returned `workNodeId` / `batchNodeId`.
+4. Poll `get_swarm_work_status` on the work id(s) until `phase` is `DONE` or `FAILED`. For a batch, `get_node` on the batch id's `meta.completedCount`/`meta.failedCount` gives aggregate progress without polling every child.
+5. On `DONE`, read `result.value` — text, or a serialized `FileRef` to pull via `GET /files/{hash}` when the work produced a file.
 
 ## Troubleshooting
 
@@ -605,3 +693,4 @@ To derive the JSON shape for a different type, fetch an existing node of that ty
 ## What's NOT here yet
 
 - **Server-side join / bulk create.** Each `create_node` is a single HTTP POST. Large trees are N posts; no transactional "create this subtree" primitive.
+- **No `upload_file` MCP tool.** The blob store's `POST /files` route exists on the Krill server (design D13) but isn't wrapped by a dedicated tool yet — building a `fileRefs` entry for `submit_swarm_work`/`submit_swarm_batch` means calling `POST /files` directly with the bearer (see "Swarm dispatch tools" above).
