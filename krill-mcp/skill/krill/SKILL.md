@@ -1,7 +1,7 @@
 ---
 name: krill
 version: 0.0.11
-description: Use when working with a Krill swarm — the home-automation/IoT system whose nodes are reachable via the krill-mcp Model Context Protocol server (typically http://<host>:50052/mcp, see https://krillswarm.com). Invoke for discovering or inspecting Krill servers, nodes, DataPoints, Triggers, Filters, Executors, Pins, or peers; reading time-series sensor data; reasoning about which node type to use for a given automation; and authoring, uploading, downloading, and improving SVG dashboards (Diagram nodes) that overlay live node state on a custom layout. Triggers on keywords like krill, swarm, krill server, krill node, krill-mcp, DataPoint, Trigger threshold, SVG dashboard, k_ anchor, swarm sensor, pi-krill, create project, create diagram, improve diagram.
+description: Use when working with a Krill swarm — the home-automation/IoT system whose nodes are reachable via the krill-mcp Model Context Protocol server (typically http://<host>:50052/mcp, see https://krillswarm.com). Invoke for discovering or inspecting Krill servers, nodes, DataPoints, Triggers, Filters, Executors, Pins, or peers; reading time-series sensor data; reasoning about which node type to use for a given automation; authoring, uploading, downloading, and improving SVG dashboards (Diagram nodes) that overlay live node state on a custom layout; and dispatching distributed LLM work across swarm-enabled Server.LLM nodes. Triggers on keywords like krill, swarm, krill server, krill node, krill-mcp, DataPoint, Trigger threshold, SVG dashboard, k_ anchor, swarm sensor, pi-krill, create project, create diagram, improve diagram, swarm work, swarm fleet, submit LLM work, swarm batch.
 ---
 
 <!--
@@ -54,7 +54,7 @@ Bearer-token locations checked in order: `~/.krill/pin_token`, then `sudo krill-
 
 Read these on demand — they're not auto-loaded:
 
-- **`references/mcp-tools.md`** — the MCP tools (read: `list_servers`, `list_nodes`, `get_node`, `read_series`, `server_health`, `reseed_servers`; write: `list_projects`, `create_project`, `create_diagram`, `update_diagram`, `get_diagram`, `upload_diagram_file`, `download_diagram_file`), their JSON shapes, the standard discovery + diagram flows, auth setup. Read this first whenever you need to query or mutate a swarm.
+- **`references/mcp-tools.md`** — the MCP tools (read: `list_servers`, `list_nodes`, `get_node`, `read_series`, `server_health`, `reseed_servers`; write: `list_projects`, `create_project`, `create_diagram`, `update_diagram`, `get_diagram`, `upload_diagram_file`, `download_diagram_file`; swarm dispatch: `submit_swarm_work`, `submit_swarm_batch`, `get_swarm_fleet`, `get_swarm_work_status`), their JSON shapes, the standard discovery + diagram + swarm-dispatch flows, auth setup. Read this first whenever you need to query or mutate a swarm.
 - **`references/node-types/INDEX.md`** — table of all 37 Krill node types grouped by role (state / trigger / action / filter / display / container / infra) with one-liners and side-effect levels. Read this when the user's request needs a node type and you don't already know which one applies.
 - **`references/node-types/KrillApp.<Type>.json`** — full spec for one node type: purpose, behavior, inputs, outputs, valid parents/children, side-effect level, examples. Read after narrowing via the index, before recommending the type to the user.
 - **`references/dashboard-conventions.md`** — the `k_*` anchor convention, `DiagramMetaData` shape, authoring guidance, reference example. Read before generating any SVG dashboard.
