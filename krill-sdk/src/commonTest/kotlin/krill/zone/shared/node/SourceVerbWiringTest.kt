@@ -19,7 +19,7 @@ import krill.zone.shared.krillapp.server.pin.PinMetaData
 import krill.zone.shared.krillapp.server.serialdevice.SerialDeviceTargetMetaData
 import krill.zone.shared.krillapp.spacer.SpacerMetaData
 import krill.zone.shared.krillapp.swarm.SwarmBatchMetaData
-import krill.zone.shared.krillapp.swarm.SwarmWorkMetaData
+import krill.zone.shared.krillapp.swarm.WorkMetaData
 import krill.zone.shared.krillapp.trigger.TriggerMetaData
 import krill.zone.shared.krillapp.trigger.button.ButtonMetaData
 import krill.zone.shared.krillapp.trigger.color.ColorTriggerMetaData
@@ -130,7 +130,7 @@ class SourceVerbWiringTest {
         "ColorTriggerMetaData" to dec(ColorTriggerMetaData.serializer(), """{"name":"col"}"""),
         "TriggerMetaData" to dec(TriggerMetaData.serializer(), """{"name":"HighThreshold","snapshot":{"timestamp":"0", "value":"1.0"}}"""),
         "CronMetaData" to dec(CronMetaData.serializer(), """{"name":"cron"}"""),
-        "SwarmWorkMetaData" to dec(SwarmWorkMetaData.serializer(), """{"prompt":"p"}"""),
+        "SwarmWorkMetaData" to dec(WorkMetaData.serializer(), """{"prompt":"p"}"""),
         "SwarmBatchMetaData" to dec(SwarmBatchMetaData.serializer(), """{}"""),
     )
 

@@ -19,7 +19,7 @@ import krill.zone.shared.node.SourceMetaData
 
 /**
  * One item's payload within a [SwarmBatchMetaData] — the per-item counterpart
- * of [SwarmWorkMetaData.prompt] / [SwarmWorkMetaData.images] / [SwarmWorkMetaData.fileRefs],
+ * of [WorkMetaData.prompt] / [WorkMetaData.images] / [WorkMetaData.fileRefs],
  * minus the fields the batch already carries as shared requirements.
  */
 @Serializable

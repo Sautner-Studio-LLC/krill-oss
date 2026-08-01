@@ -26,8 +26,7 @@ jobs:
             // `gh pr merge --auto --squash`) — GitHub queues the squash-merge and
             // fires the closed webhook before it commits, not after. Observed 68s
             // of lag between the `closed` event and the PR's actual `mergedAt`
-            // (krill-oss#198). Re-fetch the PR a few times before concluding it
-            // was closed without merging, instead of trusting the webhook snapshot.
+            // (krill-oss#197). Re-fetch the PR a few times before concluding it
             let pr = context.payload.pull_request;
             for (let attempt = 0; !pr.merged && attempt < 6; attempt++) {
               core.info(`PR #${pr.number} reports merged=false (check ${attempt + 1}/6) — waiting 15s and re-fetching…`);

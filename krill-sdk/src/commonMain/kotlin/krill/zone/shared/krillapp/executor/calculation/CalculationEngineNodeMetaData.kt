@@ -18,8 +18,17 @@ import krill.zone.shared.node.*
 data class CalculationEngineNodeMetaData(
     override val sources: List<NodeIdentity> = emptyList(),
 
-    /** Display name; defaults to the class's simple name on creation. */
-    val name: String = this::class.simpleName!!,
+    /**
+     * Display name; defaults to the literal `"Calculation"` on creation.
+     *
+     * Was previously `this::class.simpleName!!`, but because this is a
+     * `@Serializable` data class the default-value initializer is compiled into
+     * a synthetic context on the generated `Companion` — so `this::class`
+     * resolved to the `Companion` object and every brand-new Calculation node
+     * was labelled `"Companion"` instead of its type. A literal keeps the label
+     * stable and independent of the class name / serialization machinery.
+     */
+    val name: String = "Calculation",
     /** Free-form formula string evaluated by the server's calculation engine. */
     val formula: String = "",
     /**
