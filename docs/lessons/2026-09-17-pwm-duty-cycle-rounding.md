@@ -1,6 +1,6 @@
 ---
 issue: Sautner-Studio-LLC/krill-oss#245
-pr: Sautner-Studio-LLC/krill-oss#245
+pr: Sautner-Studio-LLC/krill-oss#254
 date: 2026-09-17
 module: krill-pi4j
 category: other
