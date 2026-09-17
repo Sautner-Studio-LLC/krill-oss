@@ -1,3 +1,45 @@
+# 2026-09-17
+
+> ## @ben — 6 PRs queued, 23 days since last release.
+
+# Release candidate: 2026-08-01 → 2026-08-24
+
+## Summary
+
+This release incorporates agent-facing fixes in `krill-mcp` and `krill-sdk`, addressing type resolution, null error messages, and UI label visibility, alongside documentation improvements and release tooling updates. It follows a 23-day interval and includes the final `agents → main` release candidate merge.
+
+## Substantive changes
+
+
+_None this batch._
+
+## Routine maintenance
+
+- #230 Release notes release-2026-08-01 (`trivial`)
+- #231 Release candidate: agents → main (`unlabeled`)
+- #237 fix(krill-mcp): resolve create_node type selectors by unique leaf name (#236) (`low`)
+- #235 fix(krill-sdk): add name field to MqttMetaData so canvas shows label (`low`)
+- #239 fix(krill-mcp): fall back to exception class name when tool error message is null (`low`)
+- #243 docs(lessons): add lessons README schema + SEO front matter CI guard (#242) (`trivial`)
+
+## Patterns Kraken noticed
+
+- Consistent focus on tooling and SDK usability fixes: resolving null error messages, adding name fields for UI labeling, and refining type selector resolution.  
+- Ongoing effort to stabilize release cadence: PR #231 merges the release candidate after 23 days, indicating a deliberate release-train approach with CI gates.  
+- Documentation and CI hygiene improvements: enforced schema + SEO front matter for lessons via CI guard, aligning with prior lessons on release-train gates and issue-closure automation.
+
+## Open friction issues
+
+_None open._
+
+## Stats
+- 6 PRs merged to `agents` since last release
+- 0 risk:high, 0 risk:medium, 6 risk:low+trivial
+- Days since last release: 23
+- Lessons added: 15
+
+---
+
 # 2026-08-01
 
 # Release candidate: 2026-07-31 → 2026-08-01
