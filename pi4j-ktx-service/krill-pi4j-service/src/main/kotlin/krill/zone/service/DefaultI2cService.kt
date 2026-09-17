@@ -1,6 +1,7 @@
 package krill.zone.service
 
 import com.krillforge.pi4j.proto.*
+import com.pi4j.io.IOType
 import com.pi4j.io.i2c.*
 import com.pi4j.ktx.io.*
 import krill.zone.*
@@ -25,7 +26,7 @@ class DefaultI2cService(
 
     // ── ReadRegister ──────────────────────────────────────────────────────────
 
-    override suspend fun readRegister(request: I2cRegisterRequest): I2cByteResponse = runCatching {
+    override suspend fun readRegister(request: I2cRegisterRequest): I2cByteResponse = runCatchingGrpc {
         val dev = device(request.device)
         val value = dev.readRegister(request.register)
         i2cByteResponse { success = true; this.value = value }
@@ -36,7 +37,7 @@ class DefaultI2cService(
 
     // ── WriteRegister ─────────────────────────────────────────────────────────
 
-    override suspend fun writeRegister(request: I2cWriteRegisterRequest): I2cResponse = runCatching {
+    override suspend fun writeRegister(request: I2cWriteRegisterRequest): I2cResponse = runCatchingGrpc {
         val dev = device(request.device)
         dev.writeRegister(request.register, request.value.toByte())
         i2cResponse { success = true }
@@ -47,7 +48,7 @@ class DefaultI2cService(
 
     // ── ReadBytes ─────────────────────────────────────────────────────────────
 
-    override suspend fun readBytes(request: I2cReadBytesRequest): I2cBytesResponse = runCatching {
+    override suspend fun readBytes(request: I2cReadBytesRequest): I2cBytesResponse = runCatchingGrpc {
         val dev = device(request.device)
         val buf = ByteArray(request.length)
         dev.readRegister(request.register, buf, 0, request.length)
@@ -62,7 +63,7 @@ class DefaultI2cService(
 
     // ── WriteBytes ────────────────────────────────────────────────────────────
 
-    override suspend fun writeBytes(request: I2cWriteBytesRequest): I2cResponse = runCatching {
+    override suspend fun writeBytes(request: I2cWriteBytesRequest): I2cResponse = runCatchingGrpc {
         val dev = device(request.device)
         val bytes = request.data.toByteArray()
         dev.writeRegister(request.register, bytes, 0, bytes.size)
@@ -76,9 +77,11 @@ class DefaultI2cService(
 
     private fun device(id: I2cDeviceId?): I2C {
         requireNotNull(id) { "I2cDeviceId is required" }
+        val providerId = ctx.requireProvider(IOType.I2C)
         return devices.getOrPut(id.bus to id.address) {
             log.debug("Opening I2C device bus={} addr=0x{}", id.bus, id.address.toString(16))
             ctx.context.i2c(id.bus, id.address) {
+                provider(providerId)
                 this.id("i2c-${id.bus}-${id.address.toString(16)}")
             }
         }

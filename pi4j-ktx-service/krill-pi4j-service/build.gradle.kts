@@ -18,8 +18,8 @@ dependencies {
     implementation(libs.pi4j.ktx)
     implementation(libs.pi4j.core)
     implementation(libs.pi4j.plugin.raspberrypi)
-    implementation(libs.pi4j.plugin.pigpio)
     implementation(libs.pi4j.plugin.gpiod)  // Required for Raspberry Pi 5 (RP1 chip, chardev interface)
+    implementation(libs.pi4j.plugin.ffm)    // Foreign Function & Memory providers — the ones actually driving hardware
 
     // gRPC transport
     implementation(libs.grpc.netty.shaded)
@@ -30,6 +30,7 @@ dependencies {
     compileOnly(libs.javax.annotation.api)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.pi4j.plugin.mock)
 }
 
 kotlin {
