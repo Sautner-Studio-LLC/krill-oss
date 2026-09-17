@@ -33,6 +33,7 @@ protobuf-kotlin           = { module = "com.google.protobuf:protobuf-kotlin",  v
 
 # Kotlinx
 kotlinx-coroutines-core   = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test   = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 # Logging
 logback-classic           = { module = "ch.qos.logback:logback-classic",       version.ref = "logback" }
