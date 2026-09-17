@@ -4,6 +4,7 @@ import io.grpc.ServerBuilder
 import krill.zone.service.GpioServiceImpl
 import krill.zone.service.DefaultI2cService
 import krill.zone.service.DefaultPwmService
+import krill.zone.service.DefaultSpiService
 import krill.zone.service.DefaultSystemService
 import org.slf4j.LoggerFactory
 
@@ -42,12 +43,14 @@ fun main(args: Array<String>) {
     val gpioService   = GpioServiceImpl(Pi4jContextManager)
     val pwmService    = DefaultPwmService(Pi4jContextManager)
     val i2cService    = DefaultI2cService(Pi4jContextManager)
+    val spiService    = DefaultSpiService(Pi4jContextManager)
     val systemService = DefaultSystemService(Pi4jContextManager)
 
     val server = ServerBuilder.forPort(port)
         .addService(gpioService)
         .addService(pwmService)
         .addService(i2cService)
+        .addService(spiService)
         .addService(systemService)
         .build()
         .start()

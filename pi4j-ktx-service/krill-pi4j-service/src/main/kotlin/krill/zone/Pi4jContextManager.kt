@@ -37,10 +37,11 @@ object Pi4jContextManager {
         IOType.DIGITAL_OUTPUT to "mock-digital-output",
         IOType.PWM to "mock-pwm",
         IOType.I2C to "mock-i2c",
+        IOType.SPI to "mock-spi",
     )
 
     /** IOTypes with a real gRPC service in this daemon — the ones worth guarding at startup. */
-    private val GUARDED_TYPES = listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C)
+    private val GUARDED_TYPES = listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C, IOType.SPI)
 
     @Volatile
     private var _context: Context? = null

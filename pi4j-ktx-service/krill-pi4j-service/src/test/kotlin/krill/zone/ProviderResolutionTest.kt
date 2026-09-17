@@ -6,6 +6,7 @@ import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalInputProviderImpl
 import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalOutputProviderImpl
 import com.pi4j.plugin.mock.provider.i2c.MockI2CProviderImpl
 import com.pi4j.plugin.mock.provider.pwm.MockPwmProviderImpl
+import com.pi4j.plugin.mock.provider.spi.MockSpiProviderImpl
 import com.pi4j.provider.Provider
 import krill.zone.Pi4jContextManager.ProviderFamily
 import kotlin.test.AfterTest
@@ -44,6 +45,7 @@ class ProviderResolutionTest {
             MockDigitalOutputProviderImpl(),
             MockPwmProviderImpl(),
             MockI2CProviderImpl(),
+            MockSpiProviderImpl(),
         )
         .build()
 
@@ -55,8 +57,9 @@ class ProviderResolutionTest {
             assertEquals("mock-digital-output", context.provider<Provider<*, *, *>>(IOType.DIGITAL_OUTPUT).id())
             assertEquals("mock-pwm", context.provider<Provider<*, *, *>>(IOType.PWM).id())
             assertEquals("mock-i2c", context.provider<Provider<*, *, *>>(IOType.I2C).id())
+            assertEquals("mock-spi", context.provider<Provider<*, *, *>>(IOType.SPI).id())
 
-            for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C)) {
+            for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C, IOType.SPI)) {
                 assertFalse(
                     context.provider<Provider<*, *, *>>(type).id() in stubProviderIds,
                     "resolved provider for $type must not be a raspberrypi stub"
@@ -72,9 +75,10 @@ class ProviderResolutionTest {
         val context = buildMockOnlyContext()
         Pi4jContextManager.initializeForTest(context, ProviderFamily.MOCK)
 
-        for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C)) {
+        for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C, IOType.SPI)) {
             assertFalse(Pi4jContextManager.isDegraded(type), "$type should resolve under the mock family")
         }
         assertEquals("mock-pwm", Pi4jContextManager.providerId(IOType.PWM))
+        assertEquals("mock-spi", Pi4jContextManager.providerId(IOType.SPI))
     }
 }

@@ -1,6 +1,6 @@
 # krill-pi4j
 
-A gRPC microservice that exposes Raspberry Pi hardware — GPIO, PWM, and I2C — to any JVM application, regardless of Java version.
+A gRPC microservice that exposes Raspberry Pi hardware — GPIO, PWM, I2C, and SPI — to any JVM application, regardless of Java version.
 
 ## Why this exists
 
@@ -19,7 +19,7 @@ Your app (JDK 21+)                    Raspberry Pi OS
 ┌─────────────────────┐               ┌──────────────────────────────┐
 │  Pi4jClient (gRPC)  │─── localhost ─▶  krill-pi4j daemon (JDK 25) │
 │  com.krillforge:    │    port 50051 │  ↳ Pi4J FFM API              │
-│  krill-pi4j:0.0.1   │               │  ↳ GPIO / PWM / I2C          │
+│  krill-pi4j:0.0.1   │               │  ↳ GPIO / PWM / I2C / SPI    │
 └─────────────────────┘               └──────────────────────────────┘
 ```
 
@@ -87,7 +87,7 @@ implementation 'com.krillforge:krill-pi4j:0.0.5'
 
 ## Usage
 
-`Pi4jClient` is the single entry point. It manages a gRPC channel to the daemon and exposes four sub-clients: `gpio`, `pwm`, `i2c`, and `system`.
+`Pi4jClient` is the single entry point. It manages a gRPC channel to the daemon and exposes five sub-clients: `gpio`, `pwm`, `i2c`, `spi`, and `system`.
 
 ### Connect
 
@@ -197,6 +197,28 @@ Pi4jClient().use { client ->
 
 ---
 
+### SPI
+
+Devices are opened at Pi4J's default mode (MODE_0) and baud rate; there is no Configure RPC
+yet since no consumer has needed non-default SPI timing.
+
+```kotlin
+Pi4jClient().use { client ->
+
+    // Full-duplex transfer on bus 0, chip-select 0 — reads back as many bytes as written
+    val result = client.spi.transfer(bus = 0, chipSelect = 0, data = byteArrayOf(0x9F, 0x00, 0x00))
+    if (result.success) println("raw: ${result.readData.toByteArray().toHex()}")
+
+    // Read-only transfer (clocks out zeroes)
+    val bytes = client.spi.read(bus = 0, chipSelect = 0, length = 4)
+
+    // Write-only transfer; any return data from the device is discarded
+    client.spi.write(bus = 0, chipSelect = 0, data = byteArrayOf(0x06))
+}
+```
+
+---
+
 ### PCA9685 (16-channel PWM over I2C)
 
 Chip-level driver in `com.krillforge.pi4j.pca9685`, built on top of `client.i2c` and
@@ -260,6 +282,7 @@ pi4j-ktx-service/
 │           ├── GpioClient.kt
 │           ├── PwmClient.kt
 │           ├── I2cClient.kt
+│           ├── SpiClient.kt
 │           ├── SystemClient.kt
 │           └── pca9685/          # PCA9685 16-channel PWM-over-I2C chip driver
 └── krill-pi4j-service/           # Daemon (JVM 25, distributed as .deb)
@@ -271,6 +294,7 @@ pi4j-ktx-service/
             ├── GpioServiceImpl.kt
             ├── PwmServiceImpl.kt
             ├── I2cServiceImpl.kt
+            ├── SpiServiceImpl.kt
             └── SystemServiceImpl.kt
 ```
 
