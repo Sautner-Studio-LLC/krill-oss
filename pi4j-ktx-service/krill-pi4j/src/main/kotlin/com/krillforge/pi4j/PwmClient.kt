@@ -4,6 +4,7 @@ import io.grpc.Channel
 import com.krillforge.pi4j.proto.DutyCycleRequest
 import com.krillforge.pi4j.proto.FrequencyRequest
 import com.krillforge.pi4j.proto.PinAddress
+import com.krillforge.pi4j.proto.PulseWidthRequest
 import com.krillforge.pi4j.proto.PwmConfig
 import com.krillforge.pi4j.proto.PwmResponse
 import com.krillforge.pi4j.proto.PwmServiceGrpcKt
@@ -34,6 +35,19 @@ class PwmClient internal constructor(channel: Channel) {
         stub.setFrequency(FrequencyRequest.newBuilder().apply {
             this.pin       = pin
             this.frequency = frequencyHz
+        }.build())
+
+    /**
+     * Set an exact period/pulse width in nanoseconds on a hardware PWM channel — bypasses
+     * the percent-based [configure]/[setDutyCycle] API for servo/ESC-grade resolution.
+     * [pin] is the PWM CHANNEL index (0-3), not a BCM/GPIO number. Requires
+     * `dtoverlay=pwm`/`pwm-2chan` on the host — see the krill-pi4j README.
+     */
+    suspend fun setPulse(pin: Int, periodNs: Long, dutyNs: Long): PwmResponse =
+        stub.setPulse(PulseWidthRequest.newBuilder().apply {
+            this.pin      = pin
+            this.periodNs = periodNs
+            this.dutyNs   = dutyNs
         }.build())
 
     /** Stop a PWM channel (output goes low). */
