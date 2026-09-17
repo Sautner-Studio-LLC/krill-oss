@@ -159,8 +159,29 @@ Pi4jClient().use { client ->
     // Read back current config
     val status = client.pwm.getStatus(pin = 18)
     println("running=${status.running} freq=${status.frequency} duty=${status.dutyCycle}")
+
+    // Servo/ESC path: exact nanosecond period + pulse width, bypassing the percent API.
+    // `pin` here is the PWM CHANNEL (0-3), not a BCM/GPIO number — see "Hardware PWM
+    // setup (Pi 5)" below.
+    client.pwm.setPulse(pin = 0, periodNs = 20_000_000, dutyNs = 1_500_000) // 50 Hz, 1500 us centre
 }
 ```
+
+#### Hardware PWM setup (Pi 5)
+
+`setPulse` writes directly to `/sys/class/pwm`, bypassing Pi4J's `Integer`-percent API
+entirely — 1% at 50 Hz is 200 us of servo pulse, too coarse for servo-grade positioning.
+This needs hardware PWM to actually be enabled on the host:
+
+1. Add an overlay line to `/boot/firmware/config.txt`: `dtoverlay=pwm-2chan` for both
+   channels, or `dtoverlay=pwm` for a single channel — then **reboot**. Without it,
+   `/sys/class/pwm` has no `pwmchipN` directory at all and `setPulse` fails with
+   `FAILED_PRECONDITION`.
+2. `setPulse`'s `pin` argument is the **PWM channel** (0-3), not the GPIO/BCM number —
+   the most common source of confusion on a Pi 5.
+3. `dtoverlay=pwm-2chan` **conflicts with `dtparam=audio=on`** — per the on-Pi
+   `/boot/firmware/overlays/README`, the onboard analogue audio output uses both PWM
+   channels. Enabling both silently breaks one of them, with no error anywhere.
 
 ---
 

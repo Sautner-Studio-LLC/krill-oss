@@ -102,6 +102,11 @@ service PwmService {
   // Update frequency of a running channel.
   rpc SetFrequency(FrequencyRequest) returns (PwmResponse);
 
+  // Set an exact period/pulse width in nanoseconds on a hardware PWM channel via
+  // /sys/class/pwm — bypasses Pi4J's Integer-percent API entirely. This is the
+  // servo/ESC path: 1% at 50 Hz is 200 us, too coarse for servo-grade positioning.
+  rpc SetPulse(PulseWidthRequest) returns (PwmResponse);
+
   // Stop a channel (output goes low).
   rpc Stop(PinAddress) returns (PwmResponse);
 
@@ -124,6 +129,12 @@ message DutyCycleRequest {
 message FrequencyRequest {
   int32 pin       = 1;
   int32 frequency = 2;   // Hz
+}
+
+message PulseWidthRequest {
+  int32 pin       = 1;   // PWM CHANNEL index (not BCM) for hardware PWM providers
+  int64 period_ns = 2;   // e.g. 20_000_000 for 50 Hz
+  int64 duty_ns   = 3;   // e.g. 1_500_000 for a 1500 us servo centre
 }
 
 message PwmResponse {
