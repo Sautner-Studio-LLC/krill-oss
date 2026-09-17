@@ -3,6 +3,7 @@ package krill.zone.service
 // pi4j-ktx extension functions are top-level in com.pi4j.ktx
 import com.krillforge.pi4j.proto.*
 import com.krillforge.pi4j.proto.PullResistance
+import com.pi4j.io.IOType
 import com.pi4j.io.gpio.digital.*
 import com.pi4j.ktx.io.digital.*
 import io.grpc.*
@@ -32,10 +33,12 @@ class GpioServiceImpl(
 
     // ── SetOutput ─────────────────────────────────────────────────────────────
 
-    override suspend fun setOutput(request: SetOutputRequest): PinResponse = runCatching {
+    override suspend fun setOutput(request: SetOutputRequest): PinResponse = runCatchingGrpc {
+        val providerId = ctx.requireProvider(IOType.DIGITAL_OUTPUT)
         val out = outputs.getOrPut(request.pin) {
             log.debug("Configuring digital output pin {}", request.pin)
             ctx.context.digitalOutput(request.pin) {
+                provider(providerId)
                 if (request.id.isNotBlank()) id(request.id)
                 initial(DigitalState.LOW)
                 shutdown(DigitalState.LOW)
@@ -100,7 +103,7 @@ class GpioServiceImpl(
 
     // ── GetInput ──────────────────────────────────────────────────────────────
 
-    override suspend fun getInput(request: InputConfig): PinStateResponse = runCatching {
+    override suspend fun getInput(request: InputConfig): PinStateResponse = runCatchingGrpc {
         val inp = getOrCreateInput(request)
         pinStateResponse { pin = request.pin; state = inp.state().toProto() }
     }.getOrElse { e ->
@@ -116,7 +119,8 @@ class GpioServiceImpl(
 
     override fun watchInput(request: InputConfig): Flow<PinEvent> = callbackFlow {
         val inp = runCatching { getOrCreateInput(request) }.getOrElse { e ->
-            close(Status.INTERNAL.withDescription(e.message).asException())
+            val status = if (e is StatusException) e.status else Status.INTERNAL.withDescription(e.message)
+            close(status.asException())
             return@callbackFlow
         }
         log.debug("WatchInput: registering listener on pin {}", request.pin)
@@ -164,15 +168,18 @@ class GpioServiceImpl(
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun getOrCreateInput(config: InputConfig): DigitalInput =
-        inputs.getOrPut(config.pin) {
+    private fun getOrCreateInput(config: InputConfig): DigitalInput {
+        val providerId = ctx.requireProvider(IOType.DIGITAL_INPUT)
+        return inputs.getOrPut(config.pin) {
             log.debug("Configuring digital input pin {}", config.pin)
             ctx.context.digitalInput(config.pin) {
+                provider(providerId)
                 if (config.id.isNotBlank()) id(config.id)
                 pull(config.pull.toPi4j())
                 if (config.debounceMicros > 0) debounce(config.debounceMicros)
             }
         }
+    }
 }
 
 // ── Extension mappings ────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 package krill.zone.service
 
 import com.krillforge.pi4j.proto.*
+import com.pi4j.io.IOType
 import com.pi4j.ktx.io.*
 import io.grpc.*
 import krill.zone.*
@@ -24,12 +25,15 @@ class DefaultPwmService(
 
     // ── Configure ─────────────────────────────────────────────────────────────
 
-    override suspend fun configure(request: PwmConfig): PwmResponse = runCatching {
+    override suspend fun configure(request: PwmConfig): PwmResponse = runCatchingGrpc {
+        val providerId = ctx.requireProvider(IOType.PWM)
+
         // Remove any existing channel so the new config takes effect
         channels.remove(request.pin)?.off()
 
         log.debug("Configuring PWM pin {} @ {}Hz {}%", request.pin, request.frequency, request.dutyCycle)
         val ch = ctx.context.pwm(request.pin) {
+            provider(providerId)
             if (request.id.isNotBlank()) id(request.id)
             frequency(request.frequency)
             dutyCycle(request.dutyCycle.toInt())

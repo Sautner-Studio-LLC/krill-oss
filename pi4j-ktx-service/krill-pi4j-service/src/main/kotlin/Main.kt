@@ -14,12 +14,17 @@ private val log = LoggerFactory.getLogger("Pi4jService")
  *
  * Environment variables
  * ─────────────────────
- *   GRPC_PORT   TCP port to listen on             (default: 50051)
- *   PI4J_MOCK   "true" → start without hardware   (default: false)
+ *   GRPC_PORT      TCP port to listen on                        (default: 50051)
+ *   PI4J_MOCK      "true" → start without hardware               (default: false)
+ *   PI4J_PROVIDER  "FFM" or "MOCK" — provider family to select    (default: FFM)
  *
  * Command-line flags
  * ──────────────────
  *   --mock      equivalent to PI4J_MOCK=true
+ *
+ * `pi4j-plugin-mock` is a testImplementation-only dependency of this module — the
+ * packaged daemon does not ship it, so `--mock`/`PI4J_MOCK=true` only works when running
+ * via the Gradle test task, not the shadowJar. See [krill.zone.Pi4jContextManager].
  *
  * Client usage
  * ────────────
