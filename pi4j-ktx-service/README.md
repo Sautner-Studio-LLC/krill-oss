@@ -197,6 +197,35 @@ Pi4jClient().use { client ->
 
 ---
 
+### PCA9685 (16-channel PWM over I2C)
+
+Chip-level driver in `com.krillforge.pi4j.pca9685`, built on top of `client.i2c` and
+`client.gpio` — not a separate daemon service, since one `WriteBytes` call already sets
+all 16 channels atomically. See the package KDoc for the PRE_SCALE/sleep-dance,
+brownout, stagger, and OE-polarity traps this driver exists to avoid.
+
+```kotlin
+Pi4jClient().use { client ->
+
+    // OE tied to GPIO 22; pass oePin = null if OE is wired straight to ground.
+    val board = client.pca9685(bus = 1, address = 0x40, oePin = 22)
+
+    board.pwm.init(frequencyHz = 50.0)       // servo-typical
+    check(board.isArmed()) { "PCA9685 OE is HIGH — outputs are disarmed" }
+
+    // Single channel, duty width in ticks of a 4096-tick cycle
+    board.pwm.setChannel(channel = 0, dutyTicks = 307)   // ~1.5ms pulse at 50Hz
+
+    // All 16 channels in one atomic 64-byte block write
+    board.pwm.writeFrame(IntArray(16) { 307 })
+
+    // Software E-stop for every board still answering the default ALLCALL address
+    Pca9685Client.emergencyStopAll(client.i2c.toI2cBus(bus = 1, address = 0x70))
+}
+```
+
+---
+
 ### System
 
 ```kotlin
@@ -231,7 +260,8 @@ pi4j-ktx-service/
 │           ├── GpioClient.kt
 │           ├── PwmClient.kt
 │           ├── I2cClient.kt
-│           └── SystemClient.kt
+│           ├── SystemClient.kt
+│           └── pca9685/          # PCA9685 16-channel PWM-over-I2C chip driver
 └── krill-pi4j-service/           # Daemon (JVM 25, distributed as .deb)
     ├── package/DEBIAN/
     └── src/main/kotlin/krill/zone/

@@ -28,6 +28,7 @@ dependencies {
     compileOnly(libs.javax.annotation.api)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 val vcat = extensions.getByType<VersionCatalogsExtension>().named("libs")
