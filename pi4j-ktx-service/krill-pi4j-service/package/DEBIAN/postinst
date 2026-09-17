@@ -17,8 +17,13 @@ if ! id -u krill >/dev/null 2>&1; then
     adduser --system --ingroup krill --no-create-home --disabled-login krill
 fi
 
-# Add krill to hardware-control groups required for GPIO / I2C / SPI / serial
-for group in gpio i2c spi dialout video plugdev tty; do
+# Add krill to hardware-control groups required for GPIO / I2C / SPI.
+# NOTE: no `dialout` / `tty` here — Pi4J 4.0.0 has no serial I/O abstraction
+# (no IOType.SERIAL, no com.pi4j.io.serial package), so this daemon has no
+# capability that would use them. Serial polling lives entirely in the krill
+# server's Server.SerialDevice (pure-JVM jSerialComm), which grants itself
+# `dialout` independently in its own postinst. See krill-oss#259.
+for group in gpio i2c spi video plugdev; do
     if getent group "$group" >/dev/null; then
         adduser krill "$group"
     fi
@@ -40,7 +45,7 @@ chmod 0640 /etc/krill-pi4j/version
 # Build SupplementaryGroups line dynamically based on groups present on this system.
 
 SUPPLEMENTARY_GROUPS=""
-for group in gpio i2c spi dialout video; do
+for group in gpio i2c spi video; do
     if getent group "$group" >/dev/null; then
         if [ -z "$SUPPLEMENTARY_GROUPS" ]; then
             SUPPLEMENTARY_GROUPS="$group"
