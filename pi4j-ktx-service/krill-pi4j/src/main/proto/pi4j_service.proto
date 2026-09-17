@@ -207,6 +207,50 @@ message I2cResponse {
   string message = 2;
 }
 
+// ─── SPI Service ──────────────────────────────────────────────────────────────
+
+service SpiService {
+  // Full-duplex transfer: write `write_data`, simultaneously read back the same length.
+  rpc Transfer(SpiTransferRequest) returns (SpiTransferResponse);
+
+  // Read-only transfer of `length` bytes (clocks out zeroes).
+  rpc Read(SpiReadRequest) returns (SpiTransferResponse);
+
+  // Write-only transfer (return data, if any, is discarded).
+  rpc Write(SpiWriteRequest) returns (SpiResponse);
+}
+
+message SpiDeviceId {
+  int32 bus         = 1;   // SPI bus number
+  int32 chip_select = 2;   // chip-select line on that bus
+}
+
+message SpiTransferRequest {
+  SpiDeviceId device = 1;
+  bytes        write_data = 2;
+}
+
+message SpiReadRequest {
+  SpiDeviceId device = 1;
+  int32        length = 2;
+}
+
+message SpiWriteRequest {
+  SpiDeviceId device = 1;
+  bytes        data   = 2;
+}
+
+message SpiTransferResponse {
+  bool   success   = 1;
+  bytes  read_data = 2;
+  string message   = 3;
+}
+
+message SpiResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
 // ─── System Service ───────────────────────────────────────────────────────────
 
 service SystemService {
