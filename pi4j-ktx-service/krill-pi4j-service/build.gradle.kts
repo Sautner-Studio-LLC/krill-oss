@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "krill.zone"
-version = "0.0.5"
+version = property("pi4jVersion") as String
 
 repositories {
     mavenCentral()

@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.krillforge"
-version = "0.0.4"
+version = property("pi4jVersion") as String
 
 repositories {
     mavenCentral()
