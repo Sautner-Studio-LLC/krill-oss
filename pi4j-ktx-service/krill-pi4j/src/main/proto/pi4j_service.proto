@@ -131,6 +131,12 @@ message PwmResponse {
   string message    = 2;
   int32  actual_frequency  = 3;
   float  actual_duty_cycle = 4;
+  // Pi4J's native PWM API is Integer-percent only (1% / 200µs steps at 50Hz) — these
+  // three fields make that quantization visible to the caller instead of silently
+  // rounding without a trace. See krill-oss#245.
+  float  requested_duty_cycle = 5;   // what the caller asked for, before rounding
+  bool   quantized            = 6;   // true if actual_duty_cycle != requested_duty_cycle
+  string provider             = 7;   // resolved Pi4J provider id, e.g. "ffm-pwm"
 }
 
 message PwmStatus {

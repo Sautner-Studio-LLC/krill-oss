@@ -137,10 +137,17 @@ Pi4jClient().use { client ->
 
 ### PWM
 
+Pi4J's native PWM API only accepts an integer percent (1% / 200µs steps at 50Hz) — there is
+no float or nanosecond path. `dutyCycle` is rounded to the nearest whole percent (`7.5f` →
+`8`), never truncated. `PwmResponse` reports what actually happened: `actualDutyCycle` is
+what got applied, `requestedDutyCycle` is what you asked for, and `quantized` is `true`
+whenever rounding changed the value — check it if you need servo-grade precision.
+
 ```kotlin
 Pi4jClient().use { client ->
 
     // Configure a servo on pin 18: 50 Hz, 7.5% duty cycle (centre position)
+    // -> rounds to 8%; response.quantized == true, response.requestedDutyCycle == 7.5f
     client.pwm.configure(pin = 18, frequencyHz = 50, dutyCycle = 7.5f)
 
     // Move servo to ~0°
