@@ -3,6 +3,11 @@ package krill.zone
 import com.pi4j.*
 import com.pi4j.context.*
 import com.pi4j.io.IOType
+import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalInputProviderImpl
+import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalOutputProviderImpl
+import com.pi4j.plugin.mock.provider.i2c.MockI2CProviderImpl
+import com.pi4j.plugin.mock.provider.pwm.MockPwmProviderImpl
+import com.pi4j.plugin.mock.provider.spi.MockSpiProviderImpl
 import io.grpc.Status
 import org.slf4j.*
 
@@ -146,28 +151,25 @@ object Pi4jContextManager {
         }
 
     // ── Mock context ──────────────────────────────────────────────────────────
-    // Loaded reflectively because pi4j-plugin-mock is a testImplementation-only
-    // dependency — present on the test runtime classpath, absent from the shipped
-    // shadowJar. Unlike the old implementation, a missing jar fails loudly instead
-    // of silently falling back to a real hardware context (krill-oss#244).
+    // pi4j-plugin-mock is a real `implementation` dependency of this module (krill-oss#264)
+    // so it ships in the shadowJar and PI4J_MOCK=true works in the installed daemon, not
+    // just under the Gradle test task — needed on hosts with no `spi`/`gpio` OS groups
+    // (e.g. the ghost QA runner) where the FFM plugin's hardware providers can't initialize.
+    //
+    // Registers the mock provider instances directly rather than the `MockPlatform` —
+    // mirrors [krill.zone.ProviderResolutionTest]'s `buildMockOnlyContext()`, since adding
+    // just the platform leaves every GUARDED_TYPES provider unresolved (the platform's
+    // `getProviders()` id list isn't backed by an auto-registration when built this way).
 
-    private fun buildMockContext(): Context {
-        val platformClass = try {
-            Class.forName("com.pi4j.plugin.mock.platform.MockPlatform")
-        } catch (e: ClassNotFoundException) {
-            throw IllegalStateException(
-                "Mock mode requested (PI4J_MOCK/--mock) but pi4j-plugin-mock is not on the " +
-                    "classpath — it is a testImplementation-only dependency in this module, " +
-                    "available when running the test suite. The packaged daemon does not ship it.",
-                e
+    private fun buildMockContext(): Context =
+        Pi4J.newContextBuilder()
+            .add(
+                MockDigitalInputProviderImpl(),
+                MockDigitalOutputProviderImpl(),
+                MockPwmProviderImpl(),
+                MockI2CProviderImpl(),
+                MockSpiProviderImpl(),
             )
-        }
-        val platform = platformClass.getDeclaredConstructor().newInstance()
-                as com.pi4j.platform.Platform
-
-        return Pi4J.newContextBuilder()
-            .add(platform)
             .build()
-            .also { log.info("Mock platform loaded") }
-    }
+            .also { log.info("Mock providers loaded") }
 }

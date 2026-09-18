@@ -56,6 +56,19 @@ else
     SUPPLEMENTARY_GROUPS_LINE=""
 fi
 
+# Default to PI4J_MOCK=true when neither `gpio` nor `spi` exists on this host —
+# the signal that this is not a real Pi image (raspberrypi-sys-mods creates both
+# via udev at boot). Without real hardware groups, Pi4J's FFM plugin fails its
+# own permission precondition and every guarded IOType comes up degraded
+# (krill-oss#264) — mock mode lets the daemon still start and serve MCP-visible
+# node behavior on dev laptops / CI runners. Override with `systemctl edit
+# krill-pi4j.service` if a real Pi ever needs this forced either way.
+if getent group gpio >/dev/null || getent group spi >/dev/null; then
+    PI4J_MOCK_DEFAULT="false"
+else
+    PI4J_MOCK_DEFAULT="true"
+fi
+
 cat > /etc/systemd/system/krill-pi4j.service << EOF
 [Unit]
 Description=Krill Pi4J gRPC Service
@@ -75,7 +88,7 @@ ${SUPPLEMENTARY_GROUPS_LINE}
 Restart=on-failure
 RestartSec=5
 Environment=GRPC_PORT=50051
-Environment=PI4J_MOCK=false
+Environment=PI4J_MOCK=${PI4J_MOCK_DEFAULT}
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=krill-pi4j
@@ -92,5 +105,10 @@ echo ""
 echo "🦐 krill-pi4j installation complete."
 echo ""
 echo "   gRPC service listening on port 50051 (GRPC_PORT to override)"
+if [ "$PI4J_MOCK_DEFAULT" = "true" ]; then
+    echo "   No gpio/spi OS groups found — running in PI4J_MOCK=true (no hardware access)"
+else
+    echo "   PI4J_MOCK=false — using real Pi4J FFM hardware providers"
+fi
 echo "   Logs: journalctl -u krill-pi4j -f"
 echo ""
