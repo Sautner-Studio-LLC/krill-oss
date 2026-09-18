@@ -1,11 +1,13 @@
 package krill.zone.service
 
 import com.krillforge.pi4j.proto.*
+import com.pi4j.io.IOType
 import com.pi4j.ktx.io.*
 import io.grpc.*
 import krill.zone.*
 import org.slf4j.*
 import java.util.concurrent.*
+import kotlin.math.roundToInt
 
 /**
  * gRPC service implementation for PWM channels.
@@ -24,25 +26,34 @@ class DefaultPwmService(
 
     // ── Configure ─────────────────────────────────────────────────────────────
 
-    override suspend fun configure(request: PwmConfig): PwmResponse = runCatching {
+    override suspend fun configure(request: PwmConfig): PwmResponse = runCatchingGrpc {
+        val providerId = ctx.requireProvider(IOType.PWM)
+        // Pi4J's PWM API only accepts an Integer percent (see krill-oss#245) — round
+        // rather than truncate so error is symmetric (±0.5%) instead of always downward.
+        val roundedDutyCycle = request.dutyCycle.roundToInt()
+
         // Remove any existing channel so the new config takes effect
         channels.remove(request.pin)?.off()
 
         log.debug("Configuring PWM pin {} @ {}Hz {}%", request.pin, request.frequency, request.dutyCycle)
         val ch = ctx.context.pwm(request.pin) {
+            provider(providerId)
             if (request.id.isNotBlank()) id(request.id)
             frequency(request.frequency)
-            dutyCycle(request.dutyCycle.toInt())
-            initial(request.dutyCycle.toInt())
+            dutyCycle(roundedDutyCycle)
+            initial(roundedDutyCycle)
             shutdown(0)
         }
-        ch.on(request.dutyCycle.toInt(), request.frequency)
+        ch.on(roundedDutyCycle, request.frequency)
         channels[request.pin] = ch
 
         pwmResponse {
             success = true
             actualFrequency = ch.frequency()
             actualDutyCycle = ch.dutyCycle().toFloat()
+            requestedDutyCycle = request.dutyCycle
+            quantized = roundedDutyCycle.toFloat() != request.dutyCycle
+            provider = providerId
         }
     }.getOrElse { e ->
         log.warn("configure PWM pin {}: {}", request.pin, e.message)
@@ -56,11 +67,15 @@ class DefaultPwmService(
             .withDescription("PWM pin ${request.pin} not configured — call Configure first")
             .asException()
         return runCatching {
-            ch.on(request.dutyCycle.toInt())
+            val roundedDutyCycle = request.dutyCycle.roundToInt()
+            ch.on(roundedDutyCycle)
             pwmResponse {
                 success = true
                 actualFrequency = ch.frequency()
                 actualDutyCycle = ch.dutyCycle().toFloat()
+                requestedDutyCycle = request.dutyCycle
+                quantized = roundedDutyCycle.toFloat() != request.dutyCycle
+                provider = ctx.providerId(IOType.PWM)
             }
         }.getOrElse { e ->
             pwmResponse { success = false; message = e.message.orEmpty() }

@@ -2,6 +2,13 @@ package krill.zone
 
 import com.pi4j.*
 import com.pi4j.context.*
+import com.pi4j.io.IOType
+import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalInputProviderImpl
+import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalOutputProviderImpl
+import com.pi4j.plugin.mock.provider.i2c.MockI2CProviderImpl
+import com.pi4j.plugin.mock.provider.pwm.MockPwmProviderImpl
+import com.pi4j.plugin.mock.provider.spi.MockSpiProviderImpl
+import io.grpc.Status
 import org.slf4j.*
 
 /**
@@ -14,27 +21,64 @@ object Pi4jContextManager {
 
     private val log = LoggerFactory.getLogger(Pi4jContextManager::class.java)
 
+    /**
+     * Provider family to select for hardware I/O. `raspberrypi-plugin`'s own providers
+     * (the context's default fallback platform) are registry-only stubs that report
+     * success without touching hardware — see krill-oss#244. Every IO call site must
+     * name one of these families explicitly rather than relying on Pi4J's platform default.
+     */
+    enum class ProviderFamily { FFM, MOCK }
+
+    private val FFM_PROVIDER_IDS = mapOf(
+        IOType.DIGITAL_INPUT to "ffm-digital-input",
+        IOType.DIGITAL_OUTPUT to "ffm-digital-output",
+        IOType.PWM to "ffm-pwm",
+        IOType.I2C to "ffm-i2c",
+        IOType.SPI to "ffm-spi",
+    )
+
+    private val MOCK_PROVIDER_IDS = mapOf(
+        IOType.DIGITAL_INPUT to "mock-digital-input",
+        IOType.DIGITAL_OUTPUT to "mock-digital-output",
+        IOType.PWM to "mock-pwm",
+        IOType.I2C to "mock-i2c",
+        IOType.SPI to "mock-spi",
+    )
+
+    /** IOTypes with a real gRPC service in this daemon — the ones worth guarding at startup. */
+    private val GUARDED_TYPES = listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C, IOType.SPI)
+
     @Volatile
     private var _context: Context? = null
+
+    @Volatile
+    private var _providerFamily: ProviderFamily = ProviderFamily.FFM
+
+    @Volatile
+    private var _degraded: Set<IOType> = emptySet()
 
     val context: Context
         get() = _context ?: error("Pi4J context not initialized — call initialize() first")
 
-
     /**
      * Initialize the Pi4J context.
      *
-     * On a real Raspberry Pi with the PiGpio plugin on the classpath this will
-     * auto-detect all available platforms and providers.
+     * On a real Raspberry Pi with [libs.pi4j.plugin.ffm][com.pi4j.plugin.ffm.FFMPlugin] on
+     * the classpath this registers the FFM providers that actually drive hardware — the
+     * `raspberrypi-plugin` platform's own providers are stubs and never selected explicitly.
      *
-     * Pass [mock] = true (or set env PI4J_MOCK=true) to bring up a stub context
-     * that lets the service start without hardware — useful for development/CI.
+     * Pass [mock] = true (or set env PI4J_MOCK=true) to bring up the Pi4J mock platform
+     * instead — lets the service start without hardware, useful for development/CI. The
+     * provider family can also be overridden with env PI4J_PROVIDER=FFM|MOCK.
      */
     fun initialize(mock: Boolean = false) {
         check(_context == null) { "Pi4J context already initialized" }
-        log.info("Initializing Pi4J context (mock={})", mock)
-        _context = if (mock) buildMockContext() else Pi4J.newAutoContext()
+        val family = resolveFamily(mock)
+        log.info("Initializing Pi4J context (mock={}, providerFamily={})", mock, family)
+        _providerFamily = family
+        _context = if (family == ProviderFamily.MOCK) buildMockContext() else Pi4J.newAutoContext()
         log.info("Pi4J context ready — platforms: {}", _context!!.platforms().all().keys)
+        _degraded = computeDegradedTypes(_context!!)
     }
 
     fun shutdown() {
@@ -45,24 +89,87 @@ object Pi4jContextManager {
         }
     }
 
-    // ── Mock context ──────────────────────────────────────────────────────────
-    // Loaded reflectively so that the pi4j-plugin-mock jar is not a hard
-    // compile-time requirement (it may not exist for every pi4j release).
-
-    private fun buildMockContext(): Context {
-        return try {
-            // Reflective load so pi4j-plugin-mock is not a hard compile dependency
-            val platformClass = Class.forName("com.pi4j.plugin.mock.platform.MockPlatform")
-            val platform = platformClass.getDeclaredConstructor().newInstance()
-                    as com.pi4j.platform.Platform
-
-            Pi4J.newContextBuilder()
-                .add(platform)
-                .build()
-                .also { log.info("Mock platform loaded") }
-        } catch (e: ClassNotFoundException) {
-            log.warn("pi4j-plugin-mock not on classpath — falling back to auto context")
-            Pi4J.newAutoContext()
-        }
+    /**
+     * Test seam: adopt an already-built [Context] instead of auto-discovering one,
+     * so tests can exercise a specific platform/provider combination (e.g. a
+     * raspberrypi-only context with no FFM providers) without touching real hardware.
+     */
+    internal fun initializeForTest(context: Context, family: ProviderFamily) {
+        check(_context == null) { "Pi4J context already initialized" }
+        _providerFamily = family
+        _context = context
+        log.info("Pi4J context ready (test) — platforms: {}", context.platforms().all().keys)
+        _degraded = computeDegradedTypes(context)
     }
+
+    /** The provider id to select for [type] under the active [ProviderFamily]. */
+    fun providerId(type: IOType): String {
+        val ids = if (_providerFamily == ProviderFamily.MOCK) MOCK_PROVIDER_IDS else FFM_PROVIDER_IDS
+        return ids[type] ?: error("No provider mapping for IOType $type under family $_providerFamily")
+    }
+
+    /** True if [type]'s intended provider failed to resolve at startup — see [initialize]. */
+    fun isDegraded(type: IOType): Boolean = type in _degraded
+
+    /**
+     * Returns the provider id to select for [type], or throws a `FAILED_PRECONDITION`
+     * gRPC status if that provider never resolved. Call this before touching hardware —
+     * it converts what used to be a silent `success=true` stub response into a loud error.
+     */
+    fun requireProvider(type: IOType): String {
+        if (isDegraded(type)) {
+            throw Status.FAILED_PRECONDITION
+                .withDescription(
+                    "IOType $type has no working Pi4J provider on this host — " +
+                        "'${providerId(type)}' never registered, so this call would otherwise " +
+                        "silently no-op against a registry-only stub. See krill-oss#244."
+                )
+                .asException()
+        }
+        return providerId(type)
+    }
+
+    private fun resolveFamily(mock: Boolean): ProviderFamily {
+        if (mock || System.getenv("PI4J_MOCK")?.toBoolean() == true) return ProviderFamily.MOCK
+        val env = System.getenv("PI4J_PROVIDER")?.uppercase()
+        return env?.let { runCatching { ProviderFamily.valueOf(it) }.getOrNull() } ?: ProviderFamily.FFM
+    }
+
+    private fun computeDegradedTypes(context: Context): Set<IOType> =
+        GUARDED_TYPES.filterTo(mutableSetOf()) { type ->
+            val id = providerId(type)
+            val healthy = context.hasProvider(id)
+            if (!healthy) {
+                log.error(
+                    "IOType {} has no working provider — expected '{}' never registered. " +
+                        "Calls touching this IOType will fail with FAILED_PRECONDITION instead of " +
+                        "silently no-op'ing against a stub.",
+                    type, id
+                )
+            }
+            !healthy
+        }
+
+    // ── Mock context ──────────────────────────────────────────────────────────
+    // pi4j-plugin-mock is a real `implementation` dependency of this module (krill-oss#264)
+    // so it ships in the shadowJar and PI4J_MOCK=true works in the installed daemon, not
+    // just under the Gradle test task — needed on hosts with no `spi`/`gpio` OS groups
+    // (e.g. the ghost QA runner) where the FFM plugin's hardware providers can't initialize.
+    //
+    // Registers the mock provider instances directly rather than the `MockPlatform` —
+    // mirrors [krill.zone.ProviderResolutionTest]'s `buildMockOnlyContext()`, since adding
+    // just the platform leaves every GUARDED_TYPES provider unresolved (the platform's
+    // `getProviders()` id list isn't backed by an auto-registration when built this way).
+
+    private fun buildMockContext(): Context =
+        Pi4J.newContextBuilder()
+            .add(
+                MockDigitalInputProviderImpl(),
+                MockDigitalOutputProviderImpl(),
+                MockPwmProviderImpl(),
+                MockI2CProviderImpl(),
+                MockSpiProviderImpl(),
+            )
+            .build()
+            .also { log.info("Mock providers loaded") }
 }

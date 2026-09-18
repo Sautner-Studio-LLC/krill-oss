@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "krill.zone"
-version = "0.0.5"
+version = property("pi4jVersion") as String
 
 repositories {
     mavenCentral()
@@ -18,8 +18,9 @@ dependencies {
     implementation(libs.pi4j.ktx)
     implementation(libs.pi4j.core)
     implementation(libs.pi4j.plugin.raspberrypi)
-    implementation(libs.pi4j.plugin.pigpio)
     implementation(libs.pi4j.plugin.gpiod)  // Required for Raspberry Pi 5 (RP1 chip, chardev interface)
+    implementation(libs.pi4j.plugin.ffm)    // Foreign Function & Memory providers — the ones actually driving hardware
+    implementation(libs.pi4j.plugin.mock)   // Ships in the shadowJar so PI4J_MOCK=true works on non-Pi hosts (krill-oss#264)
 
     // gRPC transport
     implementation(libs.grpc.netty.shaded)

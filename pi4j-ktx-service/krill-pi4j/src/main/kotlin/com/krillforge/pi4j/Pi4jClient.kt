@@ -40,6 +40,7 @@ class Pi4jClient(
     val gpio   = GpioClient(channel)
     val pwm    = PwmClient(channel)
     val i2c    = I2cClient(channel)
+    val spi    = SpiClient(channel)
     val system = SystemClient(channel)
 
     override fun close() {
