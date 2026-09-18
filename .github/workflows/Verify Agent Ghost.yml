@@ -300,7 +300,21 @@ jobs:
       - name: Wipe local krill DB and restart krill.service
         run: |
           set -euo pipefail
-          sudo -n rm -f /srv/krill/data/*.db
+          # /srv/krill/data is 0750 krill:krill (server postinst: `install -d -o krill -g
+          # krill -m 0750 ...`), and the runner user is never added to the `krill` group.
+          # A glob in a `sudo -n rm -f ...` arg is expanded by *this* (unprivileged) shell
+          # before sudo ever runs, so on an unreadable directory it silently fails to match
+          # anything, `rm -f` gets handed the literal nonexistent filename `*.db`, and `-f`
+          # swallows the resulting error — old DB state survives untouched with no failure
+          # anywhere in the log. Expand the glob inside a root-invoked shell instead, and
+          # assert afterward that nothing matching survived.
+          sudo -n bash -c 'rm -f /srv/krill/data/*.db'
+          remaining="$(sudo -n bash -c 'shopt -s nullglob; files=(/srv/krill/data/*.db); echo "${#files[@]}"')"
+          if [[ "$remaining" -ne 0 ]]; then
+            echo "::error::${remaining} *.db file(s) still present under /srv/krill/data after wipe"
+            sudo -n ls -la /srv/krill/data || true
+            exit 1
+          fi
           sudo -n systemctl restart krill
           for i in $(seq 1 60); do
             if sudo -n systemctl is-active --quiet krill; then
