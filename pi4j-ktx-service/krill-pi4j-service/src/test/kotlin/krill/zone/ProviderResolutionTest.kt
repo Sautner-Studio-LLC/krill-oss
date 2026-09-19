@@ -6,6 +6,7 @@ import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalInputProviderImpl
 import com.pi4j.plugin.mock.provider.gpio.digital.MockDigitalOutputProviderImpl
 import com.pi4j.plugin.mock.provider.i2c.MockI2CProviderImpl
 import com.pi4j.plugin.mock.provider.pwm.MockPwmProviderImpl
+import com.pi4j.plugin.mock.provider.spi.MockSpiProviderImpl
 import com.pi4j.provider.Provider
 import krill.zone.Pi4jContextManager.ProviderFamily
 import kotlin.test.AfterTest
@@ -44,6 +45,7 @@ class ProviderResolutionTest {
             MockDigitalOutputProviderImpl(),
             MockPwmProviderImpl(),
             MockI2CProviderImpl(),
+            MockSpiProviderImpl(),
         )
         .build()
 
@@ -55,8 +57,9 @@ class ProviderResolutionTest {
             assertEquals("mock-digital-output", context.provider<Provider<*, *, *>>(IOType.DIGITAL_OUTPUT).id())
             assertEquals("mock-pwm", context.provider<Provider<*, *, *>>(IOType.PWM).id())
             assertEquals("mock-i2c", context.provider<Provider<*, *, *>>(IOType.I2C).id())
+            assertEquals("mock-spi", context.provider<Provider<*, *, *>>(IOType.SPI).id())
 
-            for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C)) {
+            for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C, IOType.SPI)) {
                 assertFalse(
                     context.provider<Provider<*, *, *>>(type).id() in stubProviderIds,
                     "resolved provider for $type must not be a raspberrypi stub"
@@ -72,9 +75,27 @@ class ProviderResolutionTest {
         val context = buildMockOnlyContext()
         Pi4jContextManager.initializeForTest(context, ProviderFamily.MOCK)
 
-        for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C)) {
+        for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C, IOType.SPI)) {
             assertFalse(Pi4jContextManager.isDegraded(type), "$type should resolve under the mock family")
         }
         assertEquals("mock-pwm", Pi4jContextManager.providerId(IOType.PWM))
+        assertEquals("mock-spi", Pi4jContextManager.providerId(IOType.SPI))
+    }
+
+    /**
+     * Regression coverage for krill-oss#264: exercises the actual `initialize(mock = true)`
+     * entry point that `Main.kt`'s `--mock`/`PI4J_MOCK=true` path calls — not just a
+     * hand-built test context. Before this fix, this path was never covered by any test
+     * (pi4j-plugin-mock was testImplementation-only, so the shipped daemon could never
+     * reach it), which let `buildMockContext()` silently register a `MockPlatform` with no
+     * providers backing it — every guarded IOType came up degraded even in "mock" mode.
+     */
+    @Test
+    fun `initialize(mock = true) brings up a context where every guarded IOType resolves`() {
+        Pi4jContextManager.initialize(mock = true)
+
+        for (type in listOf(IOType.DIGITAL_INPUT, IOType.DIGITAL_OUTPUT, IOType.PWM, IOType.I2C, IOType.SPI)) {
+            assertFalse(Pi4jContextManager.isDegraded(type), "$type should resolve when initialize(mock = true)")
+        }
     }
 }
