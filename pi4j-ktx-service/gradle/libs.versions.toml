@@ -18,8 +18,9 @@ vanniktech        = "0.36.0"
 pi4j-ktx                  = { module = "com.pi4j:pi4j-ktx",                    version.ref = "pi4j-ktx" }
 pi4j-core                 = { module = "com.pi4j:pi4j-core",                   version.ref = "pi4j" }
 pi4j-plugin-raspberrypi   = { module = "com.pi4j:pi4j-plugin-raspberrypi",     version.ref = "pi4j" }
-pi4j-plugin-pigpio        = { module = "com.pi4j:pi4j-plugin-pigpio",          version.ref = "pi4j" }
 pi4j-plugin-gpiod         = { module = "com.pi4j:pi4j-plugin-gpiod",           version.ref = "pi4j" }
+pi4j-plugin-ffm           = { module = "com.pi4j:pi4j-plugin-ffm",             version.ref = "pi4j" }
+pi4j-plugin-mock          = { module = "com.pi4j:pi4j-plugin-mock",            version.ref = "pi4j" }
 
 # gRPC
 grpc-netty-shaded         = { module = "io.grpc:grpc-netty-shaded",            version.ref = "grpc" }
@@ -32,6 +33,7 @@ protobuf-kotlin           = { module = "com.google.protobuf:protobuf-kotlin",  v
 
 # Kotlinx
 kotlinx-coroutines-core   = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test   = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 # Logging
 logback-classic           = { module = "ch.qos.logback:logback-classic",       version.ref = "logback" }

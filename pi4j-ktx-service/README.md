@@ -1,6 +1,6 @@
 # krill-pi4j
 
-A gRPC microservice that exposes Raspberry Pi hardware — GPIO, PWM, and I2C — to any JVM application, regardless of Java version.
+A gRPC microservice that exposes Raspberry Pi hardware — GPIO, PWM, I2C, and SPI — to any JVM application, regardless of Java version.
 
 ## Why this exists
 
@@ -19,7 +19,7 @@ Your app (JDK 21+)                    Raspberry Pi OS
 ┌─────────────────────┐               ┌──────────────────────────────┐
 │  Pi4jClient (gRPC)  │─── localhost ─▶  krill-pi4j daemon (JDK 25) │
 │  com.krillforge:    │    port 50051 │  ↳ Pi4J FFM API              │
-│  krill-pi4j:0.0.1   │               │  ↳ GPIO / PWM / I2C          │
+│  krill-pi4j:0.0.1   │               │  ↳ GPIO / PWM / I2C / SPI    │
 └─────────────────────┘               └──────────────────────────────┘
 ```
 
@@ -64,12 +64,12 @@ Add the dependency to your project:
 
 **Gradle (Kotlin DSL)**
 ```kotlin
-implementation("com.krillforge:krill-pi4j:0.0.3")
+implementation("com.krillforge:krill-pi4j:0.0.5")
 ```
 
 **Gradle (Groovy DSL)**
 ```groovy
-implementation 'com.krillforge:krill-pi4j:0.0.3'
+implementation 'com.krillforge:krill-pi4j:0.0.5'
 ```
 
 **Maven**
@@ -77,7 +77,7 @@ implementation 'com.krillforge:krill-pi4j:0.0.3'
 <dependency>
     <groupId>com.krillforge</groupId>
     <artifactId>krill-pi4j</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.5</version>
 </dependency>
 ```
 
@@ -87,7 +87,7 @@ implementation 'com.krillforge:krill-pi4j:0.0.3'
 
 ## Usage
 
-`Pi4jClient` is the single entry point. It manages a gRPC channel to the daemon and exposes four sub-clients: `gpio`, `pwm`, `i2c`, and `system`.
+`Pi4jClient` is the single entry point. It manages a gRPC channel to the daemon and exposes five sub-clients: `gpio`, `pwm`, `i2c`, `spi`, and `system`.
 
 ### Connect
 
@@ -137,10 +137,17 @@ Pi4jClient().use { client ->
 
 ### PWM
 
+Pi4J's native PWM API only accepts an integer percent (1% / 200µs steps at 50Hz) — there is
+no float or nanosecond path. `dutyCycle` is rounded to the nearest whole percent (`7.5f` →
+`8`), never truncated. `PwmResponse` reports what actually happened: `actualDutyCycle` is
+what got applied, `requestedDutyCycle` is what you asked for, and `quantized` is `true`
+whenever rounding changed the value — check it if you need servo-grade precision.
+
 ```kotlin
 Pi4jClient().use { client ->
 
     // Configure a servo on pin 18: 50 Hz, 7.5% duty cycle (centre position)
+    // -> rounds to 8%; response.quantized == true, response.requestedDutyCycle == 7.5f
     client.pwm.configure(pin = 18, frequencyHz = 50, dutyCycle = 7.5f)
 
     // Move servo to ~0°
@@ -190,6 +197,57 @@ Pi4jClient().use { client ->
 
 ---
 
+### SPI
+
+Devices are opened at Pi4J's default mode (MODE_0) and baud rate; there is no Configure RPC
+yet since no consumer has needed non-default SPI timing.
+
+```kotlin
+Pi4jClient().use { client ->
+
+    // Full-duplex transfer on bus 0, chip-select 0 — reads back as many bytes as written
+    val result = client.spi.transfer(bus = 0, chipSelect = 0, data = byteArrayOf(0x9F, 0x00, 0x00))
+    if (result.success) println("raw: ${result.readData.toByteArray().toHex()}")
+
+    // Read-only transfer (clocks out zeroes)
+    val bytes = client.spi.read(bus = 0, chipSelect = 0, length = 4)
+
+    // Write-only transfer; any return data from the device is discarded
+    client.spi.write(bus = 0, chipSelect = 0, data = byteArrayOf(0x06))
+}
+```
+
+---
+
+### PCA9685 (16-channel PWM over I2C)
+
+Chip-level driver in `com.krillforge.pi4j.pca9685`, built on top of `client.i2c` and
+`client.gpio` — not a separate daemon service, since one `WriteBytes` call already sets
+all 16 channels atomically. See the package KDoc for the PRE_SCALE/sleep-dance,
+brownout, stagger, and OE-polarity traps this driver exists to avoid.
+
+```kotlin
+Pi4jClient().use { client ->
+
+    // OE tied to GPIO 22; pass oePin = null if OE is wired straight to ground.
+    val board = client.pca9685(bus = 1, address = 0x40, oePin = 22)
+
+    board.pwm.init(frequencyHz = 50.0)       // servo-typical
+    check(board.isArmed()) { "PCA9685 OE is HIGH — outputs are disarmed" }
+
+    // Single channel, duty width in ticks of a 4096-tick cycle
+    board.pwm.setChannel(channel = 0, dutyTicks = 307)   // ~1.5ms pulse at 50Hz
+
+    // All 16 channels in one atomic 64-byte block write
+    board.pwm.writeFrame(IntArray(16) { 307 })
+
+    // Software E-stop for every board still answering the default ALLCALL address
+    Pca9685Client.emergencyStopAll(client.i2c.toI2cBus(bus = 1, address = 0x70))
+}
+```
+
+---
+
 ### System
 
 ```kotlin
@@ -224,7 +282,9 @@ pi4j-ktx-service/
 │           ├── GpioClient.kt
 │           ├── PwmClient.kt
 │           ├── I2cClient.kt
-│           └── SystemClient.kt
+│           ├── SpiClient.kt
+│           ├── SystemClient.kt
+│           └── pca9685/          # PCA9685 16-channel PWM-over-I2C chip driver
 └── krill-pi4j-service/           # Daemon (JVM 25, distributed as .deb)
     ├── package/DEBIAN/
     └── src/main/kotlin/krill/zone/
@@ -234,6 +294,7 @@ pi4j-ktx-service/
             ├── GpioServiceImpl.kt
             ├── PwmServiceImpl.kt
             ├── I2cServiceImpl.kt
+            ├── SpiServiceImpl.kt
             └── SystemServiceImpl.kt
 ```
 

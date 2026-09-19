@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.krillforge"
-version = "0.0.4"
+version = property("pi4jVersion") as String
 
 repositories {
     mavenCentral()
@@ -28,6 +28,7 @@ dependencies {
     compileOnly(libs.javax.annotation.api)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 val vcat = extensions.getByType<VersionCatalogsExtension>().named("libs")
