@@ -1,3 +1,57 @@
+# 2026-09-19
+
+# Release candidate: 2026-09-17 → 2026-09-18
+
+## Summary
+
+This release primarily enhances `krill-pi4j` with servo/ESC control via angle or microseconds (not duty-cycle), adds a PCA9685 16-channel PWM driver client, SPI support, and fixes several integration and PWM rounding issues while ensuring mock mode works correctly. It also includes minor fixes in `krill-mcp` and CI, alongside release infrastructure updates.
+
+## Substantive changes
+
+
+### #253 fix(krill-pi4j): select real Pi4J providers instead of registry-only stubs (#244) (`risk:medium`)
+
+## Summary
+
+### #257 feat(krill-pi4j): add servo API taking angle or microseconds, never duty-% (#248) (`risk:high`)
+
+## Summary
+
+### #265 fix(krill-pi4j): ship pi4j-plugin-mock in the daemon so PI4J_MOCK=true actually works (`risk:medium`)
+
+## Summary
+
+## Routine maintenance
+
+- #237 fix(krill-mcp): resolve create_node type selectors by unique leaf name (#236) (`low`)
+- #251 Release notes release-2026-09-17 (`trivial`)
+- #252 Release candidate: agents → main (`unlabeled`)
+- #255 feat(krill-pi4j): add SetPulse(period_ns, duty_ns) — the servo/ESC path percent cannot express (#246) (`low`)
+- #254 fix(krill-pi4j): round PWM duty cycle instead of truncating (#245) (`low`)
+- #256 feat(krill-pi4j): add PCA9685 client — 16-channel PWM over I2C with OE as a first-class concept (`low`)
+- #258 chore(krill-pi4j): consolidate version to a single gradle.properties source (#249) (`trivial`)
+- #260 feat(krill-pi4j): add SpiService to the daemon and client (#250) (`low`)
+- #261 fix(krill-pi4j): remove unused dialout/tty group grants from postinst (#259) (`low`)
+- #263 fix(ci): expand DB-wipe glob under sudo so it actually reads a 0750 dir (#262) (`low`)
+
+## Patterns Kraken noticed
+
+- **Hardware abstraction consistency in `krill-pi4j`**: Repeated focus on replacing stubs with real providers (#253), adding proper PWM/duty rounding (#254), introducing dedicated servo/ESC APIs (angle/µs instead of %) (#257, #255), and explicit PCA9685/I2C support (#256) indicates a systematic move toward robust, production-grade hardware control APIs.  
+- **Release engineering and infrastructure polish**: Consolidating versioning (#258), fixing CI/CD scripts (e.g., sudo glob expansion for DB wipe #263), and ensuring mock support ships in the daemon (#265) show recurring attention to reproducible builds and runtime fidelity.  
+- **Type safety and disambiguation**: PR #236 (resolving type selectors by unique leaf name) suggests an ongoing effort to avoid ambiguous metadata resolution, likely tied to MCP tooling and node identification patterns.
+
+## Open friction issues
+
+_None open._
+
+## Stats
+- 13 PRs merged to `agents` since last release
+- 1 risk:high, 2 risk:medium, 10 risk:low+trivial
+- Days since last release: 1
+- Lessons added: 15
+
+---
+
 # 2026-09-17
 
 > ## @ben — 6 PRs queued, 23 days since last release.
