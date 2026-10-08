@@ -1,3 +1,40 @@
+# 2026-10-08
+
+# Release candidate: 2026-09-19 → 2026-09-19
+
+## Summary
+
+This release merges a trivial release notes update, promotion of the `agents` release candidate to `main`, and a new `SetPulse(period_ns, duty_ns)` API for servo/ESC control in `krill-pi4j`, addressing the limitation where percent-based duty cycle表达ions were insufficient (issue #246). The changes follow recent lessons on servo API design, PWM duty cycle rounding, and Pi4J service and capability gaps.
+
+## Substantive changes
+
+
+_None this batch._
+
+## Routine maintenance
+
+- #266 Release notes release-2026-09-19 (`trivial`)
+- #267 Release candidate: agents → main (`unlabeled`)
+- #255 feat(krill-pi4j): add SetPulse(period_ns, duty_ns) — the servo/ESC path percent cannot express (#246) (`low`)
+
+## Patterns Kraken noticed
+
+- Multiple recent PRs and lessons center on refining the `krill-pi4j` servo/ESC PWM control API, specifically addressing limitations of duty-cycle rounding and percent-based interfaces (PR #255, lessons on PWM rounding and servo API).  
+- recurring theme: strict version and capability consistency for pi4j components, with repeated issues around missing capabilities, stub guards, and SPI/serial service gaps (lessons on version consistency, provider stub guards, SPI/serial gaps, capability gaps).  
+- Release process remains lightweight: PRs include release notes and RC merges with no labeled issues, consistent with short release cycles (0 days since last release).
+
+## Open friction issues
+
+_None open._
+
+## Stats
+- 3 PRs merged to `agents` since last release
+- 0 risk:high, 0 risk:medium, 3 risk:low+trivial
+- Days since last release: 0
+- Lessons added: 15
+
+---
+
 # 2026-09-19
 
 # Release candidate: 2026-09-17 → 2026-09-18
